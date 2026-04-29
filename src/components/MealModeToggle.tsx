@@ -1,13 +1,19 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
 
 // 점심 ☀ / 저녁 ☾ 토글. 슬라이드 인디케이터로 현재 모드 표시.
+// /map 외 페이지에선 의미가 없어 숨김 (식당 등록/수정/마이페이지/admin).
 export function MealModeToggle() {
   const { mode, setMode } = useMealMode();
   const [mounted, setMounted] = useState(false);
   useEffect(() => setMounted(true), []);
+  const pathname = usePathname();
+
+  // mode 가 영향 주는 곳은 /map 뿐. 그 외엔 자리 차지 안 함.
+  if (pathname && pathname !== '/map') return null;
 
   // SSR/hydration 시점에 mode 가 아직 sync 되기 전이라 placeholder 로 자리 잡고
   // mounted 후 실제 토글 표시 → mismatch 회피 (next-themes 패턴).
