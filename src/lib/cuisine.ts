@@ -103,6 +103,7 @@ export const CUISINE_GROUPS = [
   {
     label: '카페/디저트',
     items: [
+      { value: '커피' },
       { value: '베이커리' },
       { value: '디저트' },
       { value: '아이스크림' },
