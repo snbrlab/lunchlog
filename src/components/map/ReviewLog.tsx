@@ -75,19 +75,11 @@ export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, on
     };
   }, [restaurantId, refreshKey]);
 
-  // 현재 필터 적용 + 같은 작성자 연속 묶기
+  // 필터만 적용. 그룹화/접기 안 함 (D6 보강 — 사용자 의견 따라 다 펼침).
   const groups = useMemo(() => {
-    const filtered = reviews.filter((r) => filter === 'all' || r.meal_time === filter);
-    const result: { latest: EnrichedReview; older: EnrichedReview[] }[] = [];
-    for (const r of filtered) {
-      const last = result[result.length - 1];
-      if (last && last.latest.author_id === r.author_id) {
-        last.older.push(r);
-      } else {
-        result.push({ latest: r, older: [] });
-      }
-    }
-    return result;
+    return reviews
+      .filter((r) => filter === 'all' || r.meal_time === filter)
+      .map((r) => ({ latest: r, older: [] as EnrichedReview[] }));
   }, [reviews, filter]);
 
   const counts = useMemo(() => {
