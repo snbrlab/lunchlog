@@ -75,6 +75,7 @@ export const CUISINE_GROUPS = [
     items: [
       { value: '삼겹살' },
       { value: '소고기' },
+      { value: '육회' },
       { value: '갈비' },
       { value: '양고기' },
       { value: '곱창' },
