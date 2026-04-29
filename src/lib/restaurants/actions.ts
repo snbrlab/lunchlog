@@ -5,6 +5,15 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ALL_CUISINES } from '@/lib/cuisine';
 import type { CuisineType, MealMode } from '@/types/db';
 
+function isAllowedKakaoUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.hostname === 'place.map.kakao.com' || u.hostname.endsWith('.kakao.com');
+  } catch {
+    return false;
+  }
+}
+
 export type ToggleClosedResult =
   | { ok: true; isClosed: boolean }
   | { ok: false; message: string };
@@ -106,6 +115,9 @@ export async function updateRestaurant(
   }
   if (!input.address.trim()) {
     return { ok: false, reason: 'invalid', message: '주소를 입력해줘' };
+  }
+  if (input.kakaoPlaceUrl && !isAllowedKakaoUrl(input.kakaoPlaceUrl)) {
+    return { ok: false, reason: 'invalid', message: '카카오 url 만 허용' };
   }
 
   const supabase = await createSupabaseServerClient();

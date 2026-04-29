@@ -31,7 +31,6 @@ export function ReviewComposer({ restaurantId, onCreated }: Props) {
   const [mealTime, setMealTime] = useState<MealMode>(mode);
   const [partySize, setPartySize] = useState<string>(''); // 빈 문자열 = 안 적음
   const [pending, startTransition] = useTransition();
-  const [error, setError] = useState<string | null>(null);
 
   // 사용자가 명시적 토글 안 했을 때 점심/저녁 모드 변경에 따라가도록 — 명시적 변경 후엔 고정.
   const [touched, setTouched] = useState(false);
@@ -39,18 +38,13 @@ export function ReviewComposer({ restaurantId, onCreated }: Props) {
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
-    setError(null);
     const trimmed = message.trim();
     if (!trimmed) return;
-    if (trimmed.length > MAX) {
-      setError(`${MAX}자 이내`);
-      return;
-    }
     let parsedSize: number | null = null;
     if (partySize.trim()) {
       const n = Number(partySize);
       if (!Number.isInteger(n) || n < 1 || n > 99) {
-        setError('인원수는 1~99 사이');
+        alert('인원수는 1~99 사이');
         return;
       }
       parsedSize = n;
@@ -65,7 +59,7 @@ export function ReviewComposer({ restaurantId, onCreated }: Props) {
         hash,
       });
       if (!r.ok) {
-        setError(r.message);
+        alert(r.message);
         return;
       }
       setMessage('');
@@ -73,8 +67,6 @@ export function ReviewComposer({ restaurantId, onCreated }: Props) {
       onCreated();
     });
   }
-
-  const remaining = MAX - message.length;
 
   return (
     <form
@@ -95,12 +87,6 @@ export function ReviewComposer({ restaurantId, onCreated }: Props) {
       {/* 방문 인원 (선택) */}
       <div className="group relative">
         <Tooltip>몇명이서 갔는지 (선택)</Tooltip>
-        <span
-          aria-hidden
-          className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-sm"
-        >
-          👥
-        </span>
         <input
           type="number"
           min={1}
@@ -109,10 +95,11 @@ export function ReviewComposer({ restaurantId, onCreated }: Props) {
           inputMode="numeric"
           value={partySize}
           onChange={(e) => setPartySize(e.target.value)}
-          placeholder="N"
+          placeholder="👥"
           disabled={pending}
           aria-label="방문 인원 (선택)"
-          className="h-9 w-14 rounded-md border border-border bg-surface pl-6 pr-1.5 text-sm text-fg placeholder:text-fg-muted/60 outline-none transition focus:border-fg disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+          title="몇명이서 갔는지 (선택)"
+          className="h-9 w-12 rounded-md border border-border bg-surface px-1 text-center text-sm text-fg placeholder:text-base placeholder:text-fg-muted/60 outline-none transition focus:border-fg disabled:opacity-50 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
         />
       </div>
 
@@ -143,12 +130,6 @@ export function ReviewComposer({ restaurantId, onCreated }: Props) {
         </button>
       </div>
 
-      {error && (
-        <p className="absolute -translate-y-7 text-xs text-red-500">{error}</p>
-      )}
-      <p className="absolute -translate-y-5 right-5 text-[10px] text-fg-muted/60">
-        {remaining}자 남음
-      </p>
     </form>
   );
 }

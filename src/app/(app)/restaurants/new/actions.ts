@@ -38,6 +38,21 @@ export type CreateRestaurantResult =
 
 const NEAR_RADIUS_M = 50;
 
+// 카카오 places 의 place_url 만 허용. 사용자가 임의 외부 url (피싱) 못 박게.
+function isAllowedKakaoUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== 'https:' && u.protocol !== 'http:') return false;
+    return (
+      u.hostname === 'place.map.kakao.com' ||
+      u.hostname === 'map.kakao.com' ||
+      u.hostname.endsWith('.kakao.com')
+    );
+  } catch {
+    return false;
+  }
+}
+
 export async function createRestaurant(
   input: CreateRestaurantInput,
 ): Promise<CreateRestaurantResult> {
@@ -72,6 +87,10 @@ export async function createRestaurant(
   }
   if (input.menuTags.some((t) => t.length > 30)) {
     return { ok: false, reason: 'invalid', message: '태그는 30자 이내' };
+  }
+  // 카카오 도메인 외 url 차단 (피싱 방지)
+  if (input.kakaoPlaceUrl && !isAllowedKakaoUrl(input.kakaoPlaceUrl)) {
+    return { ok: false, reason: 'invalid', message: '카카오 검색 결과 url 만 허용' };
   }
 
   const reviewMessage = input.firstReviewMessage.trim();
