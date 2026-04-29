@@ -114,7 +114,7 @@ export default function LoginForm() {
             }}
             className="block w-full text-center text-xs text-neutral-500 underline-offset-2 hover:underline"
           >
-            처음 가입하거나 비밀번호 잊었어? 인증 코드로 로그인
+            이메일 인증 코드로 로그인 / 회원가입
           </button>
         </form>
       ) : otpStep === 'email' ? (

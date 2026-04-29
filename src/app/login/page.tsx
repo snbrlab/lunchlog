@@ -29,10 +29,6 @@ export default async function LoginPage({
         )}
 
         <LoginForm />
-
-        <p className="mt-8 text-center text-xs text-neutral-400">
-          가입 가능한 도메인만 매직링크가 발송됩니다.
-        </p>
       </div>
     </main>
   );
