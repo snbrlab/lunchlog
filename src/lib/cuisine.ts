@@ -57,7 +57,6 @@ export const CUISINE_GROUPS = [
       { value: '햄버거' },
       { value: '샐러드' },
       { value: '브런치' },
-      { value: '타코' },
       { value: '멕시칸' },
       { value: '양식', label: '기타' },
     ] as const,
