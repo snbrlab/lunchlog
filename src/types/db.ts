@@ -91,6 +91,7 @@ export interface Review {
   meal_time: MealMode;
   party_size: number | null;
   hash: string;
+  reverted: boolean;
   created_at: string;
   edited_at: string | null;
 }

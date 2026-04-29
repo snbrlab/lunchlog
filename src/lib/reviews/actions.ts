@@ -63,11 +63,25 @@ export async function createReview(input: CreateReviewInput): Promise<CreateRevi
   return { ok: true, id: data.id };
 }
 
-// RLS 가 24h + author 검증. 권한 없으면 0 row affected → 결과적으로 ok 지만 변화 없음.
-// 따라서 클라가 미리 권한 체크 후 호출하는 게 정상 케이스.
+// admin 만. RLS 도 admin 만 통과.
 export async function deleteReview(id: string): Promise<DeleteReviewResult> {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from('reviews').delete().eq('id', id);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
+export type RevertReviewResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+// 본인 24h 내 글을 revert 처리 (DB 행 보존, 표시만 strikethrough). RLS 의 update 정책이 검증.
+export async function revertReview(id: string): Promise<RevertReviewResult> {
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from('reviews')
+    .update({ reverted: true })
+    .eq('id', id);
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }

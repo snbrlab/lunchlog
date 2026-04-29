@@ -25,6 +25,26 @@ export function metersToWalkMinutes(meters: number): number {
   return Math.max(1, Math.round(meters / 67));
 }
 
+// 차량 환산 (도시 평균 30km/h ≈ 500m/min)
+export function metersToCarMinutes(meters: number): number {
+  return Math.max(1, Math.round(meters / 500));
+}
+
+// 도보 20분 이하면 도보, 초과면 차량으로 표시.
+export function travelInfo(meters: number): {
+  mode: 'walk' | 'car';
+  minutes: number;
+  icon: string;
+  label: string;
+} {
+  const walk = metersToWalkMinutes(meters);
+  if (walk <= 20) {
+    return { mode: 'walk', minutes: walk, icon: '🚶', label: '도보' };
+  }
+  const car = metersToCarMinutes(meters);
+  return { mode: 'car', minutes: car, icon: '🚗', label: '차로' };
+}
+
 function toRad(deg: number): number {
   return (deg * Math.PI) / 180;
 }

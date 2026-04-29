@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import type { Restaurant } from '@/types/db';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
-import { haversineDistanceMeters, metersToWalkMinutes } from '@/lib/distance';
+import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
 import { CUISINE_GROUPS } from '@/lib/cuisine';
 
 interface Props {
@@ -58,7 +58,7 @@ export function RestaurantSidebar({
       })
       .map((r) => {
         const meters = haversineDistanceMeters(origin, { lat: r.latitude, lng: r.longitude });
-        return { r, meters, minutes: metersToWalkMinutes(meters) };
+        return { r, meters, travel: travelInfo(meters) };
       })
       .sort((a, b) => a.meters - b.meters);
   }, [restaurants, mode, cuisine, includeClosed, onlyAlcohol, origin, query]);
@@ -140,7 +140,7 @@ export function RestaurantSidebar({
             우상단 “+ 새 맛집” 으로 추가해줘.
           </li>
         )}
-        {items.map(({ r, meters, minutes }) => {
+        {items.map(({ r, meters, travel }) => {
           const selected = r.id === selectedId;
           return (
             <li key={r.id}>
@@ -153,7 +153,10 @@ export function RestaurantSidebar({
                 }`}
               >
                 <div className="flex w-10 flex-col items-center justify-center">
-                  <span className="text-base font-medium leading-none text-fg">{minutes}</span>
+                  <span aria-hidden className="text-xs leading-none">{travel.icon}</span>
+                  <span className="mt-0.5 text-base font-medium leading-none text-fg">
+                    {travel.minutes}
+                  </span>
                   <span className="mt-0.5 text-[10px] uppercase tracking-wider text-fg-muted">
                     min
                   </span>

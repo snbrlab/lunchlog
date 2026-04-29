@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { haversineDistanceMeters, metersToWalkMinutes } from '@/lib/distance';
+import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
 import { toggleRestaurantClosed } from '@/lib/restaurants/actions';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { ReviewLog } from './ReviewLog';
@@ -53,7 +53,7 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
     lat: restaurant.latitude,
     lng: restaurant.longitude,
   });
-  const minutes = metersToWalkMinutes(meters);
+  const travel = travelInfo(meters);
 
   const sizeRange =
     restaurant.recommended_min_size && restaurant.recommended_max_size
@@ -80,7 +80,8 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
           <span className="truncate font-medium">{restaurant.name}</span>
         </p>
         <p className="ml-3 shrink-0 text-fg-muted">
-          도보 <span className="font-semibold text-fg">{minutes}분</span>
+          <span aria-hidden className="mr-1">{travel.icon}</span>
+          {travel.label} <span className="font-semibold text-fg">{travel.minutes}분</span>
           <span className="mx-1.5">·</span>약 {Math.round(meters)}m
         </p>
       </div>
@@ -153,9 +154,9 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
         <p className="mt-2 px-5 text-[12px] italic text-fg-muted">{restaurant.note}</p>
       )}
 
-      {/* 등록자 */}
+      {/* 등록자 (모바일 hidden) */}
       {restaurant.creator && (
-        <p className="mt-2 flex items-center gap-1.5 px-5 text-[11px] text-fg-muted">
+        <p className="mt-2 hidden items-center gap-1.5 px-5 text-[11px] text-fg-muted lg:flex">
           <span
             className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px]"
             style={{ backgroundColor: restaurant.creator.avatar_color }}
@@ -190,6 +191,7 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
         <ReviewLog
           restaurantId={restaurant.id}
           currentUserId={currentUserId}
+          isAdmin={isAdmin}
           refreshKey={refreshKey}
           onMutated={triggerRefresh}
         />

@@ -80,6 +80,7 @@ export function UserMenu({ name, email, avatarColor, avatarEmoji, isAdmin }: Pro
           >
             마이페이지
           </Link>
+          {/* 랭킹은 멤버 등급 기능 도입 후 공개 예정. /ranking 페이지 자체는 url 직접 들어가면 보임.
           <Link
             href="/ranking"
             role="menuitem"
@@ -87,6 +88,7 @@ export function UserMenu({ name, email, avatarColor, avatarEmoji, isAdmin }: Pro
           >
             🏆 랭킹
           </Link>
+          */}
           <Link
             href="/report"
             role="menuitem"

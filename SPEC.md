@@ -53,7 +53,15 @@
 | D26 | 리뷰 방문 인원 | `reviews.party_size int` (nullable, 1~99). 작성 폼에서 선택 입력. 표시 시 `👥N` |
 | D27 | cuisine 그룹 분류 | 13개 그룹 (한식/일식/중식/양식/아시아/고기/해산물/치킨/피자/카페·디저트/술집/뷔페/기타) × 항목 70+개. `lib/cuisine.ts` 의 `CUISINE_GROUPS` 가 단일 source. 사이드바 필터는 그룹 라벨로, 등록 폼은 그룹별로 칩 묶어 노출 |
 | D28 | 술 가능 여부 | `restaurants.has_alcohol boolean default false`. 음식 종류와 직교(orthogonal) — 일식+술 / 한식+술 등 표현 가능. 사이드바 `🍺 술 가능만` 토글, 디테일 패널 식당명 옆 🍺 표시 |
-| D29 | 식당 정보 수정 | 등록자 본인 또는 admin 만 수정 가능. `/restaurants/[id]/edit` 페이지에서 이름/카테고리/cuisine/menu_tags/가격대/추천인원/술가능/비고 변경. **좌표/주소는 변경 불가** (변경 필요 시 새로 등록 + 폐업 처리) |
+| D29 | 식당 정보 수정 | 등록자 본인 또는 admin 만 수정 가능. `/restaurants/[id]/edit` 페이지에서 이름/좌표/주소/카테고리/cuisine/menu_tags/가격대/추천인원/술가능/비고/카카오 url 변경. 좌표/주소는 카카오 재검색으로 갱신 가능 (D29 보강) |
+| D30 | OTP 인증 | 회사 메일 (lge.com) 의 Outlook Safe Links 가 매직링크 url 을 사전 클릭해 OTP 가 소진되는 문제로 매직링크 url 흐름 폐기. 메일에 6자리 토큰만 표시하고 사용자가 `/login` 에서 직접 입력. Supabase email template 수정 필요 (`{{ .Token }}` 만 노출) |
+| D31 | 카카오 place_url | `restaurants.kakao_place_url` 추가. 등록 시 카카오 places 검색 결과의 place_url 저장 → 디테일 패널의 외부 링크가 식당 상세 페이지 (리뷰/메뉴) 로 연결. admin 페이지에서 누락분 자동 보정 가능 |
+| D32 | 사내 제보 시스템 | `reports` 테이블 + `/report` 폼 (카테고리 4개: 버그/기능/식당/기타) + `/admin/reports` 처리 페이지. 상태 (open/reviewing/resolved) + admin 메모. RLS: 본인+admin read, admin update/delete |
+| D33 | 식당 등록자 표시 | 디테일 패널 (lg 이상) 에 `등록: {이모지} {이름}` 표시. 모바일은 hidden (공간 최적화) |
+| D34 | 도보 / 차로 자동 분기 | 도보 20분 이하면 🚶 도보, 초과면 🚗 차로 표시. 차로 환산 = 30km/h ≈ 500m/min. 사이드바/디테일패널/지도뱃지 모두 적용 |
+| D35 | 리뷰 revert vs delete | 일반 사용자: 본인 24h 내 글을 **revert** 만 가능 (DB 행 보존, 화면에 strikethrough + REVERTED 라벨). admin: **delete** 가능 (DB 행 완전 제거). RLS update 정책은 그대로, delete 정책만 admin only 로 좁힘 (D20 보강) |
+| D36 | 랭킹 (비공개) | `/ranking` 페이지에 인기 식당 / 활동러 / 최근 7일 핫함 / cuisine 분포 4섹션. 활동 점수 = 리뷰 1점 + 식당 등록 5점. **현재 UserMenu 에서 숨김** (`/ranking` url 직접 진입은 가능) — 추후 멤버 등급 기능 도입 후 공개 |
+| D37 | 멤버 등급 (TODO) | D36 의 점수 기반으로 추후 도입 예정. 브론즈/실버/골드 같은 등급 + 마이페이지/디테일패널에 배지 표시 |
 
 ---
 
@@ -133,6 +141,8 @@ create table restaurants (
   recommended_max_size int,
   -- D28 술 가능 (음식 종류와 직교)
   has_alcohol boolean not null default false,
+  -- D31 카카오 places 의 place_url (등록 시 저장 → 외부 링크에 사용)
+  kakao_place_url text,
   -- denormalized for sort/display
   commit_count int default 0,
   last_commit_at timestamptz,
@@ -161,6 +171,7 @@ create table reviews (
   meal_time text not null check (meal_time in ('lunch','dinner')),
   party_size int check (party_size is null or (party_size between 1 and 99)), -- D26
   hash text not null,                   -- 6자리, 클라이언트 생성 후 저장
+  reverted boolean not null default false, -- D35
   created_at timestamptz default now(),
   edited_at timestamptz
 );
@@ -218,6 +229,9 @@ ALLOWED_EMAIL_DOMAINS=회사.com,계열사.com
 /restaurants/new             → 새 식당 등록 + 첫 한 줄 리뷰
 /restaurants/[id]/edit       → 식당 수정 (owner 또는 admin, D29)
 /me                          → 마이페이지 (이름/이모지/부서/건물 변경 + 비번 변경 + 내 commit 목록)
+/report                      → 관리자에게 제보 (D32)
+/ranking                     → 랭킹 (D36, UserMenu 에선 숨김. url 직접 진입)
+/admin/*                     → 관리자 영역 (대시보드/buildings/restaurants/users/reports)
 ```
 
 Next 16 의 `proxy.ts` (구 `middleware.ts`) 로 가드. 단계: 인증 → 온보딩(office/building) → 비번 설정(password_set) → /map.

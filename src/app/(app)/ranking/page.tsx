@@ -48,26 +48,65 @@ export default async function RankingPage() {
   const reviews = ((recentReviews ?? []) as unknown) as EnrichedReview[];
   const officeReviews = reviews.filter((r) => r.restaurant?.office_id === officeId);
 
-  // 활동러 집계
+  // 활동러 집계: 리뷰 1점 + 식당 등록 5점 (가중치)
+  // 멤버 등급은 추후 이 점수 기반으로 도입 예정 (브론즈/실버/골드 ...)
+  const REVIEW_POINT = 1;
+  const REGISTER_POINT = 5;
+
   const userMap = new Map<
     string,
-    { name: string; emoji: string | null; color: string; count: number }
+    { name: string; emoji: string | null; color: string; reviews: number; registers: number; score: number }
   >();
   for (const r of officeReviews) {
     if (!r.author_id || !r.author) continue;
     const cur = userMap.get(r.author_id);
-    if (cur) cur.count += 1;
-    else
+    if (cur) {
+      cur.reviews += 1;
+      cur.score += REVIEW_POINT;
+    } else {
       userMap.set(r.author_id, {
         name: r.author.name,
         emoji: r.author.avatar_emoji,
         color: r.author.avatar_color,
-        count: 1,
+        reviews: 1,
+        registers: 0,
+        score: REVIEW_POINT,
       });
+    }
   }
+
+  // 식당 등록자 집계: created_by + creator join
+  const { data: createdRows } = await supabase
+    .from('restaurants')
+    .select(
+      'created_by, creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
+    )
+    .eq('office_id', officeId);
+  type CreatedRow = {
+    created_by: string | null;
+    creator: { name: string; avatar_emoji: string | null; avatar_color: string } | null;
+  };
+  for (const c of ((createdRows ?? []) as unknown as CreatedRow[])) {
+    if (!c.created_by || !c.creator) continue;
+    const cur = userMap.get(c.created_by);
+    if (cur) {
+      cur.registers += 1;
+      cur.score += REGISTER_POINT;
+    } else {
+      userMap.set(c.created_by, {
+        name: c.creator.name,
+        emoji: c.creator.avatar_emoji,
+        color: c.creator.avatar_color,
+        reviews: 0,
+        registers: 1,
+        score: REGISTER_POINT,
+      });
+    }
+  }
+
   const topUsers = Array.from(userMap.entries())
     .map(([id, u]) => ({ id, ...u }))
-    .sort((a, b) => b.count - a.count)
+    .sort((a, b) => b.score - a.score)
     .slice(0, 5);
 
   // 3) 최근 7일 핫한 식당
@@ -151,7 +190,10 @@ export default async function RankingPage() {
 
         {/* 활동러 */}
         <section className="rounded-lg border border-border bg-surface p-5">
-          <h2 className="mb-3 text-sm font-medium text-fg">⚡ 활동러 (commit 작성 수)</h2>
+          <h2 className="mb-1 text-sm font-medium text-fg">⚡ 활동러</h2>
+          <p className="mb-3 text-[10px] text-fg-muted">
+            리뷰 1점 + 식당 등록 5점. 추후 점수 기반 멤버 등급 도입 예정.
+          </p>
           {topUsers.length === 0 ? (
             <p className="text-xs text-fg-muted">아직 활동 기록 없음</p>
           ) : (
@@ -169,7 +211,9 @@ export default async function RankingPage() {
                     {resolveAvatarEmoji(u.emoji, u.name + u.id)}
                   </span>
                   <span className="flex-1 truncate text-fg">{u.name}</span>
-                  <span className="text-xs font-mono text-fg-muted">{u.count}</span>
+                  <span className="font-mono text-xs text-fg-muted" title={`리뷰 ${u.reviews} + 등록 ${u.registers}`}>
+                    {u.score}점
+                  </span>
                 </li>
               ))}
             </ol>

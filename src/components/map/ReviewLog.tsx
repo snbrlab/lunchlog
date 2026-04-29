@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
-import { deleteReview } from '@/lib/reviews/actions';
+import { deleteReview, revertReview } from '@/lib/reviews/actions';
 import type { MealMode, Review } from '@/types/db';
 
 type AuthorMeta = {
@@ -22,12 +22,13 @@ const FRESH_DAYS = 7;
 interface Props {
   restaurantId: string;
   currentUserId: string;
+  isAdmin: boolean;
   // 작성/삭제 후 부모가 increment 해서 강제 refresh 트리거
   refreshKey: number;
   onMutated: () => void;
 }
 
-export function ReviewLog({ restaurantId, currentUserId, refreshKey, onMutated }: Props) {
+export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, onMutated }: Props) {
   const { mode } = useMealMode();
   const [reviews, setReviews] = useState<EnrichedReview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +37,7 @@ export function ReviewLog({ restaurantId, currentUserId, refreshKey, onMutated }
   useEffect(() => {
     setFilter(mode);
   }, [mode]);
-  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [pendingMutateId, setPendingMutateId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   // 식당 변경 또는 refreshKey 증가 시 fetch
@@ -48,7 +49,7 @@ export function ReviewLog({ restaurantId, currentUserId, refreshKey, onMutated }
       const { data, error } = await supabase
         .from('reviews')
         .select(
-          'id, restaurant_id, author_id, message, meal_time, party_size, hash, created_at, edited_at, ' +
+          'id, restaurant_id, author_id, message, meal_time, party_size, hash, reverted, created_at, edited_at, ' +
             'author:users!reviews_author_id_fkey ( id, name, avatar_color, avatar_emoji )',
         )
         .eq('restaurant_id', restaurantId)
@@ -96,11 +97,25 @@ export function ReviewLog({ restaurantId, currentUserId, refreshKey, onMutated }
   }, [reviews]);
 
   function onDelete(id: string) {
-    if (!confirm('이 commit 을 삭제할까?')) return;
-    setPendingDeleteId(id);
+    if (!confirm('이 commit 을 완전히 삭제할까? (관리자 작업)')) return;
+    setPendingMutateId(id);
     startTransition(async () => {
       const r = await deleteReview(id);
-      setPendingDeleteId(null);
+      setPendingMutateId(null);
+      if (!r.ok) {
+        alert(r.message);
+        return;
+      }
+      onMutated();
+    });
+  }
+
+  function onRevert(id: string) {
+    if (!confirm('이 commit 을 revert 할까? (취소선만 그어지고 기록은 보존)')) return;
+    setPendingMutateId(id);
+    startTransition(async () => {
+      const r = await revertReview(id);
+      setPendingMutateId(null);
       if (!r.ok) {
         alert(r.message);
         return;
@@ -157,8 +172,10 @@ export function ReviewLog({ restaurantId, currentUserId, refreshKey, onMutated }
             latest={latest}
             older={older}
             currentUserId={currentUserId}
-            pendingDeleteId={pendingDeleteId}
+            isAdmin={isAdmin}
+            pendingMutateId={pendingMutateId}
             onDelete={onDelete}
+            onRevert={onRevert}
           />
         ))}
       </ol>
@@ -170,14 +187,18 @@ function ReviewItem({
   latest,
   older,
   currentUserId,
-  pendingDeleteId,
+  isAdmin,
+  pendingMutateId,
   onDelete,
+  onRevert,
 }: {
   latest: EnrichedReview;
   older: EnrichedReview[];
   currentUserId: string;
-  pendingDeleteId: string | null;
+  isAdmin: boolean;
+  pendingMutateId: string | null;
   onDelete: (id: string) => void;
+  onRevert: (id: string) => void;
 }) {
   const [showOlder, setShowOlder] = useState(false);
   const items = showOlder ? [latest, ...older] : [latest];
@@ -192,8 +213,10 @@ function ReviewItem({
             review={r}
             isHead={idx === 0}
             currentUserId={currentUserId}
-            pendingDelete={pendingDeleteId === r.id}
+            isAdmin={isAdmin}
+            pendingMutate={pendingMutateId === r.id}
             onDelete={() => onDelete(r.id)}
+            onRevert={() => onRevert(r.id)}
           />
         ))}
         {!showOlder && older.length > 0 && (
@@ -214,21 +237,26 @@ function ReviewRow({
   review,
   isHead,
   currentUserId,
-  pendingDelete,
+  isAdmin,
+  pendingMutate,
   onDelete,
+  onRevert,
 }: {
   review: EnrichedReview;
   isHead: boolean;
   currentUserId: string;
-  pendingDelete: boolean;
+  isAdmin: boolean;
+  pendingMutate: boolean;
   onDelete: () => void;
+  onRevert: () => void;
 }) {
   const created = new Date(review.created_at);
   const ageDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
   const dotColor = ageDays <= FRESH_DAYS ? 'bg-fresh' : 'bg-stale';
 
   const isMine = review.author_id === currentUserId;
-  const editable = isMine && Date.now() - created.getTime() < 24 * 60 * 60 * 1000;
+  const within24h = Date.now() - created.getTime() < 24 * 60 * 60 * 1000;
+  const canRevert = isMine && within24h && !review.reverted;
 
   const authorName = review.author?.name ?? '(알수없음)';
   const authorEmoji = resolveAvatarEmoji(
@@ -268,18 +296,43 @@ function ReviewRow({
               👥{review.party_size}
             </span>
           )}
-          {editable && (
-            <button
-              type="button"
-              onClick={onDelete}
-              disabled={pendingDelete}
-              className="ml-auto text-[10px] text-fg-muted hover:text-red-500 disabled:opacity-50"
-            >
-              {pendingDelete ? '삭제 중…' : '삭제'}
-            </button>
+          {review.reverted && (
+            <span className="rounded bg-fg/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-fg-muted">
+              REVERTED
+            </span>
           )}
+          <span className="ml-auto flex items-center gap-2">
+            {canRevert && (
+              <button
+                type="button"
+                onClick={onRevert}
+                disabled={pendingMutate}
+                title="commit 취소 (취소선만 그어지고 기록 보존)"
+                className="text-[10px] text-fg-muted hover:text-amber-600 disabled:opacity-50"
+              >
+                {pendingMutate ? '…' : 'revert'}
+              </button>
+            )}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={onDelete}
+                disabled={pendingMutate}
+                title="관리자: 완전 삭제"
+                className="text-[10px] text-fg-muted hover:text-red-500 disabled:opacity-50"
+              >
+                {pendingMutate ? '…' : 'delete'}
+              </button>
+            )}
+          </span>
         </div>
-        <p className="mt-0.5 text-sm text-fg">{review.message}</p>
+        <p
+          className={`mt-0.5 text-sm ${
+            review.reverted ? 'text-fg-muted line-through' : 'text-fg'
+          }`}
+        >
+          {review.message}
+        </p>
       </div>
     </div>
   );

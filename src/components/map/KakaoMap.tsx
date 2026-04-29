@@ -10,7 +10,7 @@ import type {
   KakaoPolyline,
 } from '@/types/kakao-maps';
 import type { Restaurant } from '@/types/db';
-import { haversineDistanceMeters, metersToWalkMinutes } from '@/lib/distance';
+import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
 import { emojiForCuisine } from '@/lib/cuisine';
 
 export interface MapMarkerData {
@@ -260,7 +260,7 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect, includeClo
       lat: target.latitude,
       lng: target.longitude,
     });
-    const minutes = metersToWalkMinutes(meters);
+    const travel = travelInfo(meters);
     const midLat = (origin.lat + target.latitude) / 2;
     const midLng = (origin.lng + target.longitude) / 2;
     const badge = document.createElement('div');
@@ -274,7 +274,7 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect, includeClo
       `border:1px solid ${borderColor};` +
       'font-size:11px;font-weight:600;line-height:1;' +
       'box-shadow:0 1px 3px rgba(0,0,0,0.12);white-space:nowrap;';
-    badge.innerHTML = `<span aria-hidden>🚶</span>도보 ${minutes}분 · ${Math.round(meters)}m`;
+    badge.innerHTML = `<span aria-hidden>${travel.icon}</span>${travel.label} ${travel.minutes}분 · ${Math.round(meters)}m`;
 
     const badgeOverlay = new window.kakao.maps.CustomOverlay({
       position: new window.kakao.maps.LatLng(midLat, midLng),
