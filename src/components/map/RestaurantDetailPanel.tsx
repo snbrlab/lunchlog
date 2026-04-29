@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { haversineDistanceMeters, metersToWalkMinutes } from '@/lib/distance';
 import { toggleRestaurantClosed } from '@/lib/restaurants/actions';
+import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { ReviewLog } from './ReviewLog';
 import { ReviewComposer } from './ReviewComposer';
 import type { Restaurant } from '@/types/db';
@@ -150,6 +151,23 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
 
       {restaurant.note && (
         <p className="mt-2 px-5 text-[12px] italic text-fg-muted">{restaurant.note}</p>
+      )}
+
+      {/* 등록자 */}
+      {restaurant.creator && (
+        <p className="mt-2 flex items-center gap-1.5 px-5 text-[11px] text-fg-muted">
+          <span
+            className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px]"
+            style={{ backgroundColor: restaurant.creator.avatar_color }}
+            aria-hidden
+          >
+            {resolveAvatarEmoji(
+              restaurant.creator.avatar_emoji,
+              restaurant.creator.name + (restaurant.created_by ?? ''),
+            )}
+          </span>
+          등록: <span className="font-medium text-fg">{restaurant.creator.name}</span>
+        </p>
       )}
 
       {/* 카카오맵 외부 링크 — place_url 있으면 식당 상세 페이지로, 없으면 좌표 fallback */}

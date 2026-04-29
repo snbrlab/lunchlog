@@ -81,6 +81,13 @@ export function UserMenu({ name, email, avatarColor, avatarEmoji, isAdmin }: Pro
             마이페이지
           </Link>
           <Link
+            href="/ranking"
+            role="menuitem"
+            className="block px-4 py-2.5 text-sm text-fg hover:bg-fg/5"
+          >
+            🏆 랭킹
+          </Link>
+          <Link
             href="/report"
             role="menuitem"
             className="block px-4 py-2.5 text-sm text-fg hover:bg-fg/5"

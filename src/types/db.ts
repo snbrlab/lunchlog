@@ -61,6 +61,12 @@ export interface Restaurant {
   recommended_max_size: number | null;
   has_alcohol: boolean;
   kakao_place_url: string | null;
+  // join 으로 들어올 수 있는 등록자 정보 (옵션)
+  creator?: {
+    name: string;
+    avatar_emoji: string | null;
+    avatar_color: string;
+  } | null;
 }
 
 export type ReportCategory = 'bug' | 'feature' | 'restaurant' | 'other';

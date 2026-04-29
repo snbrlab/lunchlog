@@ -30,14 +30,16 @@ export default async function MapPage() {
 
   const { data: restaurants } = await supabase
     .from('restaurants')
-    .select('*')
+    .select(
+      '*, creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
+    )
     .eq('office_id', profile?.office_id ?? '')
     .order('last_commit_at', { ascending: false, nullsFirst: false });
 
   return (
     <MapShell
       origin={origin}
-      restaurants={(restaurants ?? []) as Restaurant[]}
+      restaurants={(restaurants ?? []) as unknown as Restaurant[]}
       currentUserId={user.id}
       isAdmin={profile?.role === 'admin'}
     />
