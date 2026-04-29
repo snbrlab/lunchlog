@@ -11,6 +11,7 @@ import type {
 } from '@/types/kakao-maps';
 import type { Restaurant } from '@/types/db';
 import { haversineDistanceMeters, metersToWalkMinutes } from '@/lib/distance';
+import { emojiForCuisine } from '@/lib/cuisine';
 
 export interface MapMarkerData {
   id: string;
@@ -151,7 +152,8 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect, includeClo
       const isSelected = r.id === selectedId;
       const isStale = r.is_closed;
       const color = isStale ? staleColor : isSelected ? activeColor : inactiveColor;
-      const dotSize = isSelected ? 24 : 18;
+      const dotSize = isSelected ? 36 : 30;
+      const emoji = emojiForCuisine(r.cuisine_type as never);
 
       const el = document.createElement('div');
       el.style.cssText =
@@ -175,21 +177,23 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect, includeClo
       label.textContent = isStale ? `${r.name} (폐업)` : r.name;
       el.appendChild(label);
 
-      // 점
+      // 핀: 흰 배경 동그라미 + 이모지 + 색 테두리
       const dot = document.createElement('div');
       dot.style.cssText =
+        `position:relative;display:flex;align-items:center;justify-content:center;` +
         `width:${dotSize}px;height:${dotSize}px;border-radius:9999px;` +
-        `background:${color};` +
-        'border:3px solid #ffffff;' +
-        `box-shadow:0 2px 6px rgba(0,0,0,0.35)${isSelected ? `,0 0 0 4px ${color}44` : ''};` +
-        `${isStale ? 'opacity:0.7;' : ''}`;
+        `background:#ffffff;` +
+        `border:2px solid ${color};` +
+        `box-shadow:0 2px 6px rgba(0,0,0,0.25)${isSelected ? `,0 0 0 4px ${color}44` : ''};` +
+        `font-size:${isSelected ? 18 : 15}px;line-height:1;` +
+        `${isStale ? 'opacity:0.55;' : ''}`;
+      dot.innerHTML = `<span aria-hidden>${emoji}</span>`;
       if (isStale) {
-        dot.style.position = 'relative';
         const x = document.createElement('span');
         x.textContent = '✕';
         x.style.cssText =
           'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;' +
-          'color:#ffffff;font-size:11px;font-weight:700;line-height:1;';
+          'color:#ef4444;font-size:18px;font-weight:900;line-height:1;text-shadow:0 0 2px white;';
         dot.appendChild(x);
       }
       el.appendChild(dot);
