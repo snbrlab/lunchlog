@@ -29,7 +29,7 @@ export default function MapShell({ origin, restaurants, currentUserId, isAdmin }
   }, [selectedId]);
 
   return (
-    <div className="relative flex flex-1 overflow-hidden">
+    <div className="relative flex h-[calc(100dvh-3.5rem)] overflow-hidden">
       {/* 사이드바 — 데스크탑은 항상 보임. 모바일은 fixed overlay */}
       <div
         className={`absolute inset-y-0 left-0 z-30 transition-transform duration-300 lg:static lg:translate-x-0 ${

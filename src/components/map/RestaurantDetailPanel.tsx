@@ -61,6 +61,7 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
         : `${restaurant.recommended_min_size}~${restaurant.recommended_max_size}인`
       : null;
 
+  return (
     <section className="z-30 flex flex-col border-t border-border bg-surface max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[60%] max-lg:shadow-2xl lg:h-[420px] lg:shrink-0">
       {restaurant.is_closed && (
         <div className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-center text-xs font-medium text-amber-800">
