@@ -80,6 +80,15 @@ export function UserMenu({ name, email, avatarColor, avatarEmoji, isAdmin }: Pro
           >
             마이페이지
           </Link>
+          <a
+            href={`mailto:heejin.suh@lge.com?subject=${encodeURIComponent('[런치로그] 제보')}&body=${encodeURIComponent(
+              `보내는 사람: ${name} (${email})\n\n제보 내용:\n\n`,
+            )}`}
+            role="menuitem"
+            className="block px-4 py-2.5 text-sm text-fg hover:bg-fg/5"
+          >
+            🚩 관리자에게 제보
+          </a>
           {isAdmin && (
             <Link
               href="/admin"
