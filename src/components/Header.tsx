@@ -30,10 +30,7 @@ export async function Header() {
     <header className="flex h-14 shrink-0 items-center justify-between gap-3 border-b border-border bg-bg px-3 sm:px-5">
       <Link href="/map" className="flex min-w-0 items-center gap-2">
         <span aria-hidden className="text-lg">🍱</span>
-        <span className="hidden text-sm font-semibold tracking-tight text-fg sm:inline">
-          우리회사 맛집지도
-        </span>
-        <span className="text-sm font-semibold tracking-tight text-fg sm:hidden">맛집지도</span>
+        <span className="text-sm font-semibold tracking-tight text-fg">런치로그</span>
       </Link>
 
       <MealModeToggle />

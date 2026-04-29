@@ -18,7 +18,7 @@ export default async function LoginPage({
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-10 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">우리회사 맛집지도</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">🍱 런치로그</h1>
           <p className="mt-2 text-sm text-neutral-500">사내 동료끼리 쓰는 점심·저녁 지도</p>
         </div>
 

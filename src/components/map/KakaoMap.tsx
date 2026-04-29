@@ -25,6 +25,7 @@ interface Props {
   restaurants: Restaurant[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  includeClosed: boolean;
 }
 
 // CSS 변수 (theme 토큰) 를 런타임에 읽어 카카오 오버레이 색에 주입.
@@ -34,7 +35,7 @@ function readToken(name: string, fallback: string): string {
   return v || fallback;
 }
 
-export function KakaoMap({ origin, restaurants, selectedId, onSelect }: Props) {
+export function KakaoMap({ origin, restaurants, selectedId, onSelect, includeClosed }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // map 인스턴스를 state 로 관리 — 비동기 init 완료 시 dependent effect 들이 자동 재실행.
   const [map, setMap] = useState<KakaoMapInst | null>(null);
@@ -144,6 +145,8 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect }: Props) {
     for (const r of restaurants) {
       // 현재 모드(점심/저녁)에 해당 안 하는 식당은 핀 안 그림
       if (!r.categories.includes(mode)) continue;
+      // 폐업 식당은 사이드바 토글 따라감 (선택된 식당이면 표시는 유지)
+      if (r.is_closed && !includeClosed && r.id !== selectedId) continue;
 
       const isSelected = r.id === selectedId;
       const isStale = r.is_closed;
@@ -218,7 +221,7 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect }: Props) {
       pinRefs.current.forEach((ov) => ov.setMap(null));
       pinRefs.current.clear();
     };
-  }, [map, restaurants, selectedId, mode, onSelect]);
+  }, [map, restaurants, selectedId, mode, includeClosed, onSelect]);
 
   // 선택된 식당이 있으면 경로 라인. 없으면 지움.
   useEffect(() => {

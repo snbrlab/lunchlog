@@ -16,6 +16,7 @@ interface Props {
 export default function MapShell({ origin, restaurants, currentUserId, isAdmin }: Props) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false); // 모바일에서만 의미
+  const [includeClosed, setIncludeClosed] = useState(false);
 
   const selected = useMemo(
     () => restaurants.find((r) => r.id === selectedId) ?? null,
@@ -40,6 +41,8 @@ export default function MapShell({ origin, restaurants, currentUserId, isAdmin }
           restaurants={restaurants}
           selectedId={selectedId}
           onSelect={setSelectedId}
+          includeClosed={includeClosed}
+          onIncludeClosedChange={setIncludeClosed}
         />
       </div>
 
@@ -70,6 +73,7 @@ export default function MapShell({ origin, restaurants, currentUserId, isAdmin }
             restaurants={restaurants}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            includeClosed={includeClosed}
           />
         </div>
         <RestaurantDetailPanel

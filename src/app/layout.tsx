@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "우리회사 맛집지도",
+  title: "런치로그",
   description: "사내 동료들끼리 맛집을 공유하는 지도",
   robots: { index: false, follow: false },
 };

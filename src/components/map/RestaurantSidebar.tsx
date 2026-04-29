@@ -11,6 +11,8 @@ interface Props {
   restaurants: Restaurant[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  includeClosed: boolean;
+  onIncludeClosedChange: (next: boolean) => void;
 }
 
 type GroupFilter = '전체' | (typeof CUISINE_GROUPS)[number]['label'];
@@ -25,10 +27,16 @@ const GROUP_TO_VALUES: Record<string, readonly string[]> = Object.fromEntries(
   CUISINE_GROUPS.map((g) => [g.label, g.items.map((i) => i.value)]),
 );
 
-export function RestaurantSidebar({ origin, restaurants, selectedId, onSelect }: Props) {
+export function RestaurantSidebar({
+  origin,
+  restaurants,
+  selectedId,
+  onSelect,
+  includeClosed,
+  onIncludeClosedChange,
+}: Props) {
   const { mode } = useMealMode();
   const [cuisine, setCuisine] = useState<GroupFilter>('전체');
-  const [includeClosed, setIncludeClosed] = useState(false);
   const [onlyAlcohol, setOnlyAlcohol] = useState(false);
   const [query, setQuery] = useState('');
 
@@ -117,7 +125,7 @@ export function RestaurantSidebar({ origin, restaurants, selectedId, onSelect }:
             <input
               type="checkbox"
               checked={includeClosed}
-              onChange={(e) => setIncludeClosed(e.target.checked)}
+              onChange={(e) => onIncludeClosedChange(e.target.checked)}
               className="h-3 w-3"
             />
             폐업 포함
