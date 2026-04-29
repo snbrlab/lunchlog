@@ -142,6 +142,9 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect }: Props) {
     const borderColor = readToken('--border', 'rgba(0,0,0,0.08)');
 
     for (const r of restaurants) {
+      // 현재 모드(점심/저녁)에 해당 안 하는 식당은 핀 안 그림
+      if (!r.categories.includes(mode)) continue;
+
       const isSelected = r.id === selectedId;
       const isStale = r.is_closed;
       const color = isStale ? staleColor : isSelected ? activeColor : inactiveColor;
