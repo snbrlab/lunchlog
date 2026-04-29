@@ -86,3 +86,13 @@ body {
 :root[data-mode="dinner"] .kakao-map-tiles {
   filter: brightness(0.82) saturate(0.9);
 }
+
+/* iOS Safari 가 input font-size 16px 미만이면 focus 시 자동 확대.
+   모바일 (lg 미만) 의 모든 input/textarea/select 를 최소 16px 로 → 자동 확대 방지. */
+@media (max-width: 1023.98px) {
+  input,
+  textarea,
+  select {
+    font-size: 16px;
+  }
+}
