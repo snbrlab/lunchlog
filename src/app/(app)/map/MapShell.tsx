@@ -56,7 +56,7 @@ export default function MapShell({ origin, restaurants, currentUserId, isAdmin }
         />
       )}
 
-      <div className="flex flex-1 flex-col">
+      <div className="relative flex flex-1 flex-col">
         <div className="relative flex-1">
           {/* 모바일 햄버거 — 지도 좌상단에 floating */}
           <button
