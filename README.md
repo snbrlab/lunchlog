@@ -1,4 +1,4 @@
-# 우리회사 맛집지도 (lg_yummy_way)
+# 🍱 lunchlog
 
 사내 동료들끼리 맛집을 공유하는 지도 웹서비스. 자세한 명세는 [SPEC.md](./SPEC.md).
 
