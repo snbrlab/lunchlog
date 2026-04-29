@@ -63,6 +63,20 @@ export interface Restaurant {
   kakao_place_url: string | null;
 }
 
+export type ReportCategory = 'bug' | 'feature' | 'restaurant' | 'other';
+export type ReportStatus = 'open' | 'reviewing' | 'resolved';
+
+export interface Report {
+  id: string;
+  author_id: string;
+  category: ReportCategory;
+  message: string;
+  status: ReportStatus;
+  admin_note: string | null;
+  created_at: string;
+  resolved_at: string | null;
+}
+
 export interface Review {
   id: string;
   restaurant_id: string;
