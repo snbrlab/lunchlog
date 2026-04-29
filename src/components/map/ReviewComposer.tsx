@@ -79,7 +79,7 @@ export function ReviewComposer({ restaurantId, onCreated }: Props) {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex shrink-0 items-stretch gap-2 border-t border-border bg-bg px-5 py-2.5"
+      className="flex shrink-0 items-stretch gap-2 border-t border-border bg-bg px-5 py-2.5 max-lg:pb-[max(env(safe-area-inset-bottom),0.625rem)]"
     >
       <input
         type="text"
