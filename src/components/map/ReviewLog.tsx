@@ -255,8 +255,7 @@ function ReviewRow({
   const dotColor = ageDays <= FRESH_DAYS ? 'bg-fresh' : 'bg-stale';
 
   const isMine = review.author_id === currentUserId;
-  const within24h = Date.now() - created.getTime() < 24 * 60 * 60 * 1000;
-  const canRevert = isMine && within24h && !review.reverted;
+  const canRevert = isMine && !review.reverted;
 
   const authorName = review.author?.name ?? '(알수없음)';
   const authorEmoji = resolveAvatarEmoji(

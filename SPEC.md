@@ -59,7 +59,7 @@
 | D32 | 사내 제보 시스템 | `reports` 테이블 + `/report` 폼 (카테고리 4개: 버그/기능/식당/기타) + `/admin/reports` 처리 페이지. 상태 (open/reviewing/resolved) + admin 메모. RLS: 본인+admin read, admin update/delete |
 | D33 | 식당 등록자 표시 | 디테일 패널 (lg 이상) 에 `등록: {이모지} {이름}` 표시. 모바일은 hidden (공간 최적화) |
 | D34 | 도보 / 차로 자동 분기 | 도보 20분 이하면 🚶 도보, 초과면 🚗 차로 표시. 차로 환산 = 30km/h ≈ 500m/min. 사이드바/디테일패널/지도뱃지 모두 적용 |
-| D35 | 리뷰 revert vs delete | 일반 사용자: 본인 24h 내 글을 **revert** 만 가능 (DB 행 보존, 화면에 strikethrough + REVERTED 라벨). admin: **delete** 가능 (DB 행 완전 제거). RLS update 정책은 그대로, delete 정책만 admin only 로 좁힘 (D20 보강) |
+| D35 | 리뷰 revert vs delete | 일반 사용자: 본인 글을 **언제든 revert** 가능 (DB 행 보존, 화면에 strikethrough + REVERTED 라벨 → history 유지). admin: **delete** 가능 (DB 행 완전 제거). RLS update 24h 제약 제거 (D20 보강), delete 정책은 admin only |
 | D36 | 랭킹 (비공개) | `/ranking` 페이지에 인기 식당 / 활동러 / 최근 7일 핫함 / cuisine 분포 4섹션. 활동 점수 = 리뷰 1점 + 식당 등록 5점. **현재 UserMenu 에서 숨김** (`/ranking` url 직접 진입은 가능) — 추후 멤버 등급 기능 도입 후 공개 |
 | D37 | 멤버 등급 (TODO) | D36 의 점수 기반으로 추후 도입 예정. 브론즈/실버/골드 같은 등급 + 마이페이지/디테일패널에 배지 표시 |
 
