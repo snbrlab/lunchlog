@@ -1,45 +1,38 @@
 'use server';
 
 import { redirect } from 'next/navigation';
-import { headers } from 'next/headers';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { isAllowedEmail } from '@/lib/auth/email-domain';
+import { isAllowedEmail, suggestNameFromEmail } from '@/lib/auth/email-domain';
+import { avatarColorFor } from '@/lib/avatar-color';
 
-export type RequestMagicLinkResult =
+export type RequestOtpResult =
   | { ok: true; email: string }
   | { ok: false; reason: 'invalid' | 'domain' | 'rate_limited' | 'unknown'; message: string };
 
+export type VerifyOtpResult =
+  | { ok: false; reason: 'invalid' | 'wrong_code' | 'unknown'; message: string };
+// ok: true 시엔 redirect 가 throw 됨.
+
 export type SignInWithPasswordResult =
   | { ok: false; reason: 'invalid' | 'domain' | 'wrong_credentials' | 'unknown'; message: string };
-// ok: true 시엔 redirect 가 throw 되므로 반환 타입에 포함 안 함.
 
-export async function requestMagicLink(formData: FormData): Promise<RequestMagicLinkResult> {
+// 메일에 6자리 OTP 코드 발송. 회사 Outlook Safe Links 가 url 미리 클릭하는 문제 회피용.
+// (매직링크 url 대신 코드만 메일에 포함되려면 Supabase Email Template 의 {{ .ConfirmationURL }} 부분을
+//  지우고 {{ .Token }} 만 남겨야 함.)
+export async function requestOtp(formData: FormData): Promise<RequestOtpResult> {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
 
   if (!email || !email.includes('@')) {
     return { ok: false, reason: 'invalid', message: '이메일을 정확히 입력해줘' };
   }
-
   if (!isAllowedEmail(email)) {
-    return {
-      ok: false,
-      reason: 'domain',
-      message: '허용된 회사 이메일 도메인이 아니야',
-    };
+    return { ok: false, reason: 'domain', message: '허용된 회사 이메일 도메인이 아니야' };
   }
-
-  const hdrs = await headers();
-  const host = hdrs.get('host') ?? 'localhost:3000';
-  const proto = hdrs.get('x-forwarded-proto') ?? (host.startsWith('localhost') ? 'http' : 'https');
-  const redirectTo = `${proto}://${host}/auth/callback`;
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithOtp({
     email,
-    options: {
-      emailRedirectTo: redirectTo,
-      shouldCreateUser: true,
-    },
+    options: { shouldCreateUser: true },
   });
 
   if (error) {
@@ -47,14 +40,73 @@ export async function requestMagicLink(formData: FormData): Promise<RequestMagic
       return {
         ok: false,
         reason: 'rate_limited',
-        message:
-          '메일 발송 한도 초과 (Supabase 무료 SMTP 는 이메일당 시간당 3통). 한 시간쯤 뒤에 다시 시도하거나 관리자에게 Custom SMTP 설정 요청.',
+        message: '메일 발송 한도 초과. 한 시간쯤 뒤에 다시 시도해줘',
       };
     }
     return { ok: false, reason: 'unknown', message: error.message };
   }
-
   return { ok: true, email };
+}
+
+// 사용자가 메일에서 받은 6자리 코드 입력 → 검증 + users 행 보장 + 적절한 페이지로 redirect.
+export async function verifyOtp(formData: FormData): Promise<VerifyOtpResult> {
+  const email = String(formData.get('email') ?? '').trim().toLowerCase();
+  const token = String(formData.get('token') ?? '').trim();
+
+  if (!email || !/^\d{6}$/.test(token)) {
+    return { ok: false, reason: 'invalid', message: '이메일과 6자리 숫자 코드를 입력해줘' };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const { error: verifyError } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'email',
+  });
+  if (verifyError) {
+    return {
+      ok: false,
+      reason: 'wrong_code',
+      message: '코드가 틀렸거나 만료됐어. 메일 다시 확인 또는 재전송',
+    };
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user || !user.email) {
+    return { ok: false, reason: 'unknown', message: '인증 후 사용자 정보 없음' };
+  }
+  // 도메인 재검증 (Supabase 측에서도 막히긴 하지만 이중 안전)
+  if (!isAllowedEmail(user.email)) {
+    await supabase.auth.signOut();
+    return { ok: false, reason: 'unknown', message: '허용 도메인이 아니야' };
+  }
+
+  // users 프로필 행 보장
+  const { data: existing } = await supabase
+    .from('users')
+    .select('office_id, building_id, password_set')
+    .eq('id', user.id)
+    .maybeSingle();
+
+  if (!existing) {
+    const name = suggestNameFromEmail(user.email);
+    const { error: insertError } = await supabase.from('users').insert({
+      id: user.id,
+      email: user.email,
+      name,
+      avatar_color: avatarColorFor(name + user.id),
+    });
+    if (insertError) {
+      return { ok: false, reason: 'unknown', message: insertError.message };
+    }
+    redirect('/onboarding');
+  }
+
+  if (!existing.office_id || !existing.building_id) redirect('/onboarding');
+  if (!existing.password_set) redirect('/set-password');
+  redirect('/map');
 }
 
 export async function signInWithPassword(formData: FormData): Promise<SignInWithPasswordResult> {
@@ -84,4 +136,3 @@ export async function signInWithPassword(formData: FormData): Promise<SignInWith
 
   redirect('/map');
 }
-

@@ -2,57 +2,66 @@
 
 import { useState, useTransition } from 'react';
 import {
-  requestMagicLink,
+  requestOtp,
   signInWithPassword,
-  type RequestMagicLinkResult,
+  verifyOtp,
+  type RequestOtpResult,
   type SignInWithPasswordResult,
+  type VerifyOtpResult,
 } from './actions';
 
-type Mode = 'password' | 'magiclink';
+type Mode = 'password' | 'otp';
+type OtpStep = 'email' | 'code';
 
 export default function LoginForm() {
   const [mode, setMode] = useState<Mode>('password');
   const [pending, startTransition] = useTransition();
   const [pwError, setPwError] = useState<string | null>(null);
-  const [mlResult, setMlResult] = useState<RequestMagicLinkResult | null>(null);
+
+  // OTP 단계 state
+  const [otpStep, setOtpStep] = useState<OtpStep>('email');
+  const [otpEmail, setOtpEmail] = useState('');
+  const [otpError, setOtpError] = useState<string | null>(null);
 
   function onPasswordSubmit(formData: FormData) {
     setPwError(null);
     startTransition(async () => {
       const r: SignInWithPasswordResult = await signInWithPassword(formData);
-      // ok 시엔 server action 의 redirect 가 처리하므로 여기까진 ok=false 만 도달.
       if (!r.ok) setPwError(r.message);
     });
   }
 
-  function onMagicLinkSubmit(formData: FormData) {
-    setMlResult(null);
+  function onOtpRequestSubmit(formData: FormData) {
+    setOtpError(null);
     startTransition(async () => {
-      const r = await requestMagicLink(formData);
-      setMlResult(r);
+      const r: RequestOtpResult = await requestOtp(formData);
+      if (!r.ok) {
+        setOtpError(r.message);
+        return;
+      }
+      setOtpEmail(r.email);
+      setOtpStep('code');
     });
   }
 
-  if (mode === 'magiclink' && mlResult?.ok) {
-    return (
-      <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-5 text-sm text-emerald-800">
-        <p className="font-medium">매직 링크를 보냈어!</p>
-        <p className="mt-2 break-all">
-          <span className="font-mono">{mlResult.email}</span> 메일함에서 링크를 클릭해줘.
-        </p>
-        <p className="mt-3 text-xs text-emerald-600">5분 안에 안 오면 스팸함도 한 번 확인.</p>
-        <button
-          type="button"
-          onClick={() => {
-            setMode('password');
-            setMlResult(null);
-          }}
-          className="mt-3 text-xs text-emerald-700 underline"
-        >
-          비밀번호로 로그인하기
-        </button>
-      </div>
-    );
+  function onOtpVerifySubmit(formData: FormData) {
+    setOtpError(null);
+    formData.set('email', otpEmail);
+    startTransition(async () => {
+      const r: VerifyOtpResult = await verifyOtp(formData);
+      if (!r.ok) setOtpError(r.message);
+    });
+  }
+
+  function onResendOtp() {
+    if (!otpEmail) return;
+    setOtpError(null);
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set('email', otpEmail);
+      const r = await requestOtp(formData);
+      if (!r.ok) setOtpError(r.message);
+    });
   }
 
   return (
@@ -98,20 +107,21 @@ export default function LoginForm() {
           <button
             type="button"
             onClick={() => {
-              setMode('magiclink');
+              setMode('otp');
+              setOtpStep('email');
+              setOtpError(null);
               setPwError(null);
             }}
             className="block w-full text-center text-xs text-neutral-500 underline-offset-2 hover:underline"
           >
-            처음 가입하거나 비밀번호 잊었어? 매직링크 받기 (사내망)
+            처음 가입하거나 비밀번호 잊었어? 인증 코드로 로그인
           </button>
         </form>
-      ) : (
-        <form action={onMagicLinkSubmit} className="space-y-4">
+      ) : otpStep === 'email' ? (
+        <form action={onOtpRequestSubmit} className="space-y-4">
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            ⚠️ 회사 메일은 사내망에서만 수신 가능. 외부망이라면 비밀번호로 로그인.
+            메일에 6자리 코드가 발송돼. 코드를 입력하면 로그인 끝.
           </div>
-
           <label className="block text-sm">
             <span className="mb-1.5 block font-medium text-neutral-700">회사 이메일</span>
             <input
@@ -125,27 +135,74 @@ export default function LoginForm() {
               className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
             />
           </label>
-
-          {mlResult && !mlResult.ok && <p className="text-sm text-red-600">{mlResult.message}</p>}
-
+          {otpError && <p className="text-sm text-red-600">{otpError}</p>}
           <button
             type="submit"
             disabled={pending}
             className="w-full rounded-md bg-neutral-900 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:opacity-50"
           >
-            {pending ? '보내는 중…' : '매직 링크 받기'}
+            {pending ? '보내는 중…' : '인증 코드 받기'}
           </button>
-
           <button
             type="button"
-            onClick={() => {
-              setMode('password');
-              setMlResult(null);
-            }}
+            onClick={() => setMode('password')}
             className="block w-full text-center text-xs text-neutral-500 underline-offset-2 hover:underline"
           >
             ← 비밀번호 로그인으로 돌아가기
           </button>
+        </form>
+      ) : (
+        <form action={onOtpVerifySubmit} className="space-y-4">
+          <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+            <p className="font-medium">메일 발송 완료!</p>
+            <p className="mt-1 break-all">
+              <span className="font-mono">{otpEmail}</span> 메일함에서 6자리 코드 확인.
+            </p>
+          </div>
+          <label className="block text-sm">
+            <span className="mb-1.5 block font-medium text-neutral-700">6자리 코드</span>
+            <input
+              type="text"
+              name="token"
+              required
+              autoFocus
+              inputMode="numeric"
+              pattern="\d{6}"
+              maxLength={6}
+              autoComplete="one-time-code"
+              placeholder="000000"
+              disabled={pending}
+              className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-center font-mono text-lg tracking-widest outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
+            />
+          </label>
+          {otpError && <p className="text-sm text-red-600">{otpError}</p>}
+          <button
+            type="submit"
+            disabled={pending}
+            className="w-full rounded-md bg-neutral-900 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:opacity-50"
+          >
+            {pending ? '확인 중…' : '인증하고 로그인'}
+          </button>
+          <div className="flex justify-between text-xs text-neutral-500">
+            <button
+              type="button"
+              onClick={() => {
+                setOtpStep('email');
+                setOtpError(null);
+              }}
+              className="underline-offset-2 hover:underline"
+            >
+              ← 이메일 다시 입력
+            </button>
+            <button
+              type="button"
+              onClick={onResendOtp}
+              disabled={pending}
+              className="underline-offset-2 hover:underline disabled:opacity-50"
+            >
+              코드 재전송
+            </button>
+          </div>
         </form>
       )}
     </div>
