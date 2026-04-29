@@ -1,26 +1,88 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/* ----------------------------------------------------------------
+   SPEC 5.3 테마 토큰. data-mode 속성 따라 점심(라이트) / 저녁(다크) 전환.
+   ---------------------------------------------------------------- */
+
+:root,
+:root[data-mode="lunch"] {
+  --bg: #ffffff;
+  --surface: #fafaf7;
+  --fg: #1a1a1a;
+  --fg-muted: #5f5e5a;
+  --pin-active: #f59e0b;   /* 호박색 — 옅은 노랑과 예쁜 그라데이션 */
+  --pin-inactive: #fde047; /* 옅은 노랑 (평소) */
+  --route: #f59e0b;
+  --marker: #e24b4a;
+  --fresh: #1a9e75;
+  --stale: #888780;
+  --border: rgba(0, 0, 0, 0.08);
+}
+
+:root[data-mode="dinner"] {
+  --bg: #0f0f0f;
+  --surface: #161616;
+  --fg: #f5f3ec;
+  --fg-muted: #b4b2a9;
+  --pin-active: #f0997b;
+  --pin-inactive: #7f77dd;
+  --route: #f0997b;
+  --marker: #e24b4a;
+  --fresh: #5dcaa5;
+  --stale: #888780;
+  --border: rgba(255, 255, 255, 0.10);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-pin-active: var(--pin-active);
+  --color-pin-inactive: var(--pin-inactive);
+  --color-route: var(--route);
+  --color-marker: var(--marker);
+  --color-fresh: var(--fresh);
+  --color-stale: var(--stale);
+  --color-border: var(--border);
+
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+/* ----------------------------------------------------------------
+   전역 스타일 + 점심↔저녁 전환 트랜지션 (SPEC 5.2: 0.4s)
+   transition-color 만 적용해 layout shift 없도록.
+   ---------------------------------------------------------------- */
+
+html {
+  background: var(--bg);
+  color: var(--fg);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease;
+}
+
+/* 토글 시 모든 자식의 색만 부드럽게. layout 영향 큰 속성은 제외. */
+.meal-mode-transition * {
+  transition:
+    background-color 0.4s ease,
+    color 0.4s ease,
+    border-color 0.4s ease,
+    fill 0.4s ease,
+    stroke 0.4s ease;
+}
+
+/* 카카오맵 타일: 저녁 모드 시 한 톤 어둡게 (filter — 핀에도 미세하게 영향) */
+.kakao-map-tiles {
+  transition: filter 0.4s ease;
+}
+:root[data-mode="dinner"] .kakao-map-tiles {
+  filter: brightness(0.82) saturate(0.9);
 }
