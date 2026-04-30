@@ -62,17 +62,18 @@ export default function SignupForm() {
       </label>
 
       <label className="block text-sm">
-        <span className="mb-1.5 block font-medium text-neutral-700">이름</span>
+        <span className="mb-1.5 block font-medium text-neutral-700">닉네임</span>
         <input
           type="text"
           name="name"
           required
           maxLength={30}
-          autoComplete="name"
-          placeholder="홍길동"
+          autoComplete="nickname"
+          placeholder="원하는 닉네임"
           disabled={pending}
           className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
         />
+        <span className="mt-1 block text-xs text-neutral-500">동료들에게 표시될 이름이야</span>
       </label>
 
       <label className="block text-sm">

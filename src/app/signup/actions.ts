@@ -22,7 +22,7 @@ export async function requestSignup(formData: FormData): Promise<RequestSignupRe
     return { ok: false, reason: 'domain', message: '허용된 회사 이메일 도메인이 아니야' };
   }
   if (!name || name.length > 30) {
-    return { ok: false, reason: 'invalid', message: '이름을 입력해줘 (1~30자)' };
+    return { ok: false, reason: 'invalid', message: '닉네임을 입력해줘 (1~30자)' };
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     return {
