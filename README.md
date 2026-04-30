@@ -94,6 +94,7 @@ update users set role = 'admin' where email = '본인이메일@lge.com';
 | 식당 일괄 관리 | `/admin/restaurants` (폐업/삭제, place_url 자동 보정) |
 | 사용자 권한 / 비번 reset | `/admin/users` (admin 부여/회수, 임시비번 발급) |
 | 가입 요청 승인 | `/admin/signups` (대기/승인/거절) |
+| 리뷰 모아보기 | `/admin/reviews` (최근 100건 + 필터/검색 + 삭제) |
 | 제보 처리 | `/admin/reports` (상태 + 메모) |
 
 비밀번호 분실한 사용자가 메신저로 문의 → `/admin/users` 에서 해당 사용자의 **비번 reset** 버튼 클릭 → 화면에 1회만 표시되는 임시비번을 메신저로 직접 전달. 사용자는 임시비번으로 로그인 후 `/set-password` 로 강제 이동.
@@ -135,6 +136,7 @@ src/
         restaurants/        #     식당 일괄 (폐업/삭제/place_url 보정)
         users/              #     사용자 권한 토글 + 비번 reset
         signups/            #     가입 요청 승인/거절
+        reviews/            #     리뷰 모아보기 + 필터/검색 + 삭제
         reports/            #     제보 상태/메모 처리
   components/
     Header.tsx              # 좌 로고 / 중 점심·저녁 토글 (/map 만) / 우 + 새맛집 + 아바타

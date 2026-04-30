@@ -25,6 +25,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminNavLink href="/admin">대시보드</AdminNavLink>
         <AdminNavLink href="/admin/buildings">건물</AdminNavLink>
         <AdminNavLink href="/admin/restaurants">식당</AdminNavLink>
+        <AdminNavLink href="/admin/reviews">리뷰</AdminNavLink>
         <AdminNavLink href="/admin/users">사용자</AdminNavLink>
         <AdminNavLink href="/admin/signups">가입 요청</AdminNavLink>
         <AdminNavLink href="/admin/reports">제보</AdminNavLink>

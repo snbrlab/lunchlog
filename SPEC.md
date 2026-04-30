@@ -255,7 +255,7 @@ ALLOWED_EMAIL_DOMAINS=회사.com,계열사.com
 /me                          → 마이페이지 (이름/이모지/부서/건물 변경 + 비번 변경 + 내 commit 목록)
 /report                      → 관리자에게 제보 (D32)
 /ranking                     → 랭킹 (D36, UserMenu 에선 숨김. url 직접 진입)
-/admin/*                     → 관리자 영역 (대시보드/buildings/restaurants/users/signups/reports)
+/admin/*                     → 관리자 영역 (대시보드/buildings/restaurants/reviews/users/signups/reports)
 ```
 
 Next 16 의 `proxy.ts` (구 `middleware.ts`) 로 가드. 단계: 인증 → 온보딩(office/building) → 비번 설정(password_set) → /map.
