@@ -16,7 +16,7 @@ export type VerifyOtpResult =
 export type SignInWithPasswordResult =
   | { ok: false; reason: 'invalid' | 'domain' | 'wrong_credentials' | 'unknown'; message: string };
 
-// 메일에 6자리 OTP 코드 발송. 회사 Outlook Safe Links 가 url 미리 클릭하는 문제 회피용.
+// 메일에 8자리 OTP 코드 발송. 회사 Outlook Safe Links 가 url 미리 클릭하는 문제 회피용.
 // (매직링크 url 대신 코드만 메일에 포함되려면 Supabase Email Template 의 {{ .ConfirmationURL }} 부분을
 //  지우고 {{ .Token }} 만 남겨야 함.)
 export async function requestOtp(formData: FormData): Promise<RequestOtpResult> {
@@ -48,13 +48,13 @@ export async function requestOtp(formData: FormData): Promise<RequestOtpResult> 
   return { ok: true, email };
 }
 
-// 사용자가 메일에서 받은 6자리 코드 입력 → 검증 + users 행 보장 + 적절한 페이지로 redirect.
+// 사용자가 메일에서 받은 8자리 코드 입력 → 검증 + users 행 보장 + 적절한 페이지로 redirect.
 export async function verifyOtp(formData: FormData): Promise<VerifyOtpResult> {
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const token = String(formData.get('token') ?? '').trim();
 
-  if (!email || !/^\d{6}$/.test(token)) {
-    return { ok: false, reason: 'invalid', message: '이메일과 6자리 숫자 코드를 입력해줘' };
+  if (!email || !/^\d{8}$/.test(token)) {
+    return { ok: false, reason: 'invalid', message: '이메일과 8자리 숫자 코드를 입력해줘' };
   }
 
   const supabase = await createSupabaseServerClient();

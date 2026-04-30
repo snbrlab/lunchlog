@@ -16,7 +16,7 @@
 
 | 영역 | 내용 |
 |---|---|
-| 인증 | OTP (6자리 코드) 회원가입/로그인 + ID/PW 로그인 (회사 메일 Outlook Safe Links 회피용) |
+| 인증 | OTP (8자리 코드) 회원가입/로그인 + ID/PW 로그인 (회사 메일 Outlook Safe Links 회피용) |
 | 지도 | 카카오맵 위 흰 배경 + 그룹별 이모지 핀, 회사 위치 표시, 점심/저녁 모드별 색상 |
 | 식당 | 카카오 검색 기반 등록, cuisine 13그룹 70+세부, 술가능, 추천인원, 카카오 place_url |
 | 리뷰 | "한 줄 = commit" 모델. 6자리 hash, party_size, 점심/저녁 토글, revert (24h) |
@@ -43,7 +43,7 @@ npm install
    - service_role → `SUPABASE_SERVICE_ROLE_KEY` (서버 전용, 절대 클라이언트 노출 금지)
 4. Authentication → Email Templates → **Magic Link** 템플릿 수정:
    - URL (`{{ .ConfirmationURL }}`) 부분 모두 제거
-   - `{{ .Token }}` 만 남겨 6자리 코드로 발송 (D30 — Outlook Safe Links 회피)
+   - `{{ .Token }}` 만 남겨 8자리 코드로 발송 (D30 — Outlook Safe Links 회피, token length 는 Auth 설정에서 8 로)
 5. Authentication → URL Configuration:
    - Site URL: `https://lunchlog-rho.vercel.app` (또는 본인 도메인)
    - Redirect URLs: `<위 url>/auth/callback`

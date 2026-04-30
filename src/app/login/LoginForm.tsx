@@ -120,7 +120,7 @@ export default function LoginForm() {
       ) : otpStep === 'email' ? (
         <form action={onOtpRequestSubmit} className="space-y-4">
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-            메일에 6자리 코드가 발송돼. 코드를 입력하면 로그인 끝.
+            메일에 8자리 코드가 발송돼. 코드를 입력하면 로그인 끝.
           </div>
           <label className="block text-sm">
             <span className="mb-1.5 block font-medium text-neutral-700">회사 이메일</span>
@@ -156,21 +156,21 @@ export default function LoginForm() {
           <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
             <p className="font-medium">메일 발송 완료!</p>
             <p className="mt-1 break-all">
-              <span className="font-mono">{otpEmail}</span> 메일함에서 6자리 코드 확인.
+              <span className="font-mono">{otpEmail}</span> 메일함에서 8자리 코드 확인.
             </p>
           </div>
           <label className="block text-sm">
-            <span className="mb-1.5 block font-medium text-neutral-700">6자리 코드</span>
+            <span className="mb-1.5 block font-medium text-neutral-700">8자리 코드</span>
             <input
               type="text"
               name="token"
               required
               autoFocus
               inputMode="numeric"
-              pattern="\d{6}"
-              maxLength={6}
+              pattern="\d{8}"
+              maxLength={8}
               autoComplete="one-time-code"
-              placeholder="000000"
+              placeholder="00000000"
               disabled={pending}
               className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-center font-mono text-lg tracking-widest outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
             />

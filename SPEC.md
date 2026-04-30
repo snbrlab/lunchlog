@@ -54,7 +54,7 @@
 | D27 | cuisine 그룹 분류 | 13개 그룹 (한식/일식/중식/양식/아시아/고기/해산물/치킨/피자/카페·디저트/술집/뷔페/기타) × 항목 70+개. `lib/cuisine.ts` 의 `CUISINE_GROUPS` 가 단일 source. 사이드바 필터는 그룹 라벨로, 등록 폼은 그룹별로 칩 묶어 노출 |
 | D28 | 술 가능 여부 | `restaurants.has_alcohol boolean default false`. 음식 종류와 직교(orthogonal) — 일식+술 / 한식+술 등 표현 가능. 사이드바 `🍺 술 가능만` 토글, 디테일 패널 식당명 옆 🍺 표시 |
 | D29 | 식당 정보 수정 | 등록자 본인 또는 admin 만 수정 가능. `/restaurants/[id]/edit` 페이지에서 이름/좌표/주소/카테고리/cuisine/menu_tags/가격대/추천인원/술가능/비고/카카오 url 변경. 좌표/주소는 카카오 재검색으로 갱신 가능 (D29 보강) |
-| D30 | OTP 인증 | 회사 메일 (lge.com) 의 Outlook Safe Links 가 매직링크 url 을 사전 클릭해 OTP 가 소진되는 문제로 매직링크 url 흐름 폐기. 메일에 6자리 토큰만 표시하고 사용자가 `/login` 에서 직접 입력. Supabase email template 수정 필요 (`{{ .Token }}` 만 노출) |
+| D30 | OTP 인증 | 회사 메일 (lge.com) 의 Outlook Safe Links 가 매직링크 url 을 사전 클릭해 OTP 가 소진되는 문제로 매직링크 url 흐름 폐기. 메일에 8자리 토큰만 표시하고 사용자가 `/login` 에서 직접 입력. Supabase email template 수정 필요 (`{{ .Token }}` 만 노출) + Auth 설정에서 OTP token length 를 8 로 설정 |
 | D31 | 카카오 place_url | `restaurants.kakao_place_url` 추가. 등록 시 카카오 places 검색 결과의 place_url 저장 → 디테일 패널의 외부 링크가 식당 상세 페이지 (리뷰/메뉴) 로 연결. admin 페이지에서 누락분 자동 보정 가능 |
 | D32 | 사내 제보 시스템 | `reports` 테이블 + `/report` 폼 (카테고리 4개: 버그/기능/식당/기타) + `/admin/reports` 처리 페이지. 상태 (open/reviewing/resolved) + admin 메모. RLS: 본인+admin read, admin update/delete |
 | D33 | 식당 등록자 표시 | 디테일 패널 (lg 이상) 에 `등록: {이모지} {이름}` 표시. 모바일은 hidden (공간 최적화) |
