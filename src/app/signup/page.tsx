@@ -11,6 +11,10 @@ export default function SignupPage() {
             관리자가 승인하면 가입이 완료돼.
           </p>
         </div>
+        <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+          모든 commit 엔 author 가 박혀요.<br />
+          blame 했을 때 떳떳한 한 줄만! ✌️
+        </div>
         <SignupForm />
         <div className="mt-6 text-center text-xs text-neutral-500">
           이미 계정 있어?{' '}
