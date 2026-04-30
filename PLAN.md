@@ -1,6 +1,6 @@
 # lunchlog — 개선 / 백로그
 
-[SPEC.md](./SPEC.md) 의 D1~D37 구현 후 운영 단계에서 떠오른 개선 idea 정리.
+[SPEC.md](./SPEC.md) 의 D1~D42 구현 후 운영 단계에서 떠오른 개선 idea 정리.
 우선순위는 변동 가능. 작업 시 SPEC 의 D 항목으로 승격하며 옮긴다.
 
 ## 🎯 빠른 임팩트 (우선)
@@ -8,7 +8,7 @@
 | # | 항목 | 작업량 | 비고 |
 |---|---|---|---|
 | P1 | **랜덤 추천** ("오늘 뭐 먹지?" 🎲 버튼) | 작음 | 사이드바 상단. mode + cuisine 필터 적용 후 랜덤 1개 선택 |
-| P2 | **등록 후 그 식당 자동 selected** | 작음 | `/restaurants/new` 후 `/map?selected=ID` 로 redirect. MapShell 이 query 로 selectedId 초기화 |
+| P2 | **등록 후 그 식당 자동 selected** | 작음 | `/restaurants/new` 후 `/map?focus=ID` 로 redirect. (D40 의 focus param 와이어업 이미 있음) |
 | P3 | **첫 로드 bounds fit** | 작음 | 식당 좌표들의 LatLngBounds → `map.setBounds()`. 회사 마커 포함 |
 | P4 | **핀 클러스터링** | 중간 | 식당 늘어나면 핀 겹침. 카카오맵 Clusterer 라이브러리 또는 자체 grouping (zoom level 따라) |
 | P5 | **즐겨찾기 ⭐** | 중간 | `favorites` 테이블 (`user_id`, `restaurant_id`, `created_at`). 사이드바에 즐겨찾기 탭 추가 |

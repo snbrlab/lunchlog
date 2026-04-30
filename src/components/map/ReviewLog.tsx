@@ -191,8 +191,8 @@ export function ReviewLog({
         </div>
       </div>
 
-      {/* 목록 */}
-      <ol className="flex-1 overflow-y-auto px-5 pb-2">
+      {/* 목록 — overscroll-contain 으로 스크롤 chaining 차단 (모바일에서 composer 가리는 거 방지) */}
+      <ol className="flex-1 overflow-y-auto overscroll-contain px-5 pb-2">
         {loading && (
           <li className="py-6 text-center text-xs text-fg-muted/70">불러오는 중…</li>
         )}

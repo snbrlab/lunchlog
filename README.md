@@ -18,10 +18,12 @@
 |---|---|
 | 인증 | 가입 신청 → admin 승인 → ID/PW 로그인 (회사 메일 인프라 의존성 0) |
 | 지도 | 카카오맵 위 흰 배경 + 그룹별 이모지 핀, 회사 위치 표시, 점심/저녁 모드별 색상 |
-| 식당 | 카카오 검색 기반 등록, cuisine 13그룹 70+세부, 술가능, 추천인원, 카카오 place_url |
-| 리뷰 | "한 줄 = commit" 모델. 6자리 hash, party_size, 점심/저녁 토글, revert (24h) |
+| 식당 | 카카오 검색 기반 등록, cuisine 13그룹 70+세부 (다중 선택), 술가능, 추천인원, 카카오 place_url |
+| 리뷰 | "한 줄 = commit" 모델. 6자리 hash, party_size, 점심/저녁 토글, revert, **branch commit (답글)** |
 | 거리 | Haversine. 도보 20분 이하 🚶 / 초과 🚗 자동 분기 |
-| Admin | `/admin` 대시보드. 건물 좌표 자동 보정, 식당 일괄 관리, 사용자 권한, 제보 처리 |
+| 알림 | 인앱 토스트 — 제보 처리 / 답글 commit / 새 가입 신청 / 새 제보 (admin) |
+| Admin | `/admin` 대시보드. 건물 좌표 자동 보정, 식당 일괄, 사용자 권한 + 비번 reset, 가입 승인, 리뷰 모아보기, 제보 처리 |
+| 사무실 | 마곡 / 여의도 / 평택. 사용자 본인 office 식당만 노출 |
 | 제보 | `/report` 폼 (버그/기능/식당/기타). admin 이 상태 관리 + 메모 |
 | 모바일 | 햄버거 사이드바, viewport-aware 디테일 패널, safe-area 지원 |
 
@@ -127,6 +129,7 @@ src/
       restaurants/new/      #   식당 등록 (카카오 검색 + 첫 리뷰)
       restaurants/[id]/edit/#   식당 수정 (카카오 재검색으로 좌표/주소 갱신 가능)
       me/                   #   마이페이지 (프로필/비번 변경 + 내 commit)
+      log/                  #   /log 최근 commit log (D40)
       report/               #   관리자에게 제보 (D32)
       ranking/              #   랭킹 (D36, UserMenu 에선 숨김)
       admin/                #   관리자 영역 (D24)
@@ -141,15 +144,16 @@ src/
   components/
     Header.tsx              # 좌 로고 / 중 점심·저녁 토글 (/map 만) / 우 + 새맛집 + 아바타
     MealModeToggle.tsx      # 점심/저녁 슬라이드 토글
-    UserMenu.tsx            # 아바타 드롭다운 (마이페이지/제보/admin/로그아웃)
+    UserMenu.tsx            # 아바타 드롭다운 (마이페이지/log/제보/admin/로그아웃)
     EmojiPicker.tsx         # 120개 이모지 그리드 (4 카테고리)
+    NotificationToast.tsx   # 인앱 노티 토스트 (D41)
     map/
       KakaoMap.tsx          # 지도 + 핀 + 회사 마커 + 경로 + 줌/위치 버튼
       KakaoPlacesSearch.tsx # 카카오 키워드 검색 (식당 등록/수정)
       RestaurantSidebar.tsx # 거리순 식당 리스트 + 그룹 필터칩
       RestaurantDetailPanel.tsx
-      ReviewLog.tsx         # commit 로그 + revert/delete
-      ReviewComposer.tsx    # 한 줄 입력창 + 인원 + 점심/저녁 토글
+      ReviewLog.tsx         # commit 로그 + revert/delete + reply (D40)
+      ReviewComposer.tsx    # 한 줄 입력창 + 인원 + 점심/저녁 토글 + reply mode
   lib/
     env.ts                  # 환경변수 런타임 검증
     cuisine.ts              # cuisine 13그룹 70+세부 source of truth
@@ -161,10 +165,11 @@ src/
     kakao-loader.ts         # 카카오 SDK Promise 로더
     meal-mode/              # 점심/저녁 Context (localStorage 동기)
     auth/                   # 도메인 화이트리스트 + signOut
-    supabase/               # client / server / proxy 분리
-    reviews/actions.ts      # createReview / deleteReview / revertReview
+    cache/offices.ts        # offices/buildings unstable_cache (D42)
+    supabase/               # client / server / admin (service-role) / proxy 분리
+    reviews/actions.ts      # createReview / deleteReview / revertReview / setReviewMealTime
     restaurants/actions.ts  # update / toggleClosed
-    admin/                  # 관리자 server actions (좌표 보정/권한/제보)
+    admin/                  # 관리자 server actions (좌표 보정 / 권한 / 비번 reset / 가입 승인 / 제보)
   proxy.ts                  # 인증/온보딩/비번 가드 (Next 16 proxy convention)
   types/
     db.ts                   # DB 인터페이스
