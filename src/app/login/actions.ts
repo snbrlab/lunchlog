@@ -13,10 +13,10 @@ export async function signInWithPassword(formData: FormData): Promise<SignInWith
   const password = String(formData.get('password') ?? '');
 
   if (!email || !email.includes('@') || !password) {
-    return { ok: false, reason: 'invalid', message: '이메일과 비밀번호를 입력해줘' };
+    return { ok: false, reason: 'invalid', message: '이메일과 비밀번호를 입력해주세요' };
   }
   if (!isAllowedEmail(email)) {
-    return { ok: false, reason: 'domain', message: '허용된 회사 이메일 도메인이 아니야' };
+    return { ok: false, reason: 'domain', message: '허용된 회사 이메일 도메인이 아니에요' };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -29,14 +29,14 @@ export async function signInWithPassword(formData: FormData): Promise<SignInWith
       return {
         ok: false,
         reason: 'pending_approval',
-        message: '관리자 승인 대기 중인 계정이야. 승인되면 로그인할 수 있어',
+        message: '관리자 승인 대기 중인 계정이에요. 승인되면 로그인할 수 있어요',
       };
     }
     if (error.status === 400 || msg.includes('invalid')) {
       return {
         ok: false,
         reason: 'wrong_credentials',
-        message: '이메일 또는 비밀번호가 맞지 않거나, 아직 가입 신청을 안 했어',
+        message: '이메일 또는 비밀번호가 맞지 않거나, 아직 가입 신청을 안 하셨어요',
       };
     }
     return { ok: false, reason: 'unknown', message: error.message };

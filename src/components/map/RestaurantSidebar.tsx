@@ -161,8 +161,8 @@ export function RestaurantSidebar({
       <ol className="flex-1 overflow-y-auto">
         {items.length === 0 && (
           <li className="px-4 py-10 text-center text-xs text-fg-muted">
-            조건에 맞는 식당이 아직 없어.<br />
-            우상단 “+ 새 맛집” 으로 추가해줘.
+            조건에 맞는 식당이 아직 없어요.<br />
+            우상단 “+ 새 맛집” 으로 추가해주세요.
           </li>
         )}
         {items.map(({ r, meters, travel }) => {

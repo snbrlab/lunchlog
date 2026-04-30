@@ -32,7 +32,7 @@ export default function RestaurantsAdminTable({ rows }: { rows: Row[] }) {
 
   function runAutoFillUrls() {
     if (missingUrlCount === 0) {
-      alert('카카오 url 누락된 식당이 없어');
+      alert('카카오 url 누락된 식당이 없어요');
       return;
     }
     if (!confirm(`place_url 누락 ${missingUrlCount}개 식당을 카카오 검색해 자동 채울까요?`))

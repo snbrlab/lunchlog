@@ -100,7 +100,7 @@ export default function LogList({ rows }: { rows: LogReviewRow[] }) {
 
       <ol className="rounded-lg border border-border bg-surface">
         {filtered.length === 0 && (
-          <li className="px-4 py-10 text-center text-sm text-fg-muted">조건에 맞는 commit 이 없어</li>
+          <li className="px-4 py-10 text-center text-sm text-fg-muted">조건에 맞는 commit 이 없어요</li>
         )}
         {filtered.map((r) => (
           <LogItem key={r.id} row={r} />

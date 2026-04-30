@@ -8,10 +8,10 @@ export default function SignupPage() {
         <div className="mb-8 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">🍱 런치로그 가입 신청</h1>
           <p className="mt-2 text-sm text-neutral-500">
-            관리자가 승인하면 가입이 완료돼.
+            관리자가 승인하면 가입이 완료됩니다.
           </p>
         </div>
-        <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-relaxed text-amber-900">
+        <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs leading-relaxed text-amber-900">
           모든 commit 엔 author 가 박혀요.<br />
           blame 했을 때 떳떳한 한 줄만! ✌️
         </div>

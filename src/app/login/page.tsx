@@ -1,9 +1,9 @@
 import LoginForm from './LoginForm';
 
 const ERROR_MESSAGES: Record<string, string> = {
-  domain: '허용된 회사 이메일이 아니라 자동 로그아웃됐어',
-  exchange: '로그인 링크 처리 중 오류가 났어. 다시 시도해줘',
-  unknown: '알 수 없는 오류가 났어',
+  domain: '허용된 회사 이메일이 아니라 자동 로그아웃됐어요',
+  exchange: '로그인 링크 처리 중 오류가 났어요. 다시 시도해주세요',
+  unknown: '알 수 없는 오류가 났어요',
 };
 
 export default async function LoginPage({

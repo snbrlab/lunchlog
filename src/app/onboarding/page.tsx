@@ -36,7 +36,7 @@ export default async function OnboardingPage() {
         <div className="mb-8">
           <h1 className="text-xl font-semibold tracking-tight">환영합니다 👋</h1>
           <p className="mt-1.5 text-sm text-neutral-500">
-            거리 계산을 위해 어디서 일하는지 알려줘.
+            거리 계산을 위해 어디서 일하는지 알려주세요.
           </p>
         </div>
 

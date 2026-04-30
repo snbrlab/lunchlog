@@ -85,7 +85,7 @@ function ToastCard({
           <span aria-hidden className="text-base">📬</span>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-medium text-fg">
-              제보가 처리됐어
+              제보가 처리됐어요
             </p>
             <p className="mt-0.5 text-[11px] text-fg-muted">
               {CATEGORY_LABEL[p.category] ?? p.category} · 상태:{' '}
@@ -115,8 +115,8 @@ function ToastCard({
           <span aria-hidden className="text-base">💬</span>
           <div className="min-w-0 flex-1">
             <p className="text-sm text-fg">
-              <span className="font-medium">{p.reply_author_name}</span> 가{' '}
-              <span className="font-mono text-xs">{p.parent_hash}</span> 에 답글
+              <span className="font-medium">{p.reply_author_name}</span> 님이{' '}
+              <span className="font-mono text-xs">{p.parent_hash}</span> 에 답글을 달았어요
             </p>
             <p className="mt-0.5 text-[11px] text-fg-muted">
               📍 {p.restaurant_name}

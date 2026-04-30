@@ -22,7 +22,7 @@ export default function ReportForm() {
     setError(null);
     const trimmed = message.trim();
     if (!trimmed) {
-      setError('내용을 입력해줘');
+      setError('내용을 입력해주세요');
       return;
     }
     const fd = new FormData();

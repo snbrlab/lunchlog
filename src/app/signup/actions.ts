@@ -16,23 +16,23 @@ export async function requestSignup(formData: FormData): Promise<RequestSignupRe
   const passwordConfirm = String(formData.get('password_confirm') ?? '');
 
   if (!email || !email.includes('@')) {
-    return { ok: false, reason: 'invalid', message: '이메일을 정확히 입력해줘' };
+    return { ok: false, reason: 'invalid', message: '이메일을 정확히 입력해주세요' };
   }
   if (!isAllowedEmail(email)) {
-    return { ok: false, reason: 'domain', message: '허용된 회사 이메일 도메인이 아니야' };
+    return { ok: false, reason: 'domain', message: '허용된 회사 이메일 도메인이 아니에요' };
   }
   if (!name || name.length > 30) {
-    return { ok: false, reason: 'invalid', message: '닉네임을 입력해줘 (1~30자)' };
+    return { ok: false, reason: 'invalid', message: '닉네임을 입력해주세요 (1~30자)' };
   }
   if (password.length < MIN_PASSWORD_LENGTH) {
     return {
       ok: false,
       reason: 'invalid',
-      message: `비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 해`,
+      message: `비밀번호는 ${MIN_PASSWORD_LENGTH}자 이상이어야 해요`,
     };
   }
   if (password !== passwordConfirm) {
-    return { ok: false, reason: 'invalid', message: '비밀번호 확인이 일치하지 않아' };
+    return { ok: false, reason: 'invalid', message: '비밀번호 확인이 일치하지 않아요' };
   }
 
   const admin = getSupabaseAdminClient();
@@ -49,8 +49,8 @@ export async function requestSignup(formData: FormData): Promise<RequestSignupRe
   if (existing) {
     const msg =
       existing.status === 'pending'
-        ? '이미 가입 신청 중이야. 관리자 승인을 기다려줘'
-        : '이미 가입돼 있어. 로그인 페이지에서 비밀번호로 로그인해줘';
+        ? '이미 가입 신청 중이에요. 관리자 승인을 기다려주세요'
+        : '이미 가입돼 있어요. 로그인 페이지에서 비밀번호로 로그인해주세요';
     return { ok: false, reason: 'duplicate', message: msg };
   }
 
@@ -65,12 +65,12 @@ export async function requestSignup(formData: FormData): Promise<RequestSignupRe
 
   if (createError || !created?.user) {
     // "User already registered" 등은 이메일이 auth.users 에 이미 있는 경우 (위 select 가 못 잡은 케이스)
-    const msg = createError?.message ?? '가입 요청 처리 실패';
+    const msg = createError?.message ?? '가입 요청 처리에 실패했어요';
     if (msg.toLowerCase().includes('already')) {
       return {
         ok: false,
         reason: 'duplicate',
-        message: '이미 가입 신청됐거나 가입된 이메일이야',
+        message: '이미 가입 신청됐거나 가입된 이메일이에요',
       };
     }
     return { ok: false, reason: 'unknown', message: msg };

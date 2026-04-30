@@ -16,18 +16,18 @@ export async function completeOnboarding(formData: FormData): Promise<CompleteOn
   const buildingId = String(formData.get('building_id') ?? '').trim();
   const avatarEmoji = String(formData.get('avatar_emoji') ?? '').trim();
 
-  if (!name) return { ok: false, message: '표시 이름을 입력해줘' };
-  if (!officeId) return { ok: false, message: '사무실을 선택해줘' };
-  if (!buildingId) return { ok: false, message: '건물을 선택해줘' };
+  if (!name) return { ok: false, message: '표시 이름을 입력해주세요' };
+  if (!officeId) return { ok: false, message: '사무실을 선택해주세요' };
+  if (!buildingId) return { ok: false, message: '건물을 선택해주세요' };
   if (!avatarEmoji || !(EMOJI_POOL as readonly string[]).includes(avatarEmoji)) {
-    return { ok: false, message: '잘못된 이모지 선택' };
+    return { ok: false, message: '잘못된 이모지 선택이에요' };
   }
 
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { ok: false, message: '세션이 만료됐어. 다시 로그인해줘' };
+  if (!user) return { ok: false, message: '세션이 만료됐어요. 다시 로그인해주세요' };
 
   // 건물이 선택한 사무실 소속인지 검증 (클라이언트 변조 방지)
   const { data: building } = await supabase
@@ -37,7 +37,7 @@ export async function completeOnboarding(formData: FormData): Promise<CompleteOn
     .maybeSingle();
 
   if (!building || building.office_id !== officeId) {
-    return { ok: false, message: '잘못된 건물 선택' };
+    return { ok: false, message: '잘못된 건물 선택이에요' };
   }
 
   const { error } = await supabase

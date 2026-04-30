@@ -23,7 +23,7 @@ export default function SignupsTable({ rows }: { rows: SignupRow[] }) {
   const [, startTransition] = useTransition();
 
   function onApprove(row: SignupRow) {
-    if (!confirm(`${row.name} (${row.email}) 가입 승인할까?`)) return;
+    if (!confirm(`${row.name} (${row.email}) 가입을 승인할까요?`)) return;
     setPendingId(row.id);
     startTransition(async () => {
       const r = await approveSignup(row.id);
@@ -38,7 +38,7 @@ export default function SignupsTable({ rows }: { rows: SignupRow[] }) {
 
   function onDeny(row: SignupRow) {
     const reason = prompt(
-      `${row.name} (${row.email}) 거절 사유 (선택, 비워도 OK):`,
+      `${row.name} (${row.email}) 거절 사유 (선택, 비워도 괜찮아요):`,
       '',
     );
     // prompt 취소 시 null
@@ -58,7 +58,7 @@ export default function SignupsTable({ rows }: { rows: SignupRow[] }) {
   if (rows.length === 0) {
     return (
       <div className="rounded-lg border border-border bg-surface px-4 py-8 text-center text-sm text-fg-muted">
-        가입 요청이 없어
+        가입 요청이 없어요
       </div>
     );
   }

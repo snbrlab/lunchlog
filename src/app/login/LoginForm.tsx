@@ -57,7 +57,7 @@ export default function LoginForm() {
       </form>
 
       <div className="text-center text-xs text-neutral-500">
-        처음이야?{' '}
+        처음이세요?{' '}
         <Link href="/signup" className="font-medium underline-offset-2 hover:underline">
           가입 신청하기
         </Link>

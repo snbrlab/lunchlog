@@ -10,13 +10,13 @@ async function requireAdmin() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) throw new Error('로그인 필요');
+  if (!user) throw new Error('로그인이 필요해요');
   const { data: profile } = await supabase
     .from('users')
     .select('role')
     .eq('id', user.id)
     .maybeSingle();
-  if (profile?.role !== 'admin') throw new Error('관리자만');
+  if (profile?.role !== 'admin') throw new Error('관리자만 가능해요');
   return { supabase, userId: user.id };
 }
 
@@ -37,7 +37,7 @@ export async function updateBuildingCoord(
     longitude < -180 ||
     longitude > 180
   ) {
-    return { ok: false, message: '좌표가 올바르지 않아' };
+    return { ok: false, message: '좌표가 올바르지 않아요' };
   }
 
   let admin;
@@ -85,7 +85,7 @@ export async function autoFillAllBuildingCoords(): Promise<AutoFillResult> {
 
   const { kakaoRestKey } = getServerEnv();
   if (!kakaoRestKey) {
-    return { ok: false, message: 'KAKAO_REST_KEY 가 설정 안 됨. .env.local 확인' };
+    return { ok: false, message: 'KAKAO_REST_KEY 가 설정되지 않았어요. .env.local 을 확인해주세요' };
   }
 
   const { data: buildings, error: listError } = await admin.supabase
@@ -93,7 +93,7 @@ export async function autoFillAllBuildingCoords(): Promise<AutoFillResult> {
     .select('id, name')
     .order('display_order');
   if (listError) return { ok: false, message: listError.message };
-  if (!buildings) return { ok: false, message: '건물 목록을 못 가져옴' };
+  if (!buildings) return { ok: false, message: '건물 목록을 가져오지 못했어요' };
 
   const results: Array<{
     name: string;
@@ -172,7 +172,7 @@ export async function autoFillKakaoPlaceUrlsForRestaurants(): Promise<AutoFillPl
 
   const { kakaoRestKey } = getServerEnv();
   if (!kakaoRestKey) {
-    return { ok: false, message: 'KAKAO_REST_KEY 가 설정 안 됨' };
+    return { ok: false, message: 'KAKAO_REST_KEY 가 설정되지 않았어요' };
   }
 
   const { data: targets, error: listError } = await admin.supabase
@@ -280,7 +280,7 @@ export async function setUserRole(
 
   // 자기 자신의 admin 권한 박탈은 금지 (마지막 admin 빠지는 사고 방지)
   if (admin.userId === userId && role !== 'admin') {
-    return { ok: false, message: '본인 admin 권한은 다른 admin 이 박탈해야 해' };
+    return { ok: false, message: '본인 admin 권한은 다른 admin 이 박탈해야 해요' };
   }
 
   const { error } = await admin.supabase
@@ -314,9 +314,9 @@ export async function approveSignup(requestId: string): Promise<ApproveSignupRes
     .eq('id', requestId)
     .maybeSingle();
   if (reqError) return { ok: false, message: reqError.message };
-  if (!req) return { ok: false, message: '가입 요청을 찾을 수 없어' };
+  if (!req) return { ok: false, message: '가입 요청을 찾을 수 없어요' };
   if (req.status !== 'pending') {
-    return { ok: false, message: `이미 처리된 요청이야 (${req.status})` };
+    return { ok: false, message: `이미 처리된 요청이에요 (${req.status})` };
   }
 
   // 2) auth.users.email_confirmed_at 세팅 (Supabase admin API)
@@ -377,9 +377,9 @@ export async function denySignup(
     .eq('id', requestId)
     .maybeSingle();
   if (reqError) return { ok: false, message: reqError.message };
-  if (!req) return { ok: false, message: '가입 요청을 찾을 수 없어' };
+  if (!req) return { ok: false, message: '가입 요청을 찾을 수 없어요' };
   if (req.status !== 'pending') {
-    return { ok: false, message: `이미 처리된 요청이야 (${req.status})` };
+    return { ok: false, message: `이미 처리된 요청이에요 (${req.status})` };
   }
 
   // 미승인 auth.users 정리. 실패해도 진행 (이미 삭제됐을 수 있음).

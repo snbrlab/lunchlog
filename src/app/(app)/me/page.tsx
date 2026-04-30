@@ -132,7 +132,7 @@ export default async function MePage() {
         </h2>
         {reviewItems.length === 0 ? (
           <p className="rounded-lg border border-border bg-surface px-5 py-6 text-center text-xs text-fg-muted">
-            아직 작성한 리뷰가 없어. /map 에서 첫 한 줄을 남겨줘.
+            아직 작성한 리뷰가 없어요. /map 에서 첫 한 줄을 남겨주세요.
           </p>
         ) : (
           <ol className="rounded-lg border border-border bg-surface">

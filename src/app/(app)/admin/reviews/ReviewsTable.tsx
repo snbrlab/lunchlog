@@ -204,7 +204,7 @@ export default function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
             {filtered.length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-8 text-center text-xs text-fg-muted">
-                  조건에 맞는 리뷰가 없어
+                  조건에 맞는 리뷰가 없어요
                 </td>
               </tr>
             )}
@@ -238,9 +238,9 @@ function ConfirmDeleteModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl">
-        <h3 className="text-sm font-semibold text-fg">리뷰를 삭제할까?</h3>
+        <h3 className="text-sm font-semibold text-fg">리뷰를 삭제할까요?</h3>
         <p className="mt-2 text-xs text-fg-muted">
-          이 동작은 되돌릴 수 없어. (revert 와 다름 — DB 행을 완전히 제거)
+          이 동작은 되돌릴 수 없어요. (revert 와 다름 — DB 행을 완전히 제거)
         </p>
         <div className="mt-3 rounded-md border border-border bg-bg p-3 text-xs">
           <div className="text-fg-muted">

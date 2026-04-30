@@ -25,8 +25,8 @@ export default async function SetPasswordPage() {
         <div className="mb-8">
           <h1 className="text-xl font-semibold tracking-tight">비밀번호 설정 🔒</h1>
           <p className="mt-1.5 text-sm text-neutral-500">
-            관리자가 발급한 임시 비밀번호로 로그인했어.<br />
-            본인이 쓸 새 비밀번호를 정해줘.
+            관리자가 발급한 임시 비밀번호로 로그인했어요.<br />
+            본인이 쓸 새 비밀번호를 정해주세요.
           </p>
         </div>
         <SetPasswordForm />

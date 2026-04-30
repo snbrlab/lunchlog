@@ -118,7 +118,7 @@ export function ReviewLog({
   }, [reviews]);
 
   function onDelete(id: string) {
-    if (!confirm('이 commit 을 완전히 삭제할까? (관리자 작업)')) return;
+    if (!confirm('이 commit 을 완전히 삭제할까요? (관리자 작업)')) return;
     setPendingMutateId(id);
     startTransition(async () => {
       const r = await deleteReview(id);
@@ -132,7 +132,7 @@ export function ReviewLog({
   }
 
   function onRevert(id: string) {
-    if (!confirm('이 commit 을 revert 할까? (취소선만 그어지고 기록은 보존)')) return;
+    if (!confirm('이 commit 을 revert 할까요? (취소선만 그어지고 기록은 보존)')) return;
     setPendingMutateId(id);
     startTransition(async () => {
       const r = await revertReview(id);
@@ -198,7 +198,7 @@ export function ReviewLog({
         )}
         {!loading && groups.length === 0 && (
           <li className="py-6 text-center text-xs text-fg-muted/70">
-            아직 commit 이 없네. 첫 한 줄을 남겨줘.
+            아직 commit 이 없네요. 첫 한 줄을 남겨주세요.
           </li>
         )}
         {groups.map(({ root, replies }) => (

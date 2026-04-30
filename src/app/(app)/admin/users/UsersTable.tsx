@@ -50,9 +50,9 @@ export default function UsersTable({
   function resetPw(row: Row) {
     if (
       !confirm(
-        `${row.name} (${row.email}) 비밀번호를 임시값으로 초기화할까?\n\n` +
-          `초기화하면 다음 로그인 시 비번 재설정 페이지로 이동돼.\n` +
-          `생성된 임시 비번은 화면에 한 번만 보여주니까 메신저로 직접 전달해줘.`,
+        `${row.name} (${row.email}) 비밀번호를 임시값으로 초기화할까요?\n\n` +
+          `초기화하면 다음 로그인 시 비번 재설정 페이지로 이동돼요.\n` +
+          `생성된 임시 비번은 화면에 한 번만 보여주니까 메신저로 직접 전달해주세요.`,
       )
     )
       return;
@@ -163,8 +163,8 @@ function TempPasswordModal({
         <h3 className="text-sm font-semibold text-fg">임시 비밀번호 생성됨</h3>
         <p className="mt-2 text-xs text-fg-muted">
           <span className="font-medium text-fg">{name}</span>{' '}
-          <span className="font-mono">({email})</span> 한테 메신저로 전달해줘.
-          <br />이 화면을 닫으면 임시 비번을 다시 볼 수 없어.
+          <span className="font-mono">({email})</span> 님에게 메신저로 전달해주세요.
+          <br />이 화면을 닫으면 임시 비번을 다시 볼 수 없어요.
         </p>
         <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 font-mono text-base text-amber-900">
           {pw}

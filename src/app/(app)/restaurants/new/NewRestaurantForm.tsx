@@ -87,7 +87,7 @@ export default function NewRestaurantForm({ origin }: Props) {
   function submit(force: boolean) {
     setError(null);
     if (latitude == null || longitude == null) {
-      setError('카카오 검색에서 식당을 먼저 선택해줘');
+      setError('카카오 검색에서 식당을 먼저 선택해주세요');
       return;
     }
     const recMinNum = recMin.trim() ? Number(recMin) : null;
@@ -435,10 +435,10 @@ function DuplicateModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-sm rounded-lg border border-border bg-surface p-5 shadow-xl">
-        <h3 className="text-sm font-semibold text-fg">혹시 같은 식당 아닐까?</h3>
+        <h3 className="text-sm font-semibold text-fg">혹시 같은 식당 아닐까요?</h3>
         <p className="mt-2 text-xs text-fg-muted">
           좌표 {duplicate.meters}m 이내 같은 음식 종류로{' '}
-          <span className="font-medium text-fg">"{duplicate.name}"</span> 이 이미 등록돼 있어.
+          <span className="font-medium text-fg">"{duplicate.name}"</span> 이 이미 등록돼 있어요.
         </p>
         <div className="mt-5 flex gap-2">
           <button
@@ -447,7 +447,7 @@ function DuplicateModal({
             disabled={pending}
             className="flex-1 rounded-md border border-border bg-bg px-3 py-2 text-xs text-fg hover:bg-fg/5"
           >
-            같은 곳이야 (목록으로)
+            같은 곳이에요 (목록으로)
           </button>
           <button
             type="button"
@@ -455,7 +455,7 @@ function DuplicateModal({
             disabled={pending}
             className="flex-1 rounded-md bg-fg px-3 py-2 text-xs font-semibold text-bg hover:opacity-90 disabled:opacity-40"
           >
-            다른 곳이야 (그냥 등록)
+            다른 곳이에요 (그냥 등록)
           </button>
         </div>
       </div>

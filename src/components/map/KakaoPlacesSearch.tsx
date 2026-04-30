@@ -94,11 +94,11 @@ export function KakaoPlacesSearch({ origin, onSelect }: Props) {
         <p className="mt-3 text-center text-xs text-fg-muted">검색 중…</p>
       )}
       {status === 'empty' && (
-        <p className="mt-3 text-center text-xs text-fg-muted">결과 없음. 다른 키워드로 검색.</p>
+        <p className="mt-3 text-center text-xs text-fg-muted">결과가 없어요. 다른 키워드로 검색해주세요.</p>
       )}
       {status === 'error' && (
         <p className="mt-3 text-center text-xs text-red-500">
-          검색 실패. 카카오맵 SDK 가 안 떴거나 네트워크 문제.
+          검색에 실패했어요. 카카오맵 SDK 가 안 떴거나 네트워크 문제예요.
         </p>
       )}
 

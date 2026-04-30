@@ -28,11 +28,11 @@ export default function SignupForm() {
         <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
           <p className="font-medium">가입 신청 완료!</p>
           <p className="mt-1.5 break-all">
-            <span className="font-mono">{submittedEmail}</span> 으로 신청했어. 관리자가 승인하면
-            로그인 가능해.
+            <span className="font-mono">{submittedEmail}</span> 으로 신청했어요. 관리자가 승인하면
+            로그인 가능해요.
           </p>
           <p className="mt-2 text-xs text-emerald-700/80">
-            ※ 승인 알림은 따로 안 가니, 잠시 뒤 로그인 페이지에서 다시 시도해줘.
+            ※ 승인 알림은 따로 가지 않으니, 잠시 뒤 로그인 페이지에서 다시 시도해주세요.
           </p>
         </div>
         <Link
@@ -73,7 +73,7 @@ export default function SignupForm() {
           disabled={pending}
           className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
         />
-        <span className="mt-1 block text-xs text-neutral-500">동료들에게 표시될 이름이야</span>
+        <span className="mt-1 block text-xs text-neutral-500">동료들에게 표시될 이름이에요</span>
       </label>
 
       <label className="block text-sm">

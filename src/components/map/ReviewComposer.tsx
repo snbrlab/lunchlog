@@ -53,7 +53,7 @@ export function ReviewComposer({ restaurantId, onCreated, replyTo, onCancelReply
     if (partySize.trim()) {
       const n = Number(partySize);
       if (!Number.isInteger(n) || n < 1 || n > 99) {
-        alert('인원수는 1~99 사이');
+        alert('인원수는 1~99 사이여야 해요');
         return;
       }
       parsedSize = n;

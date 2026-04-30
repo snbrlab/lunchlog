@@ -127,7 +127,7 @@ export default function OnboardingForm({
           disabled={buildingsForOffice.length === 0}
           className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
         >
-          <option value="">선택해줘</option>
+          <option value="">선택해주세요</option>
           {buildingsForOffice.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}

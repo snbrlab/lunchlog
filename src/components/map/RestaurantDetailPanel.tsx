@@ -40,7 +40,7 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
   function onToggleClosed() {
     if (!restaurant) return;
     const next = !restaurant.is_closed;
-    if (!confirm(next ? '폐업 처리할까?' : '폐업 해제할까?')) return;
+    if (!confirm(next ? '폐업 처리할까요?' : '폐업 해제할까요?')) return;
     startTransition(async () => {
       const r = await toggleRestaurantClosed(restaurant.id, next);
       if (!r.ok) {

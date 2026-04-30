@@ -170,7 +170,7 @@ export default async function RankingPage() {
         <section className="rounded-lg border border-border bg-surface p-5">
           <h2 className="mb-3 text-sm font-medium text-fg">🔥 인기 식당 (commit 누적)</h2>
           {popular.length === 0 ? (
-            <p className="text-xs text-fg-muted">아직 commit 이 있는 식당이 없어</p>
+            <p className="text-xs text-fg-muted">아직 commit 이 있는 식당이 없어요</p>
           ) : (
             <ol className="space-y-2">
               {popular.map((r, i) => (
@@ -198,7 +198,7 @@ export default async function RankingPage() {
             리뷰 1점 + 식당 등록 5점. 추후 점수 기반 멤버 등급 도입 예정.
           </p>
           {topUsers.length === 0 ? (
-            <p className="text-xs text-fg-muted">아직 활동 기록 없음</p>
+            <p className="text-xs text-fg-muted">아직 활동 기록이 없어요</p>
           ) : (
             <ol className="space-y-2">
               {topUsers.map((u, i) => (
@@ -227,7 +227,7 @@ export default async function RankingPage() {
         <section className="rounded-lg border border-border bg-surface p-5">
           <h2 className="mb-3 text-sm font-medium text-fg">📈 최근 7일 핫함</h2>
           {hotList.length === 0 ? (
-            <p className="text-xs text-fg-muted">최근 일주일 commit 이 없네</p>
+            <p className="text-xs text-fg-muted">최근 일주일 commit 이 없네요</p>
           ) : (
             <ol className="space-y-2">
               {hotList.map((r, i) => (
@@ -250,7 +250,7 @@ export default async function RankingPage() {
         <section className="rounded-lg border border-border bg-surface p-5">
           <h2 className="mb-3 text-sm font-medium text-fg">🍱 음식 분포 (등록 식당 기준)</h2>
           {totalRestaurants === 0 ? (
-            <p className="text-xs text-fg-muted">아직 등록된 식당 없음</p>
+            <p className="text-xs text-fg-muted">아직 등록된 식당이 없어요</p>
           ) : (
             <ol className="space-y-2">
               {groupDistribution.map((g) => {

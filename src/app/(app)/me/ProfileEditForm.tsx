@@ -156,7 +156,7 @@ export default function ProfileEditForm({
           disabled={pending || buildingsForOffice.length === 0}
           className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-fg outline-none focus:border-fg disabled:opacity-50"
         >
-          <option value="">선택해줘</option>
+          <option value="">선택해주세요</option>
           {buildingsForOffice.map((b) => (
             <option key={b.id} value={b.id}>
               {b.name}

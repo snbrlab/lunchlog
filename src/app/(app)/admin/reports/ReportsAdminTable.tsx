@@ -54,7 +54,7 @@ export default function ReportsAdminTable({ rows }: { rows: Row[] }) {
   if (rows.length === 0) {
     return (
       <p className="rounded-lg border border-border bg-surface px-5 py-10 text-center text-xs text-fg-muted">
-        아직 제보 없음
+        아직 제보가 없어요
       </p>
     );
   }

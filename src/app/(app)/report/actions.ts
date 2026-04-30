@@ -15,20 +15,20 @@ export async function createReport(formData: FormData): Promise<CreateReportResu
   const message = String(formData.get('message') ?? '').trim();
 
   if (!ALLOWED.includes(category)) {
-    return { ok: false, reason: 'invalid', message: '카테고리를 선택해줘' };
+    return { ok: false, reason: 'invalid', message: '카테고리를 선택해주세요' };
   }
   if (!message) {
-    return { ok: false, reason: 'invalid', message: '내용을 입력해줘' };
+    return { ok: false, reason: 'invalid', message: '내용을 입력해주세요' };
   }
   if (message.length > 1000) {
-    return { ok: false, reason: 'invalid', message: '1000자 이내로 줄여줘' };
+    return { ok: false, reason: 'invalid', message: '1000자 이내로 줄여주세요' };
   }
 
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { ok: false, reason: 'invalid', message: '로그인이 필요해' };
+  if (!user) return { ok: false, reason: 'invalid', message: '로그인이 필요해요' };
 
   const { error } = await supabase.from('reports').insert({
     author_id: user.id,

@@ -58,25 +58,25 @@ export async function createRestaurant(
 ): Promise<CreateRestaurantResult> {
   // ----- 검증 -----
   const name = input.name.trim();
-  if (!name) return { ok: false, reason: 'invalid', message: '이름을 입력해줘' };
+  if (!name) return { ok: false, reason: 'invalid', message: '이름을 입력해주세요' };
   if (input.categories.length === 0) {
-    return { ok: false, reason: 'invalid', message: '점심/저녁 중 최소 1개 선택' };
+    return { ok: false, reason: 'invalid', message: '점심/저녁 중 최소 1개를 선택해주세요' };
   }
   for (const c of input.categories) {
     if (c !== 'lunch' && c !== 'dinner')
-      return { ok: false, reason: 'invalid', message: '잘못된 카테고리' };
+      return { ok: false, reason: 'invalid', message: '잘못된 카테고리예요' };
   }
   if (input.cuisineTypes.length === 0) {
-    return { ok: false, reason: 'invalid', message: '음식 종류 최소 1개 선택' };
+    return { ok: false, reason: 'invalid', message: '음식 종류를 최소 1개 선택해주세요' };
   }
   for (const c of input.cuisineTypes) {
     if (!(ALL_CUISINES as readonly string[]).includes(c)) {
-      return { ok: false, reason: 'invalid', message: '잘못된 음식 종류' };
+      return { ok: false, reason: 'invalid', message: '잘못된 음식 종류예요' };
     }
   }
   const dedupCuisines = Array.from(new Set(input.cuisineTypes));
   if (![1, 2, 3].includes(input.priceLevel)) {
-    return { ok: false, reason: 'invalid', message: '가격대는 1~3' };
+    return { ok: false, reason: 'invalid', message: '가격대는 1~3 사이여야 해요' };
   }
   if (
     !Number.isFinite(input.latitude) ||
@@ -86,39 +86,39 @@ export async function createRestaurant(
     input.longitude < -180 ||
     input.longitude > 180
   ) {
-    return { ok: false, reason: 'invalid', message: '좌표가 올바르지 않아' };
+    return { ok: false, reason: 'invalid', message: '좌표가 올바르지 않아요' };
   }
   if (!input.address.trim()) {
-    return { ok: false, reason: 'invalid', message: '주소를 입력해줘' };
+    return { ok: false, reason: 'invalid', message: '주소를 입력해주세요' };
   }
   if (input.menuTags.some((t) => t.length > 30)) {
-    return { ok: false, reason: 'invalid', message: '태그는 30자 이내' };
+    return { ok: false, reason: 'invalid', message: '태그는 30자 이내로 입력해주세요' };
   }
   // 카카오 도메인 외 url 차단 (피싱 방지)
   if (input.kakaoPlaceUrl && !isAllowedKakaoUrl(input.kakaoPlaceUrl)) {
-    return { ok: false, reason: 'invalid', message: '카카오 검색 결과 url 만 허용' };
+    return { ok: false, reason: 'invalid', message: '카카오 검색 결과 url 만 허용돼요' };
   }
 
   const reviewMessage = input.firstReviewMessage.trim();
   if (!reviewMessage) {
-    return { ok: false, reason: 'invalid', message: '첫 한 줄 리뷰는 필수' };
+    return { ok: false, reason: 'invalid', message: '첫 한 줄 리뷰는 필수예요' };
   }
   if (reviewMessage.length > 200) {
-    return { ok: false, reason: 'invalid', message: '리뷰는 200자 이내' };
+    return { ok: false, reason: 'invalid', message: '리뷰는 200자 이내로 입력해주세요' };
   }
 
   // recommended size
   if (
     (input.recommendedMinSize == null) !== (input.recommendedMaxSize == null)
   ) {
-    return { ok: false, reason: 'invalid', message: '추천 인원은 둘 다 비우거나 둘 다 입력' };
+    return { ok: false, reason: 'invalid', message: '추천 인원은 둘 다 비우거나 둘 다 입력해주세요' };
   }
   if (input.recommendedMinSize != null && input.recommendedMaxSize != null) {
     if (input.recommendedMinSize < 1 || input.recommendedMaxSize > 99) {
-      return { ok: false, reason: 'invalid', message: '추천 인원은 1~99' };
+      return { ok: false, reason: 'invalid', message: '추천 인원은 1~99 사이여야 해요' };
     }
     if (input.recommendedMinSize > input.recommendedMaxSize) {
-      return { ok: false, reason: 'invalid', message: '추천 인원 min > max' };
+      return { ok: false, reason: 'invalid', message: '추천 인원 min > max 예요' };
     }
   }
 
@@ -126,7 +126,7 @@ export async function createRestaurant(
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  if (!user) return { ok: false, reason: 'invalid', message: '로그인이 필요해' };
+  if (!user) return { ok: false, reason: 'invalid', message: '로그인이 필요해요' };
 
   const { data: profile } = await supabase
     .from('users')
@@ -134,7 +134,7 @@ export async function createRestaurant(
     .eq('id', user.id)
     .maybeSingle();
   if (!profile?.office_id) {
-    return { ok: false, reason: 'invalid', message: '온보딩이 먼저 필요해' };
+    return { ok: false, reason: 'invalid', message: '온보딩이 먼저 필요해요' };
   }
 
   // ----- 50m 동일 cuisine 중복 검사 -----
@@ -194,7 +194,7 @@ export async function createRestaurant(
     .single();
 
   if (restErr || !rest) {
-    return { ok: false, reason: 'unknown', message: restErr?.message ?? '생성 실패' };
+    return { ok: false, reason: 'unknown', message: restErr?.message ?? '생성에 실패했어요' };
   }
 
   // ----- 첫 리뷰 insert (commit_count 트리거가 자동 갱신) -----
@@ -209,7 +209,7 @@ export async function createRestaurant(
 
   if (reviewErr) {
     // 식당은 이미 생성됨. 리뷰 실패는 알림만 — 식당 자체는 살아있음.
-    return { ok: false, reason: 'unknown', message: `식당은 등록됐지만 첫 리뷰 실패: ${reviewErr.message}` };
+    return { ok: false, reason: 'unknown', message: `식당은 등록됐지만 첫 리뷰 작성에 실패했어요: ${reviewErr.message}` };
   }
 
   // /map 으로 이동. redirect() 는 NEXT_REDIRECT throw — client 의 useTransition 이 자연스럽게 종료됨.
