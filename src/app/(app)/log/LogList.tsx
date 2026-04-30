@@ -140,7 +140,9 @@ function LogItem({ row }: { row: LogReviewRow }) {
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center gap-x-1.5 gap-y-0.5 text-[11px] text-fg-muted">
-          <span className="font-mono text-fg/80">{row.hash}</span>
+          <span className={`font-mono ${row.parent_review_id ? 'text-amber-600' : 'text-fg/80'}`}>
+            {row.hash}
+          </span>
           <span>·</span>
           <span className="font-medium text-fg">{authorName}</span>
           <span>가</span>

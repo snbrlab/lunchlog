@@ -336,7 +336,9 @@ function ReviewRow({
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 text-[11px] text-fg-muted">
-          <span className="font-mono text-fg/80">{review.hash}</span>
+          <span className={`font-mono ${isBranch ? 'text-amber-600' : 'text-fg/80'}`}>
+            {review.hash}
+          </span>
           <span>·</span>
           <span
             className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px]"

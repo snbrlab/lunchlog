@@ -98,7 +98,11 @@ export interface Review {
 }
 
 // D41 인앱 노티
-export type NotificationType = 'report_update' | 'review_reply';
+export type NotificationType =
+  | 'report_update'
+  | 'review_reply'
+  | 'signup_request_new'
+  | 'report_new';
 
 export interface ReportUpdatePayload {
   report_id: string;
@@ -118,11 +122,31 @@ export interface ReviewReplyPayload {
   message: string;
 }
 
+// admin 전용
+export interface SignupRequestNewPayload {
+  request_id: string;
+  email: string;
+  name: string;
+}
+
+// admin 전용
+export interface ReportNewPayload {
+  report_id: string;
+  author_id: string;
+  author_name: string;
+  category: ReportCategory;
+  message: string;
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
   type: NotificationType;
-  payload: ReportUpdatePayload | ReviewReplyPayload;
+  payload:
+    | ReportUpdatePayload
+    | ReviewReplyPayload
+    | SignupRequestNewPayload
+    | ReportNewPayload;
   read_at: string | null;
   created_at: string;
 }
