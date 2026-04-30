@@ -36,10 +36,27 @@ export default async function MapPage() {
     .eq('office_id', profile?.office_id ?? '')
     .order('last_commit_at', { ascending: false, nullsFirst: false });
 
+  // 캐시된 commit_count 가 trigger 와 어긋날 수 있어 매번 reviews 에서 직접 카운트.
+  // reverted 된 commit 은 제외 (사용자가 "실제 활성" 으로 인지하는 값).
+  // 답글(branch) commit 은 포함 — git 메타포상 자식 commit 도 commit 임.
+  const { data: reviewRows } = await supabase
+    .from('reviews')
+    .select('restaurant_id')
+    .eq('reverted', false);
+
+  const liveCounts = new Map<string, number>();
+  for (const row of (reviewRows ?? []) as { restaurant_id: string }[]) {
+    liveCounts.set(row.restaurant_id, (liveCounts.get(row.restaurant_id) ?? 0) + 1);
+  }
+
+  const restaurantsWithLiveCount = ((restaurants ?? []) as unknown as Restaurant[]).map(
+    (r) => ({ ...r, commit_count: liveCounts.get(r.id) ?? 0 }),
+  );
+
   return (
     <MapShell
       origin={origin}
-      restaurants={(restaurants ?? []) as unknown as Restaurant[]}
+      restaurants={restaurantsWithLiveCount}
       currentUserId={user.id}
       isAdmin={profile?.role === 'admin'}
     />

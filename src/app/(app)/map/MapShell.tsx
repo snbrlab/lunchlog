@@ -1,5 +1,6 @@
 'use client';
 
+import { useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { KakaoMap } from '@/components/map/KakaoMap';
 import { RestaurantSidebar } from '@/components/map/RestaurantSidebar';
@@ -14,9 +15,17 @@ interface Props {
 }
 
 export default function MapShell({ origin, restaurants, currentUserId, isAdmin }: Props) {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const focusParam = searchParams.get('focus');
+
+  const [selectedId, setSelectedId] = useState<string | null>(focusParam);
   const [sidebarOpen, setSidebarOpen] = useState(false); // 모바일에서만 의미
   const [includeClosed, setIncludeClosed] = useState(false);
+
+  // /log 등에서 ?focus=<id> 로 진입 시 자동 선택
+  useEffect(() => {
+    if (focusParam) setSelectedId(focusParam);
+  }, [focusParam]);
 
   const selected = useMemo(
     () => restaurants.find((r) => r.id === selectedId) ?? null,
