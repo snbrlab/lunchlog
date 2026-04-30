@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCachedBuildings } from '@/lib/cache/offices';
 import MapShell from './MapShell';
 import type { Restaurant } from '@/types/db';
 
@@ -17,46 +18,49 @@ export default async function MapPage() {
     .eq('id', user.id)
     .maybeSingle();
 
-  // 사용자 건물 좌표 → 회사 마커 origin
-  const { data: building } = await supabase
-    .from('office_buildings')
-    .select('latitude, longitude')
-    .eq('id', profile?.building_id ?? '')
-    .maybeSingle();
-
+  // 사용자 건물 좌표 → 회사 마커 origin (전체 buildings 는 캐시됨)
+  const buildings = await getCachedBuildings();
+  const building = buildings.find((b) => b.id === profile?.building_id);
   const origin = building
     ? { lat: building.latitude, lng: building.longitude }
     : { lat: 37.5604, lng: 126.8255 }; // LG사이언스파크 fallback
 
+  // 사이드바 + 디테일 패널에 필요한 컬럼만 명시. SELECT * 회피 (egress 절약).
+  // commit_count 는 D42 trigger 가 revert 까지 정합성 유지 → 캐시 컬럼 그대로 신뢰.
   const { data: restaurants } = await supabase
     .from('restaurants')
     .select(
-      '*, creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
+      [
+        'id',
+        'name',
+        'categories',
+        'cuisine_types',
+        'menu_tags',
+        'price_level',
+        'latitude',
+        'longitude',
+        'address',
+        'note',
+        'office_id',
+        'is_closed',
+        'created_by',
+        'created_at',
+        'commit_count',
+        'last_commit_at',
+        'recommended_min_size',
+        'recommended_max_size',
+        'has_alcohol',
+        'kakao_place_url',
+        'creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
+      ].join(', '),
     )
     .eq('office_id', profile?.office_id ?? '')
     .order('last_commit_at', { ascending: false, nullsFirst: false });
 
-  // 캐시된 commit_count 가 trigger 와 어긋날 수 있어 매번 reviews 에서 직접 카운트.
-  // reverted 된 commit 은 제외 (사용자가 "실제 활성" 으로 인지하는 값).
-  // 답글(branch) commit 은 포함 — git 메타포상 자식 commit 도 commit 임.
-  const { data: reviewRows } = await supabase
-    .from('reviews')
-    .select('restaurant_id')
-    .eq('reverted', false);
-
-  const liveCounts = new Map<string, number>();
-  for (const row of (reviewRows ?? []) as { restaurant_id: string }[]) {
-    liveCounts.set(row.restaurant_id, (liveCounts.get(row.restaurant_id) ?? 0) + 1);
-  }
-
-  const restaurantsWithLiveCount = ((restaurants ?? []) as unknown as Restaurant[]).map(
-    (r) => ({ ...r, commit_count: liveCounts.get(r.id) ?? 0 }),
-  );
-
   return (
     <MapShell
       origin={origin}
-      restaurants={restaurantsWithLiveCount}
+      restaurants={(restaurants ?? []) as unknown as Restaurant[]}
       currentUserId={user.id}
       isAdmin={profile?.role === 'admin'}
     />

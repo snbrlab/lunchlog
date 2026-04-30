@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { invalidateOfficesCache } from '@/lib/cache/offices';
 import { getServerEnv } from '@/lib/env';
 import { avatarColorFor } from '@/lib/avatar-color';
 
@@ -52,6 +53,7 @@ export async function updateBuildingCoord(
     .update({ latitude, longitude })
     .eq('id', buildingId);
   if (error) return { ok: false, message: error.message };
+  invalidateOfficesCache();
   return { ok: true };
 }
 
@@ -145,6 +147,7 @@ export async function autoFillAllBuildingCoords(): Promise<AutoFillResult> {
     }),
   );
 
+  invalidateOfficesCache();
   return { ok: true, results };
 }
 

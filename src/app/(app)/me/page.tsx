@@ -1,10 +1,10 @@
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCachedOffices, getCachedBuildings } from '@/lib/cache/offices';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { formatRelativeTime } from '@/lib/format-time';
 import ChangePasswordForm from './ChangePasswordForm';
 import ProfileEditForm from './ProfileEditForm';
-import type { Office, OfficeBuilding } from '@/types/db';
 
 export default async function MePage() {
   const supabase = await createSupabaseServerClient();
@@ -44,9 +44,9 @@ export default async function MePage() {
   const officeName = profile?.office?.name ?? null;
   const buildingName = profile?.building?.name ?? null;
 
-  const [{ data: offices }, { data: buildings }, { data: myReviews }] = await Promise.all([
-    supabase.from('offices').select('*').order('name'),
-    supabase.from('office_buildings').select('*').order('display_order'),
+  const [offices, buildings, { data: myReviews }] = await Promise.all([
+    getCachedOffices(),
+    getCachedBuildings(),
     supabase
       .from('reviews')
       .select(
@@ -114,8 +114,8 @@ export default async function MePage() {
           initialBuildingId={profile?.building_id ?? ''}
           initialEmoji={avatarEmoji}
           avatarColor={avatarColor}
-          offices={(offices ?? []) as Office[]}
-          buildings={(buildings ?? []) as OfficeBuilding[]}
+          offices={offices}
+          buildings={buildings}
         />
       </section>
 
@@ -150,7 +150,7 @@ export default async function MePage() {
                 </div>
                 <div className="mt-1 flex items-baseline gap-2">
                   <Link
-                    href="/map"
+                    href={r.restaurant ? `/map?focus=${r.restaurant.id}` : '/map'}
                     className="text-xs font-medium text-fg hover:underline"
                   >
                     {r.restaurant?.name ?? '(삭제된 식당)'}

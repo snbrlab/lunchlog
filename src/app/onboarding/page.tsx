@@ -1,9 +1,9 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCachedOffices, getCachedBuildings } from '@/lib/cache/offices';
 import { suggestNameFromEmail } from '@/lib/auth/email-domain';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import OnboardingForm from './OnboardingForm';
-import type { Office, OfficeBuilding } from '@/types/db';
 
 export default async function OnboardingPage() {
   const supabase = await createSupabaseServerClient();
@@ -21,9 +21,9 @@ export default async function OnboardingPage() {
   // 이미 온보딩 끝났으면 /map 으로 (proxy 가 처리하긴 하지만 명시적으로)
   if (profile?.office_id && profile?.building_id) redirect('/map');
 
-  const [{ data: offices }, { data: buildings }] = await Promise.all([
-    supabase.from('offices').select('*').order('name'),
-    supabase.from('office_buildings').select('*').order('display_order'),
+  const [offices, buildings] = await Promise.all([
+    getCachedOffices(),
+    getCachedBuildings(),
   ]);
 
   const defaultName = profile?.name?.trim() || suggestNameFromEmail(user.email ?? '');
@@ -45,8 +45,8 @@ export default async function OnboardingPage() {
           defaultDepartment={profile?.department ?? ''}
           defaultEmoji={defaultEmoji}
           avatarColor={avatarColor}
-          offices={(offices ?? []) as Office[]}
-          buildings={(buildings ?? []) as OfficeBuilding[]}
+          offices={offices}
+          buildings={buildings}
         />
       </div>
     </main>

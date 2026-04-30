@@ -179,7 +179,7 @@ export default async function RankingPage() {
                     {i + 1}
                   </span>
                   <Link
-                    href="/map"
+                    href={`/map?focus=${r.id}`}
                     className="flex-1 truncate text-fg hover:underline"
                   >
                     {r.name} {r.has_alcohol && '🍺'}
@@ -235,7 +235,7 @@ export default async function RankingPage() {
                   <span className="w-5 text-center font-mono text-xs text-fg-muted">
                     {i + 1}
                   </span>
-                  <Link href="/map" className="flex-1 truncate text-fg hover:underline">
+                  <Link href={`/map?focus=${r.id}`} className="flex-1 truncate text-fg hover:underline">
                     {r.name}
                   </Link>
                   <span className="text-xs text-fg-muted">{r.cuisine}</span>
