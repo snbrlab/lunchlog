@@ -5,7 +5,8 @@ import { useMemo, useState } from 'react';
 import type { Restaurant } from '@/types/db';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
 import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
-import { CUISINE_GROUPS } from '@/lib/cuisine';
+import { CUISINE_GROUPS, findCuisineGroup } from '@/lib/cuisine';
+import type { CuisineType } from '@/types/db';
 
 interface Props {
   origin: { lat: number; lng: number };
@@ -57,7 +58,19 @@ export function RestaurantSidebar({
       .filter((r) => {
         if (!q) return true;
         if (r.name.toLowerCase().includes(q)) return true;
-        return r.menu_tags.some((t) => t.toLowerCase().includes(q));
+        if (r.menu_tags.some((t) => t.toLowerCase().includes(q))) return true;
+        // cuisine 세부값 매치 (예: "곰탕" → cuisine_types 에 "곰탕")
+        if (r.cuisine_types.some((c) => c.toLowerCase().includes(q))) return true;
+        // cuisine 그룹 라벨 매치 (예: "한식" → 한식 그룹의 모든 sub-cuisine 식당)
+        if (
+          r.cuisine_types.some((c) => {
+            const group = findCuisineGroup(c as CuisineType);
+            return group ? group.toLowerCase().includes(q) : false;
+          })
+        ) {
+          return true;
+        }
+        return false;
       })
       .map((r) => {
         const meters = haversineDistanceMeters(origin, { lat: r.latitude, lng: r.longitude });
@@ -89,7 +102,7 @@ export function RestaurantSidebar({
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="이름 / 추천메뉴 검색"
+            placeholder="이름 / 메뉴 / 음식종류 검색"
             className="w-full rounded-md border border-border bg-bg px-3 py-1.5 pr-7 text-xs text-fg outline-none focus:border-fg"
           />
           {query && (
