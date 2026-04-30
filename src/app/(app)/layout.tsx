@@ -1,4 +1,5 @@
 import { Header } from '@/components/Header';
+import { NotificationToast } from '@/components/NotificationToast';
 import { MealModeProvider } from '@/lib/meal-mode/MealModeProvider';
 
 // 인증/온보딩 완료된 사용자 영역 공용 레이아웃.
@@ -8,6 +9,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <MealModeProvider>
       <Header />
       <div className="flex flex-1 flex-col bg-bg text-fg">{children}</div>
+      <NotificationToast />
     </MealModeProvider>
   );
 }

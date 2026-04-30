@@ -96,3 +96,33 @@ export interface Review {
   created_at: string;
   edited_at: string | null;
 }
+
+// D41 인앱 노티
+export type NotificationType = 'report_update' | 'review_reply';
+
+export interface ReportUpdatePayload {
+  report_id: string;
+  category: ReportCategory;
+  status: ReportStatus;
+  admin_note: string | null;
+}
+
+export interface ReviewReplyPayload {
+  reply_review_id: string;
+  reply_hash: string;
+  reply_author_id: string;
+  reply_author_name: string;
+  parent_hash: string;
+  restaurant_id: string;
+  restaurant_name: string;
+  message: string;
+}
+
+export interface NotificationRow {
+  id: string;
+  user_id: string;
+  type: NotificationType;
+  payload: ReportUpdatePayload | ReviewReplyPayload;
+  read_at: string | null;
+  created_at: string;
+}
