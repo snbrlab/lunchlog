@@ -8,6 +8,7 @@ export interface LogReviewRow {
   party_size: number | null;
   hash: string;
   reverted: boolean;
+  parent_review_id: string | null;
   created_at: string;
   author: {
     name: string;
@@ -20,6 +21,8 @@ export interface LogReviewRow {
     cuisine_types: string[];
     is_closed: boolean;
   } | null;
+  // 답글일 때 부모 commit 의 hash + 작성자 (별도 select)
+  parent: { hash: string; author: { name: string } | null } | null;
 }
 
 const RECENT_LIMIT = 100;
@@ -31,9 +34,10 @@ export default async function LogPage() {
   const { data } = await supabase
     .from('reviews')
     .select(
-      'id, message, meal_time, party_size, hash, reverted, created_at, ' +
+      'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
         'author:users!reviews_author_id_fkey ( name, avatar_emoji, avatar_color ), ' +
-        'restaurant:restaurants ( id, name, cuisine_types, is_closed )',
+        'restaurant:restaurants ( id, name, cuisine_types, is_closed ), ' +
+        'parent:reviews!reviews_parent_review_id_fkey ( hash, author:users!reviews_author_id_fkey ( name ) )',
     )
     .order('created_at', { ascending: false })
     .limit(RECENT_LIMIT);

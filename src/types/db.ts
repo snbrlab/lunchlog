@@ -92,6 +92,7 @@ export interface Review {
   party_size: number | null;
   hash: string;
   reverted: boolean;
+  parent_review_id: string | null;
   created_at: string;
   edited_at: string | null;
 }

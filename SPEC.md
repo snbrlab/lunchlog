@@ -64,6 +64,7 @@
 | D37 | 멤버 등급 (TODO) | D36 의 점수 기반으로 추후 도입 예정. 브론즈/실버/골드 같은 등급 + 마이페이지/디테일패널에 배지 표시 |
 | D38 | admin 승인 가입 | OTP/메일 인프라 의존성을 제거. 사용자는 `/signup` 에서 이메일+이름+비번 입력 → `auth.users` 가 `email_confirm: false` 로 미리 생성되고 `signup_requests` row pending 상태. admin 이 `/admin/signups` 에서 승인하면 `email_confirmed_at` 세팅 + `users` 프로필 행 생성 (`password_set: true`). 거절 시 auth user 삭제 + `signup_requests.status='denied'`. 비번 분실은 admin 이 `/admin/users` 에서 임시비번 발급 → 사용자가 임시비번으로 로그인 시 `/set-password` 강제 |
 | D39 | cuisine 다중 선택 | 한일퓨전 등 여러 cuisine 그룹 걸치는 곳을 위해 `cuisine_type text` → `cuisine_types text[]` 로 전환. 등록/수정 폼에서 다중 선택 가능 (1개 이상 필수). 사이드바 그룹 필터는 배열 overlap 으로 매칭. 50m 중복 검사도 `.overlaps()` 로. 기존 `cuisine_type` 컬럼은 rollback 안전망으로 보존, gin 인덱스 `idx_restaurants_cuisines` 신규 |
+| D40 | 브랜치 commit | git branch-out 메타포: `reviews.parent_review_id uuid references reviews(id)` 로 다른 commit 에 대한 답글 commit 작성 가능. 1-level 만 (답글의 답글 금지 — server action 단계에서 강제). 디테일 패널 ReviewLog: 각 root commit 옆 `↪ reply` 버튼 → composer 가 reply mode 로 전환 → 메시지 입력 후 commit 하면 부모 아래 들여쓰기 + `↳` 마커로 표시. /log 페이지엔 답글 줄에 `↳ {부모 hash} · {부모 작성자} 의 commit 에 답글` 한 줄 추가. on delete set null 로 부모 삭제 시 자식은 root 로 격하 |
 
 ---
 

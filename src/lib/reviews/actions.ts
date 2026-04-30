@@ -19,6 +19,8 @@ interface CreateReviewInput {
   mealTime: MealMode;
   partySize: number | null;
   hash: string;
+  // 다른 commit 에 대한 답글 (D40). NULL = root commit.
+  parentReviewId?: string | null;
 }
 
 export async function createReview(input: CreateReviewInput): Promise<CreateReviewResult> {
@@ -46,6 +48,24 @@ export async function createReview(input: CreateReviewInput): Promise<CreateRevi
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: '로그인이 필요해' };
 
+  // parent 검증: 같은 식당의 root commit 이어야 (1-level 강제)
+  let parentId: string | null = null;
+  if (input.parentReviewId) {
+    const { data: parent } = await supabase
+      .from('reviews')
+      .select('id, restaurant_id, parent_review_id')
+      .eq('id', input.parentReviewId)
+      .maybeSingle();
+    if (!parent) return { ok: false, message: '부모 commit 을 찾을 수 없어' };
+    if (parent.restaurant_id !== input.restaurantId) {
+      return { ok: false, message: '같은 식당 안에서만 답글 가능' };
+    }
+    if (parent.parent_review_id) {
+      return { ok: false, message: '답글의 답글은 안 돼 (1-level 까지만)' };
+    }
+    parentId = parent.id;
+  }
+
   const { data, error } = await supabase
     .from('reviews')
     .insert({
@@ -55,6 +75,7 @@ export async function createReview(input: CreateReviewInput): Promise<CreateRevi
       meal_time: input.mealTime,
       party_size: input.partySize,
       hash: input.hash,
+      parent_review_id: parentId,
     })
     .select('id')
     .single();

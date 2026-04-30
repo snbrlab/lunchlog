@@ -164,6 +164,12 @@ function LogItem({ row }: { row: LogReviewRow }) {
             </span>
           )}
         </p>
+        {row.parent && (
+          <p className="mt-0.5 text-[10px] text-fg-muted/80">
+            ↳ <span className="font-mono">{row.parent.hash}</span>
+            {row.parent.author?.name && <> · {row.parent.author.name}</>} 의 commit 에 답글
+          </p>
+        )}
       </div>
     </li>
   );

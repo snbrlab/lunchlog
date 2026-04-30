@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useEffect, useState, useTransition } from 'react';
 import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
 import { toggleRestaurantClosed } from '@/lib/restaurants/actions';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { ReviewLog } from './ReviewLog';
-import { ReviewComposer } from './ReviewComposer';
+import { ReviewComposer, type ReplyTarget } from './ReviewComposer';
 import type { Restaurant } from '@/types/db';
 
 interface Props {
@@ -23,10 +23,18 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [pending, startTransition] = useTransition();
+  // 답글 모드 (D40). 답글 대상 commit 정보를 ReviewComposer 에 전달.
+  const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  // 다른 식당으로 전환되면 답글 상태 초기화 (잘못된 식당의 commit 에 답글 가는 것 방지)
+  useEffect(() => {
+    setReplyTo(null);
+  }, [restaurant?.id]);
   // ReviewLog 내부 목록 + 부모 페이지의 restaurants(commit_count, last_commit_at) 둘 다 갱신
   const triggerRefresh = () => {
     setRefreshKey((k) => k + 1);
     router.refresh();
+    // 작성 후 답글 모드 자동 해제
+    setReplyTo(null);
   };
 
   function onToggleClosed() {
@@ -203,11 +211,17 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
           isAdmin={isAdmin}
           refreshKey={refreshKey}
           onMutated={triggerRefresh}
+          onReply={setReplyTo}
         />
       </div>
 
       {/* 5) Composer */}
-      <ReviewComposer restaurantId={restaurant.id} onCreated={triggerRefresh} />
+      <ReviewComposer
+        restaurantId={restaurant.id}
+        onCreated={triggerRefresh}
+        replyTo={replyTo}
+        onCancelReply={() => setReplyTo(null)}
+      />
     </section>
   );
 }

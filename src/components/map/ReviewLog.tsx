@@ -26,9 +26,18 @@ interface Props {
   // 작성/삭제 후 부모가 increment 해서 강제 refresh 트리거
   refreshKey: number;
   onMutated: () => void;
+  // 답글 버튼 클릭 시 부모(DetailPanel)에 알리는 콜백 — D40
+  onReply?: (review: { id: string; hash: string; authorName: string }) => void;
 }
 
-export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, onMutated }: Props) {
+export function ReviewLog({
+  restaurantId,
+  currentUserId,
+  isAdmin,
+  refreshKey,
+  onMutated,
+  onReply,
+}: Props) {
   const { mode } = useMealMode();
   const [reviews, setReviews] = useState<EnrichedReview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -49,7 +58,7 @@ export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, on
       const { data, error } = await supabase
         .from('reviews')
         .select(
-          'id, restaurant_id, author_id, message, meal_time, party_size, hash, reverted, created_at, edited_at, ' +
+          'id, restaurant_id, author_id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, edited_at, ' +
             'author:users!reviews_author_id_fkey ( id, name, avatar_color, avatar_emoji )',
         )
         .eq('restaurant_id', restaurantId)
@@ -75,11 +84,31 @@ export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, on
     };
   }, [restaurantId, refreshKey]);
 
-  // 필터만 적용. 그룹화/접기 안 함 (D6 보강 — 사용자 의견 따라 다 펼침).
+  // root commit + 그에 달린 branch reply 들로 그룹화 (D40)
+  // - root: parent_review_id IS NULL — 시간 역순 (최신 위)
+  // - replies: 해당 root 아래에 시간 순 (오래된 게 위)
+  // 필터(meal_time)는 root 기준으로 적용 — root 가 통과하면 그 답글도 같이 노출
   const groups = useMemo(() => {
+    const childrenByParent = new Map<string, EnrichedReview[]>();
+    for (const r of reviews) {
+      if (r.parent_review_id) {
+        const arr = childrenByParent.get(r.parent_review_id) ?? [];
+        arr.push(r);
+        childrenByParent.set(r.parent_review_id, arr);
+      }
+    }
+    for (const arr of childrenByParent.values()) {
+      arr.sort(
+        (a, b) => +new Date(a.created_at) - +new Date(b.created_at),
+      );
+    }
     return reviews
+      .filter((r) => !r.parent_review_id)
       .filter((r) => filter === 'all' || r.meal_time === filter)
-      .map((r) => ({ latest: r, older: [] as EnrichedReview[] }));
+      .map((root) => ({
+        root,
+        replies: childrenByParent.get(root.id) ?? [],
+      }));
   }, [reviews, filter]);
 
   const counts = useMemo(() => {
@@ -172,17 +201,18 @@ export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, on
             아직 commit 이 없네. 첫 한 줄을 남겨줘.
           </li>
         )}
-        {groups.map(({ latest, older }) => (
+        {groups.map(({ root, replies }) => (
           <ReviewItem
-            key={latest.id}
-            latest={latest}
-            older={older}
+            key={root.id}
+            root={root}
+            replies={replies}
             currentUserId={currentUserId}
             isAdmin={isAdmin}
             pendingMutateId={pendingMutateId}
             onDelete={onDelete}
             onRevert={onRevert}
             onToggleMeal={onToggleMeal}
+            onReply={onReply}
           />
         ))}
       </ol>
@@ -191,53 +221,65 @@ export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, on
 }
 
 function ReviewItem({
-  latest,
-  older,
+  root,
+  replies,
   currentUserId,
   isAdmin,
   pendingMutateId,
   onDelete,
   onRevert,
   onToggleMeal,
+  onReply,
 }: {
-  latest: EnrichedReview;
-  older: EnrichedReview[];
+  root: EnrichedReview;
+  replies: EnrichedReview[];
   currentUserId: string;
   isAdmin: boolean;
   pendingMutateId: string | null;
   onDelete: (id: string) => void;
   onRevert: (id: string) => void;
   onToggleMeal: (id: string, current: MealMode) => void;
+  onReply?: (review: { id: string; hash: string; authorName: string }) => void;
 }) {
-  const [showOlder, setShowOlder] = useState(false);
-  const items = showOlder ? [latest, ...older] : [latest];
-
   return (
     <li>
       <div className="relative pl-4">
         <span className="absolute left-1 top-0 h-full w-px bg-border" aria-hidden />
-        {items.map((r, idx) => (
+        <ReviewRow
+          review={root}
+          isBranch={false}
+          currentUserId={currentUserId}
+          isAdmin={isAdmin}
+          pendingMutate={pendingMutateId === root.id}
+          onDelete={() => onDelete(root.id)}
+          onRevert={() => onRevert(root.id)}
+          onToggleMeal={() => onToggleMeal(root.id, root.meal_time)}
+          onReply={
+            onReply
+              ? () =>
+                  onReply({
+                    id: root.id,
+                    hash: root.hash,
+                    authorName: root.author?.name ?? '(알수없음)',
+                  })
+              : undefined
+          }
+        />
+        {replies.map((reply) => (
           <ReviewRow
-            key={r.id}
-            review={r}
-            isHead={idx === 0}
+            key={reply.id}
+            review={reply}
+            isBranch
             currentUserId={currentUserId}
             isAdmin={isAdmin}
-            pendingMutate={pendingMutateId === r.id}
-            onDelete={() => onDelete(r.id)}
-            onRevert={() => onRevert(r.id)}
-            onToggleMeal={() => onToggleMeal(r.id, r.meal_time)}
+            pendingMutate={pendingMutateId === reply.id}
+            onDelete={() => onDelete(reply.id)}
+            onRevert={() => onRevert(reply.id)}
+            onToggleMeal={() => onToggleMeal(reply.id, reply.meal_time)}
+            // 1-level 만 허용 — branch 에는 답글 못 다는 게 정책
+            onReply={undefined}
           />
         ))}
-        {!showOlder && older.length > 0 && (
-          <button
-            type="button"
-            onClick={() => setShowOlder(true)}
-            className="ml-2 mt-0.5 mb-2 block text-[11px] text-fg-muted hover:text-fg"
-          >
-            ▾ {latest.author?.name ?? '이 사람'}의 이전 commit {older.length}개 더보기
-          </button>
-        )}
       </div>
     </li>
   );
@@ -245,22 +287,24 @@ function ReviewItem({
 
 function ReviewRow({
   review,
-  isHead,
+  isBranch,
   currentUserId,
   isAdmin,
   pendingMutate,
   onDelete,
   onRevert,
   onToggleMeal,
+  onReply,
 }: {
   review: EnrichedReview;
-  isHead: boolean;
+  isBranch: boolean;
   currentUserId: string;
   isAdmin: boolean;
   pendingMutate: boolean;
   onDelete: () => void;
   onRevert: () => void;
   onToggleMeal: () => void;
+  onReply?: () => void;
 }) {
   const created = new Date(review.created_at);
   const ageDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
@@ -277,10 +321,18 @@ function ReviewRow({
   const authorColor = review.author?.avatar_color ?? '#fde68a';
 
   return (
-    <div className={`relative flex gap-2.5 py-2 ${isHead ? '' : 'opacity-90'}`}>
+    <div className={`relative flex gap-2.5 py-2 ${isBranch ? 'pl-6' : ''}`}>
+      {isBranch && (
+        <span
+          aria-hidden
+          className="absolute left-0 top-3 text-[11px] leading-none text-fg-muted"
+        >
+          ↳
+        </span>
+      )}
       <span
         aria-hidden
-        className={`absolute -left-3 top-3 h-2 w-2 rounded-full ring-2 ring-surface ${dotColor}`}
+        className={`absolute ${isBranch ? 'left-3' : '-left-3'} top-3 h-2 w-2 rounded-full ring-2 ring-surface ${dotColor}`}
       />
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1.5 text-[11px] text-fg-muted">
@@ -325,6 +377,17 @@ function ReviewRow({
             </span>
           )}
           <span className="ml-auto flex items-center gap-2">
+            {onReply && (
+              <button
+                type="button"
+                onClick={onReply}
+                disabled={pendingMutate}
+                title="이 commit 에 답글 달기"
+                className="text-[10px] text-fg-muted hover:text-fg disabled:opacity-50"
+              >
+                ↪ reply
+              </button>
+            )}
             {canRevert && (
               <button
                 type="button"
