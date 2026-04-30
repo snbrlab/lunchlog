@@ -85,3 +85,24 @@ export async function revertReview(id: string): Promise<RevertReviewResult> {
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }
+
+export type SetReviewMealTimeResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+// admin 만 (RLS 의 update 정책이 admin 우회 허용). 작성자가 잘못 찍은 점심/저녁을 admin 이 보정.
+export async function setReviewMealTime(
+  id: string,
+  mealTime: 'lunch' | 'dinner',
+): Promise<SetReviewMealTimeResult> {
+  if (mealTime !== 'lunch' && mealTime !== 'dinner') {
+    return { ok: false, message: '잘못된 meal_time' };
+  }
+  const supabase = await createSupabaseServerClient();
+  const { error } = await supabase
+    .from('reviews')
+    .update({ meal_time: mealTime })
+    .eq('id', id);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}

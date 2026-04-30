@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
-import { deleteReview } from '@/lib/reviews/actions';
+import { deleteReview, setReviewMealTime } from '@/lib/reviews/actions';
 import type { AdminReviewRow } from './page';
 
 type DateRange = 'all' | '7d' | '30d';
@@ -50,6 +50,20 @@ export default function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
       const r = await deleteReview(row.id);
       setPendingId(null);
       setConfirm(null);
+      if (!r.ok) {
+        alert(r.message);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function onToggleMeal(row: AdminReviewRow) {
+    const next = row.meal_time === 'lunch' ? 'dinner' : 'lunch';
+    setPendingId(row.id);
+    startTransition(async () => {
+      const r = await setReviewMealTime(row.id, next);
+      setPendingId(null);
       if (!r.ok) {
         alert(r.message);
         return;
@@ -162,7 +176,15 @@ export default function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
                 </td>
                 <td className="px-3 py-2 text-xs text-fg-muted">
                   <div className="flex items-center gap-1.5">
-                    <span title={r.meal_time}>{r.meal_time === 'lunch' ? '☀' : '☾'}</span>
+                    <button
+                      type="button"
+                      onClick={() => onToggleMeal(r)}
+                      disabled={pendingId === r.id}
+                      title={`${r.meal_time === 'lunch' ? '점심 → 저녁' : '저녁 → 점심'} 으로 변경`}
+                      className="rounded px-1 text-base hover:bg-fg/10 disabled:opacity-50"
+                    >
+                      {r.meal_time === 'lunch' ? '☀' : '☾'}
+                    </button>
                     {r.party_size != null && <span>👥{r.party_size}</span>}
                     <span className="font-mono text-[10px] opacity-70">{r.hash}</span>
                   </div>

@@ -5,7 +5,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
-import { deleteReview, revertReview } from '@/lib/reviews/actions';
+import { deleteReview, revertReview, setReviewMealTime } from '@/lib/reviews/actions';
 import type { MealMode, Review } from '@/types/db';
 
 type AuthorMeta = {
@@ -116,6 +116,20 @@ export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, on
     });
   }
 
+  function onToggleMeal(id: string, current: MealMode) {
+    const next: MealMode = current === 'lunch' ? 'dinner' : 'lunch';
+    setPendingMutateId(id);
+    startTransition(async () => {
+      const r = await setReviewMealTime(id, next);
+      setPendingMutateId(null);
+      if (!r.ok) {
+        alert(r.message);
+        return;
+      }
+      onMutated();
+    });
+  }
+
   return (
     <div className="flex h-full flex-col">
       {/* 헤더 + 필터 토글 */}
@@ -168,6 +182,7 @@ export function ReviewLog({ restaurantId, currentUserId, isAdmin, refreshKey, on
             pendingMutateId={pendingMutateId}
             onDelete={onDelete}
             onRevert={onRevert}
+            onToggleMeal={onToggleMeal}
           />
         ))}
       </ol>
@@ -183,6 +198,7 @@ function ReviewItem({
   pendingMutateId,
   onDelete,
   onRevert,
+  onToggleMeal,
 }: {
   latest: EnrichedReview;
   older: EnrichedReview[];
@@ -191,6 +207,7 @@ function ReviewItem({
   pendingMutateId: string | null;
   onDelete: (id: string) => void;
   onRevert: (id: string) => void;
+  onToggleMeal: (id: string, current: MealMode) => void;
 }) {
   const [showOlder, setShowOlder] = useState(false);
   const items = showOlder ? [latest, ...older] : [latest];
@@ -209,6 +226,7 @@ function ReviewItem({
             pendingMutate={pendingMutateId === r.id}
             onDelete={() => onDelete(r.id)}
             onRevert={() => onRevert(r.id)}
+            onToggleMeal={() => onToggleMeal(r.id, r.meal_time)}
           />
         ))}
         {!showOlder && older.length > 0 && (
@@ -233,6 +251,7 @@ function ReviewRow({
   pendingMutate,
   onDelete,
   onRevert,
+  onToggleMeal,
 }: {
   review: EnrichedReview;
   isHead: boolean;
@@ -241,6 +260,7 @@ function ReviewRow({
   pendingMutate: boolean;
   onDelete: () => void;
   onRevert: () => void;
+  onToggleMeal: () => void;
 }) {
   const created = new Date(review.created_at);
   const ageDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
@@ -276,9 +296,21 @@ function ReviewRow({
           <span className="font-medium text-fg">{authorName}</span>
           <span>·</span>
           <span>{formatRelativeTime(created)}</span>
-          <span title={review.meal_time === 'lunch' ? '점심' : '저녁'} aria-hidden>
-            {review.meal_time === 'lunch' ? '☀' : '☾'}
-          </span>
+          {isAdmin ? (
+            <button
+              type="button"
+              onClick={onToggleMeal}
+              disabled={pendingMutate}
+              title={`관리자: ${review.meal_time === 'lunch' ? '점심 → 저녁' : '저녁 → 점심'} 으로 변경`}
+              className="rounded px-0.5 hover:bg-fg/10 disabled:opacity-50"
+            >
+              {review.meal_time === 'lunch' ? '☀' : '☾'}
+            </button>
+          ) : (
+            <span title={review.meal_time === 'lunch' ? '점심' : '저녁'} aria-hidden>
+              {review.meal_time === 'lunch' ? '☀' : '☾'}
+            </span>
+          )}
           {review.party_size != null && (
             <span
               title={`${review.party_size}명이서 방문`}
