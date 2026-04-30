@@ -47,14 +47,14 @@
 | D20 | 리뷰 수정 | 본인 작성 후 24시간 이내만 가능. 이후엔 수정/삭제 불가 (커밋 보존) |
 | D21 | 추천 인원 | `recommended_min_size`, `recommended_max_size` (둘 다 nullable, 둘 다 set 또는 둘 다 null). 등록 폼에서 선택 입력. 1차엔 표시만 (필터 미구현) |
 | D22 | 프로필 이모지 | `users.avatar_emoji` (nullable). 풀 120개 (동물 40 / 음식 40 / 표정 24 / 사물 16, `lib/avatar-emoji.ts`). NULL 이면 이름+id 해시로 자동 배정. 픽커는 온보딩 + 마이페이지 |
-| D23 | 비밀번호 인증 | 회사 메일이 사내망 전용이라 매직링크 단독으로는 외부망 사용 불가. `users.password_set boolean` 추가. 첫 가입은 매직링크, 콜백 후 `/set-password` 강제 → 이후 `/login` 의 이메일+비번 폼으로 로그인. 매직링크는 보조로 유지 |
+| D23 | 비밀번호 인증 | 회사 메일이 사내망 전용이라 매직링크 단독으로는 외부망 사용 불가. `users.password_set boolean` 추가. **D38 이후로는** 가입 시점에 사용자가 직접 비번 설정 → `password_set: true` 로 시작. admin 이 임시비번 reset 하면 `password_set: false` 가 되며 `/set-password` 로 강제 |
 | D24 | 관리자 역할 | `users.role text default 'member' check (role in ('member','admin'))`. RLS 정책에 `is_admin()` 함수 박아 admin 우회. 첫 admin 은 `update users set role='admin' where email=...` 로 직접 |
 | D25 | 폐업 토글 권한 | **admin only**. SPEC 초안의 "등록자 또는 24h commit 한 사람" 보다 좁힘. UI 도 admin 만 토글 버튼 노출 |
 | D26 | 리뷰 방문 인원 | `reviews.party_size int` (nullable, 1~99). 작성 폼에서 선택 입력. 표시 시 `👥N` |
 | D27 | cuisine 그룹 분류 | 13개 그룹 (한식/일식/중식/양식/아시아/고기/해산물/치킨/피자/카페·디저트/술집/뷔페/기타) × 항목 70+개. `lib/cuisine.ts` 의 `CUISINE_GROUPS` 가 단일 source. 사이드바 필터는 그룹 라벨로, 등록 폼은 그룹별로 칩 묶어 노출 |
 | D28 | 술 가능 여부 | `restaurants.has_alcohol boolean default false`. 음식 종류와 직교(orthogonal) — 일식+술 / 한식+술 등 표현 가능. 사이드바 `🍺 술 가능만` 토글, 디테일 패널 식당명 옆 🍺 표시 |
 | D29 | 식당 정보 수정 | 등록자 본인 또는 admin 만 수정 가능. `/restaurants/[id]/edit` 페이지에서 이름/좌표/주소/카테고리/cuisine/menu_tags/가격대/추천인원/술가능/비고/카카오 url 변경. 좌표/주소는 카카오 재검색으로 갱신 가능 (D29 보강) |
-| D30 | OTP 인증 | 회사 메일 (lge.com) 의 Outlook Safe Links 가 매직링크 url 을 사전 클릭해 OTP 가 소진되는 문제로 매직링크 url 흐름 폐기. 메일에 8자리 토큰만 표시하고 사용자가 `/login` 에서 직접 입력. Supabase email template 수정 필요 (`{{ .Token }}` 만 노출) + Auth 설정에서 OTP token length 를 8 로 설정 |
+| D30 | ~~OTP 인증~~ → admin 승인 가입으로 폐기 (D38) | OTP 흐름은 회사 메일 게이트웨이 / SMTP rate limit / Outlook Safe Links 등 외부 의존성 문제 누적으로 D38 에서 admin 승인 모델로 대체. 매직링크/8자리 코드 흐름 모두 폐기 |
 | D31 | 카카오 place_url | `restaurants.kakao_place_url` 추가. 등록 시 카카오 places 검색 결과의 place_url 저장 → 디테일 패널의 외부 링크가 식당 상세 페이지 (리뷰/메뉴) 로 연결. admin 페이지에서 누락분 자동 보정 가능 |
 | D32 | 사내 제보 시스템 | `reports` 테이블 + `/report` 폼 (카테고리 4개: 버그/기능/식당/기타) + `/admin/reports` 처리 페이지. 상태 (open/reviewing/resolved) + admin 메모. RLS: 본인+admin read, admin update/delete |
 | D33 | 식당 등록자 표시 | 디테일 패널 (lg 이상) 에 `등록: {이모지} {이름}` 표시. 모바일은 hidden (공간 최적화) |
@@ -62,6 +62,7 @@
 | D35 | 리뷰 revert vs delete | 일반 사용자: 본인 글을 **언제든 revert** 가능 (DB 행 보존, 화면에 strikethrough + REVERTED 라벨 → history 유지). admin: **delete** 가능 (DB 행 완전 제거). RLS update 24h 제약 제거 (D20 보강), delete 정책은 admin only |
 | D36 | 랭킹 (비공개) | `/ranking` 페이지에 인기 식당 / 활동러 / 최근 7일 핫함 / cuisine 분포 4섹션. 활동 점수 = 리뷰 1점 + 식당 등록 5점. **현재 UserMenu 에서 숨김** (`/ranking` url 직접 진입은 가능) — 추후 멤버 등급 기능 도입 후 공개 |
 | D37 | 멤버 등급 (TODO) | D36 의 점수 기반으로 추후 도입 예정. 브론즈/실버/골드 같은 등급 + 마이페이지/디테일패널에 배지 표시 |
+| D38 | admin 승인 가입 | OTP/메일 인프라 의존성을 제거. 사용자는 `/signup` 에서 이메일+이름+비번 입력 → `auth.users` 가 `email_confirm: false` 로 미리 생성되고 `signup_requests` row pending 상태. admin 이 `/admin/signups` 에서 승인하면 `email_confirmed_at` 세팅 + `users` 프로필 행 생성 (`password_set: true`). 거절 시 auth user 삭제 + `signup_requests.status='denied'`. 비번 분실은 admin 이 `/admin/users` 에서 임시비번 발급 → 사용자가 임시비번으로 로그인 시 `/set-password` 강제 |
 
 ---
 
@@ -179,7 +180,29 @@ create table reviews (
 create index idx_reviews_restaurant_time on reviews(restaurant_id, created_at desc);
 ```
 
-### 2.6 RLS (Row Level Security)
+### 2.6 `signup_requests` (D38)
+admin 승인 가입 흐름의 큐. `/signup` 제출 시 row 생성, admin 이 `/admin/signups` 에서 처리.
+
+```sql
+create table signup_requests (
+  id uuid primary key default gen_random_uuid(),
+  email text not null,
+  name text not null,
+  auth_user_id uuid not null,                     -- email_confirm:false 로 미리 만든 auth.users.id
+  status text not null default 'pending'
+    check (status in ('pending','approved','denied')),
+  requested_at timestamptz not null default now(),
+  reviewed_at timestamptz,
+  reviewed_by uuid references users(id) on delete set null,
+  denied_reason text
+);
+-- 한 이메일당 동시에 하나의 pending (denied/approved 후 재신청은 가능)
+create unique index uniq_signup_pending_email on signup_requests(email) where status = 'pending';
+```
+
+RLS: admin only (read/write). 일반 사용자는 직접 못 본다 — `/signup` 의 `requestSignup` server action 이 service-role 키로 처리.
+
+### 2.7 RLS (Row Level Security)
 모든 테이블에 RLS 활성화. `is_admin()` 함수로 admin 우회 (D24).
 
 - 모든 read: 인증된 사용자(authenticated role)만
@@ -193,7 +216,7 @@ create index idx_reviews_restaurant_time on reviews(restaurant_id, created_at de
 
 ⚠️ `is_closed` 토글은 RLS 가 아닌 server action 단계에서 admin 검증 (D25). RLS 가 owner update 를 허용하므로 server action 만 안전 진입점으로 둠.
 
-### 2.7 트리거
+### 2.8 트리거
 리뷰 추가/삭제 시 `restaurants.commit_count`, `last_commit_at` 자동 갱신.
 
 ---
@@ -221,17 +244,18 @@ ALLOWED_EMAIL_DOMAINS=회사.com,계열사.com
 
 ```
 /                            → 인증 시 /map으로 리다이렉트, 미인증 시 /login
-/login                       → 이메일+비번 (기본) + 매직링크 (보조, 사내망 필요)
-/auth/callback               → 매직링크 콜백 (도메인 검증 + users 행 자동 생성)
-/onboarding                  → 가입 직후 사무실/건물/이모지 선택 (가드)
-/set-password                → 비번 미설정 사용자 강제 진입 (D23)
+/login                       → 이메일+비번 로그인
+/signup                      → 가입 신청 (이메일+이름+비번 → admin 승인 대기, D33)
+/auth/callback               → OAuth 콜백 (현재 미사용, 비번 reset 메일 위해 보존)
+/onboarding                  → 승인 후 사무실/건물/이모지 선택 (가드)
+/set-password                → 비번 미설정 사용자 강제 진입 (admin 임시비번 reset 후, D23/D33)
 /map                         → 메인. 점심/저녁 토글 + 식당 리스트 + 지도 + 디테일 패널
 /restaurants/new             → 새 식당 등록 + 첫 한 줄 리뷰
 /restaurants/[id]/edit       → 식당 수정 (owner 또는 admin, D29)
 /me                          → 마이페이지 (이름/이모지/부서/건물 변경 + 비번 변경 + 내 commit 목록)
 /report                      → 관리자에게 제보 (D32)
 /ranking                     → 랭킹 (D36, UserMenu 에선 숨김. url 직접 진입)
-/admin/*                     → 관리자 영역 (대시보드/buildings/restaurants/users/reports)
+/admin/*                     → 관리자 영역 (대시보드/buildings/restaurants/users/signups/reports)
 ```
 
 Next 16 의 `proxy.ts` (구 `middleware.ts`) 로 가드. 단계: 인증 → 온보딩(office/building) → 비번 설정(password_set) → /map.

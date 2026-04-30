@@ -16,7 +16,7 @@
 
 | 영역 | 내용 |
 |---|---|
-| 인증 | OTP (8자리 코드) 회원가입/로그인 + ID/PW 로그인 (회사 메일 Outlook Safe Links 회피용) |
+| 인증 | 가입 신청 → admin 승인 → ID/PW 로그인 (회사 메일 인프라 의존성 0) |
 | 지도 | 카카오맵 위 흰 배경 + 그룹별 이모지 핀, 회사 위치 표시, 점심/저녁 모드별 색상 |
 | 식당 | 카카오 검색 기반 등록, cuisine 13그룹 70+세부, 술가능, 추천인원, 카카오 place_url |
 | 리뷰 | "한 줄 = commit" 모델. 6자리 hash, party_size, 점심/저녁 토글, revert (24h) |
@@ -41,12 +41,10 @@ npm install
    - Project URL → `NEXT_PUBLIC_SUPABASE_URL`
    - anon public → `NEXT_PUBLIC_SUPABASE_ANON_KEY`
    - service_role → `SUPABASE_SERVICE_ROLE_KEY` (서버 전용, 절대 클라이언트 노출 금지)
-4. Authentication → Email Templates → **Magic Link** 템플릿 수정:
-   - URL (`{{ .ConfirmationURL }}`) 부분 모두 제거
-   - `{{ .Token }}` 만 남겨 8자리 코드로 발송 (D30 — Outlook Safe Links 회피, token length 는 Auth 설정에서 8 로)
-5. Authentication → URL Configuration:
+4. Authentication → URL Configuration:
    - Site URL: `https://lunchlog-rho.vercel.app` (또는 본인 도메인)
-   - Redirect URLs: `<위 url>/auth/callback`
+   - Redirect URLs: `<위 url>/auth/callback` (현재는 미사용 — 추후 비번 reset 메일 흐름 위해)
+5. Authentication → Sign In / Providers → Email: **Confirm Email = ON** 유지 (가입 신청 시 미승인 상태로 잡히게 하는 핵심)
 
 ### 3. 카카오 디벨로퍼스
 
@@ -94,15 +92,11 @@ update users set role = 'admin' where email = '본인이메일@lge.com';
 |---|---|
 | 건물 좌표 자동 보정 | `/admin/buildings` → 🪄 자동 보정 (KAKAO_REST_KEY 필요) |
 | 식당 일괄 관리 | `/admin/restaurants` (폐업/삭제, place_url 자동 보정) |
-| 사용자 권한 | `/admin/users` (admin 부여/회수) |
+| 사용자 권한 / 비번 reset | `/admin/users` (admin 부여/회수, 임시비번 발급) |
+| 가입 요청 승인 | `/admin/signups` (대기/승인/거절) |
 | 제보 처리 | `/admin/reports` (상태 + 메모) |
-| 사용자 신규 가입 / 비번 재설정 | `scripts/admin-create-user.mjs`, `scripts/admin-set-password.mjs` |
 
-매직링크가 막힌 환경 (Outlook Safe Links) 에서 동료 가입시키려면:
-
-```bash
-node --env-file=.env.local scripts/admin-create-user.mjs you@lge.com '임시비번' 표시이름
-```
+비밀번호 분실한 사용자가 메신저로 문의 → `/admin/users` 에서 해당 사용자의 **비번 reset** 버튼 클릭 → 화면에 1회만 표시되는 임시비번을 메신저로 직접 전달. 사용자는 임시비번으로 로그인 후 `/set-password` 로 강제 이동.
 
 ## 배포 (Vercel)
 
@@ -121,10 +115,11 @@ src/
   app/
     layout.tsx              # root layout + FOUC 방지 부트 스크립트 (점심/저녁 mode)
     error.tsx / loading.tsx # 전역 에러 / 로딩 fallback
-    login/                  # OTP + ID/PW 로그인
+    login/                  # ID/PW 로그인
+    signup/                 # 가입 신청 (admin 승인 대기)
     onboarding/             # 사무실/건물/이모지 선택
-    set-password/           # 매직링크 가입 후 비번 강제 설정
-    auth/callback/          # 매직링크 콜백 (호환용)
+    set-password/           # admin 임시비번 reset 후 새 비번 설정
+    auth/callback/          # OAuth-style 콜백 (현재 미사용, 추후 비번 reset 메일 흐름 위해 유지)
     (app)/                  # 인증/온보딩 끝난 사용자 영역 (헤더 공통)
       layout.tsx            #   Header + MealModeProvider
       map/                  #   지도 + 사이드바 + 디테일 패널
@@ -138,7 +133,8 @@ src/
         page.tsx            #     대시보드
         buildings/          #     건물 좌표 자동/수동 보정
         restaurants/        #     식당 일괄 (폐업/삭제/place_url 보정)
-        users/              #     사용자 권한 토글
+        users/              #     사용자 권한 토글 + 비번 reset
+        signups/            #     가입 요청 승인/거절
         reports/            #     제보 상태/메모 처리
   components/
     Header.tsx              # 좌 로고 / 중 점심·저녁 토글 (/map 만) / 우 + 새맛집 + 아바타
@@ -174,8 +170,8 @@ src/
 supabase/
   migrations/               # SQL (번호 순서대로 실행)
 scripts/
-  admin-create-user.mjs     # 매직링크 우회 신규 가입
-  admin-set-password.mjs    # 비번 강제 재설정
+  admin-create-user.mjs     # CLI 백업 (긴급 admin 추가 용)
+  admin-set-password.mjs    # CLI 백업 (긴급 비번 강제 재설정)
 ```
 
 ## 진행 상태

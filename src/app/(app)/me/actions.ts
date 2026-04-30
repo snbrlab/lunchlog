@@ -31,7 +31,7 @@ export async function changePassword(formData: FormData): Promise<ChangePassword
   const { error: authError } = await supabase.auth.updateUser({ password });
   if (authError) return { ok: false, message: authError.message };
 
-  // 매직링크 가입 사용자가 처음 비번 설정하는 경우도 여기서 커버
+  // admin 임시비번 reset 후 첫 비번 설정 흐름도 여기서 커버 (password_set 복원)
   const { error: profileError } = await supabase
     .from('users')
     .update({ password_set: true })

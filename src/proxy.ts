@@ -1,11 +1,10 @@
 // 인증 + 온보딩 가드 (Next 16 proxy convention, 구 middleware)
-// /login, /auth/* 외 모든 경로는 인증 + 온보딩 완료 체크.
-// Phase 2 에서 도메인 화이트리스트 검증과 매직링크 콜백을 채운다.
+// /login, /signup, /auth/* 외 모든 경로는 인증 + 온보딩 완료 체크.
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/proxy';
 
-const PUBLIC_PATHS = ['/login', '/auth'];
+const PUBLIC_PATHS = ['/login', '/signup', '/auth'];
 const ONBOARDING_PATH = '/onboarding';
 const SET_PASSWORD_PATH = '/set-password';
 

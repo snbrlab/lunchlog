@@ -1,7 +1,9 @@
 'use server';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { getServerEnv } from '@/lib/env';
+import { avatarColorFor } from '@/lib/avatar-color';
 
 async function requireAdmin() {
   const supabase = await createSupabaseServerClient();
@@ -287,4 +289,156 @@ export async function setUserRole(
     .eq('id', userId);
   if (error) return { ok: false, message: error.message };
   return { ok: true };
+}
+
+// ---------------------------------------------------------------
+// 가입 요청 (admin 승인 흐름)
+// ---------------------------------------------------------------
+
+export type ApproveSignupResult = { ok: true } | { ok: false; message: string };
+
+export async function approveSignup(requestId: string): Promise<ApproveSignupResult> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+
+  const sa = getSupabaseAdminClient();
+
+  // 1) 요청 조회
+  const { data: req, error: reqError } = await sa
+    .from('signup_requests')
+    .select('id, email, name, auth_user_id, status')
+    .eq('id', requestId)
+    .maybeSingle();
+  if (reqError) return { ok: false, message: reqError.message };
+  if (!req) return { ok: false, message: '가입 요청을 찾을 수 없어' };
+  if (req.status !== 'pending') {
+    return { ok: false, message: `이미 처리된 요청이야 (${req.status})` };
+  }
+
+  // 2) auth.users.email_confirmed_at 세팅 (Supabase admin API)
+  const { error: confirmError } = await sa.auth.admin.updateUserById(req.auth_user_id, {
+    email_confirm: true,
+  });
+  if (confirmError) return { ok: false, message: confirmError.message };
+
+  // 3) users 프로필 행 생성. 이미 있으면 (중복 승인 사고 등) skip.
+  const { data: existing } = await sa
+    .from('users')
+    .select('id')
+    .eq('id', req.auth_user_id)
+    .maybeSingle();
+  if (!existing) {
+    const { error: insertError } = await sa.from('users').insert({
+      id: req.auth_user_id,
+      email: req.email,
+      name: req.name,
+      avatar_color: avatarColorFor(req.name + req.auth_user_id),
+      password_set: true,
+    });
+    if (insertError) return { ok: false, message: insertError.message };
+  }
+
+  // 4) signup_requests 상태 업데이트
+  const { error: updateError } = await sa
+    .from('signup_requests')
+    .update({
+      status: 'approved',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: admin.userId,
+    })
+    .eq('id', requestId);
+  if (updateError) return { ok: false, message: updateError.message };
+
+  return { ok: true };
+}
+
+export type DenySignupResult = { ok: true } | { ok: false; message: string };
+
+export async function denySignup(
+  requestId: string,
+  reason: string | null,
+): Promise<DenySignupResult> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+
+  const sa = getSupabaseAdminClient();
+
+  const { data: req, error: reqError } = await sa
+    .from('signup_requests')
+    .select('id, auth_user_id, status')
+    .eq('id', requestId)
+    .maybeSingle();
+  if (reqError) return { ok: false, message: reqError.message };
+  if (!req) return { ok: false, message: '가입 요청을 찾을 수 없어' };
+  if (req.status !== 'pending') {
+    return { ok: false, message: `이미 처리된 요청이야 (${req.status})` };
+  }
+
+  // 미승인 auth.users 정리. 실패해도 진행 (이미 삭제됐을 수 있음).
+  await sa.auth.admin.deleteUser(req.auth_user_id);
+
+  const { error: updateError } = await sa
+    .from('signup_requests')
+    .update({
+      status: 'denied',
+      reviewed_at: new Date().toISOString(),
+      reviewed_by: admin.userId,
+      denied_reason: reason?.trim() || null,
+    })
+    .eq('id', requestId);
+  if (updateError) return { ok: false, message: updateError.message };
+
+  return { ok: true };
+}
+
+export type ResetPasswordResult =
+  | { ok: true; tempPassword: string }
+  | { ok: false; message: string };
+
+// admin 이 사용자 비밀번호를 임시값으로 reset. 결과 임시 비번은 한 번만 화면에 표시.
+// password_set=false 로 만들어 다음 로그인 시 /set-password 강제.
+export async function resetUserPassword(userId: string): Promise<ResetPasswordResult> {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+
+  const sa = getSupabaseAdminClient();
+
+  // 12자 임시 비번 (영문 대소 + 숫자, 사람이 메신저로 옮기기 쉽게 특수문자 제외)
+  const tempPassword = generateTempPassword(12);
+
+  const { error: pwError } = await sa.auth.admin.updateUserById(userId, {
+    password: tempPassword,
+  });
+  if (pwError) return { ok: false, message: pwError.message };
+
+  const { error: profileError } = await sa
+    .from('users')
+    .update({ password_set: false })
+    .eq('id', userId);
+  if (profileError) return { ok: false, message: profileError.message };
+
+  return { ok: true, tempPassword };
+}
+
+function generateTempPassword(len: number): string {
+  // 헷갈리는 문자(0/O/o, 1/I/l) 제외
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
+  const arr = new Uint32Array(len);
+  crypto.getRandomValues(arr);
+  let out = '';
+  for (let i = 0; i < len; i++) {
+    out += chars[arr[i]! % chars.length];
+  }
+  return out;
 }

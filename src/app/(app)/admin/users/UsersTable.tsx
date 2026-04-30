@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { setUserRole } from '@/lib/admin/actions';
+import { setUserRole, resetUserPassword } from '@/lib/admin/actions';
 
 interface Row {
   id: string;
@@ -22,6 +22,9 @@ export default function UsersTable({
 }) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [tempPwModal, setTempPwModal] = useState<{ name: string; email: string; pw: string } | null>(
+    null,
+  );
   const [, startTransition] = useTransition();
 
   function toggleRole(row: Row) {
@@ -40,6 +43,28 @@ export default function UsersTable({
         alert(r.message);
         return;
       }
+      router.refresh();
+    });
+  }
+
+  function resetPw(row: Row) {
+    if (
+      !confirm(
+        `${row.name} (${row.email}) 비밀번호를 임시값으로 초기화할까?\n\n` +
+          `초기화하면 다음 로그인 시 비번 재설정 페이지로 이동돼.\n` +
+          `생성된 임시 비번은 화면에 한 번만 보여주니까 메신저로 직접 전달해줘.`,
+      )
+    )
+      return;
+    setPendingId(row.id);
+    startTransition(async () => {
+      const r = await resetUserPassword(row.id);
+      setPendingId(null);
+      if (!r.ok) {
+        alert(r.message);
+        return;
+      }
+      setTempPwModal({ name: row.name, email: row.email, pw: r.tempPassword });
       router.refresh();
     });
   }
@@ -82,23 +107,85 @@ export default function UsersTable({
                 </span>
               </td>
               <td className="px-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => toggleRole(r)}
-                  disabled={pendingId === r.id}
-                  className="rounded border border-border px-2 py-1 text-[11px] text-fg-muted transition hover:border-fg/40 hover:text-fg disabled:opacity-50"
-                >
-                  {pendingId === r.id
-                    ? '…'
-                    : r.role === 'admin'
-                    ? '권한 회수'
-                    : 'admin 부여'}
-                </button>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => toggleRole(r)}
+                    disabled={pendingId === r.id}
+                    className="rounded border border-border px-2 py-1 text-[11px] text-fg-muted transition hover:border-fg/40 hover:text-fg disabled:opacity-50"
+                  >
+                    {pendingId === r.id
+                      ? '…'
+                      : r.role === 'admin'
+                        ? '권한 회수'
+                        : 'admin 부여'}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => resetPw(r)}
+                    disabled={pendingId === r.id}
+                    className="rounded border border-border px-2 py-1 text-[11px] text-fg-muted transition hover:border-fg/40 hover:text-fg disabled:opacity-50"
+                  >
+                    비번 reset
+                  </button>
+                </div>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {tempPwModal && (
+        <TempPasswordModal
+          name={tempPwModal.name}
+          email={tempPwModal.email}
+          pw={tempPwModal.pw}
+          onClose={() => setTempPwModal(null)}
+        />
+      )}
+    </div>
+  );
+}
+
+function TempPasswordModal({
+  name,
+  email,
+  pw,
+  onClose,
+}: {
+  name: string;
+  email: string;
+  pw: string;
+  onClose: () => void;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl">
+        <h3 className="text-sm font-semibold text-fg">임시 비밀번호 생성됨</h3>
+        <p className="mt-2 text-xs text-fg-muted">
+          <span className="font-medium text-fg">{name}</span>{' '}
+          <span className="font-mono">({email})</span> 한테 메신저로 전달해줘.
+          <br />이 화면을 닫으면 임시 비번을 다시 볼 수 없어.
+        </p>
+        <div className="mt-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2.5 font-mono text-base text-amber-900">
+          {pw}
+        </div>
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={() => navigator.clipboard?.writeText(pw)}
+            className="rounded-md border border-border bg-bg px-3 py-1.5 text-xs text-fg hover:bg-fg/5"
+          >
+            클립보드 복사
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md bg-fg px-3 py-1.5 text-xs font-semibold text-bg hover:opacity-90"
+          >
+            닫기
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
