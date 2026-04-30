@@ -56,9 +56,14 @@ export default function NewRestaurantForm({ origin }: Props) {
   }
 
   function toggleCategory(c: MealMode) {
-    setCategories((prev) =>
-      prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c],
-    );
+    setCategories((prev) => {
+      const next = prev.includes(c) ? prev.filter((x) => x !== c) : [...prev, c];
+      // 첫 리뷰 모드가 더 이상 식당 카테고리에 없으면 남은 쪽으로 보정
+      if (next.length > 0 && !next.includes(firstReviewMode)) {
+        setFirstReviewMode(next[0]!);
+      }
+      return next;
+    });
   }
 
   function addMenuTag(raw: string) {
@@ -338,8 +343,15 @@ export default function NewRestaurantForm({ origin }: Props) {
           <button
             type="button"
             onClick={() => setFirstReviewMode((m) => (m === 'lunch' ? 'dinner' : 'lunch'))}
-            className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-bg text-base hover:bg-fg/5"
-            title={firstReviewMode === 'lunch' ? '점심' : '저녁'}
+            disabled={categories.length < 2}
+            className="flex h-8 w-8 items-center justify-center rounded-md border border-border bg-bg text-base hover:bg-fg/5 disabled:cursor-not-allowed disabled:opacity-50 disabled:hover:bg-bg"
+            title={
+              categories.length < 2
+                ? '식당 카테고리에 점심+저녁 모두 선택해야 토글 가능'
+                : firstReviewMode === 'lunch'
+                  ? '점심'
+                  : '저녁'
+            }
           >
             {firstReviewMode === 'lunch' ? '☀' : '☾'}
           </button>
