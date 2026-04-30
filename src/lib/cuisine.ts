@@ -5,6 +5,8 @@
 interface CuisineItem {
   value: string;
   label?: string;
+  // 그룹 emoji 와 다르게 항목별로 명확한 아이콘 있을 때 override
+  emoji?: string;
 }
 
 export const CUISINE_GROUPS = [
@@ -15,7 +17,7 @@ export const CUISINE_GROUPS = [
       { value: '국밥' },
       { value: '찌개' },
       { value: '비빔밥' },
-      { value: '김밥' },
+      { value: '김밥', emoji: '🍙' },
       { value: '분식' },
       { value: '떡볶이' },
       { value: '칼국수' },
@@ -60,7 +62,7 @@ export const CUISINE_GROUPS = [
     items: [
       { value: '파스타' },
       { value: '스테이크' },
-      { value: '햄버거' },
+      { value: '햄버거', emoji: '🍔' },
       { value: '샐러드' },
       { value: '브런치' },
       { value: '멕시칸' },
@@ -157,12 +159,11 @@ export function findCuisineGroup(c: CuisineType): string | undefined {
   )?.label;
 }
 
-// cuisine_type 값 → 해당 그룹의 emoji
+// cuisine_type 값 → 항목 emoji (있으면) 또는 그룹 emoji
 export function emojiForCuisine(c: CuisineType): string {
   for (const group of CUISINE_GROUPS) {
-    if ((group.items as readonly CuisineItem[]).some((i) => i.value === c)) {
-      return group.emoji;
-    }
+    const item = (group.items as readonly CuisineItem[]).find((i) => i.value === c);
+    if (item) return item.emoji ?? group.emoji;
   }
   return '🍱';
 }
