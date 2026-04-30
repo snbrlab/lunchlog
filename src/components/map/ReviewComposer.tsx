@@ -99,7 +99,7 @@ export function ReviewComposer({ restaurantId, onCreated, replyTo, onCancelReply
       )}
       <form
         onSubmit={onSubmit}
-        className="flex items-stretch gap-2 px-5 py-2.5"
+        className="flex flex-wrap items-stretch gap-2 px-5 py-2.5 max-sm:gap-y-1.5"
       >
         <input
           type="text"
@@ -108,7 +108,7 @@ export function ReviewComposer({ restaurantId, onCreated, replyTo, onCancelReply
           placeholder={replyTo ? `${replyTo.authorName} 의 commit 에 답글…` : '한 줄 리뷰…'}
           maxLength={MAX}
           disabled={pending}
-          className="flex-1 rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted/70 outline-none transition focus:border-fg disabled:opacity-50"
+          className="min-w-0 flex-1 basis-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted/70 outline-none transition focus:border-fg disabled:opacity-50 sm:basis-0"
           aria-label="리뷰 메시지"
         />
 
@@ -147,12 +147,12 @@ export function ReviewComposer({ restaurantId, onCreated, replyTo, onCancelReply
         </button>
       </div>
 
-      <div className="group relative">
+      <div className="group relative ml-auto sm:ml-0">
         <Tooltip>한 줄 리뷰 등록 (Enter)</Tooltip>
         <button
           type="submit"
           disabled={pending || !message.trim()}
-          className="h-9 rounded-md bg-fg px-3 text-xs font-semibold uppercase tracking-wider text-bg transition hover:opacity-90 disabled:opacity-40"
+          className="h-9 rounded-md bg-fg px-4 text-xs font-semibold uppercase tracking-wider text-bg transition hover:opacity-90 disabled:opacity-40"
         >
           {pending ? '…' : replyTo ? 'reply' : 'commit'}
         </button>
