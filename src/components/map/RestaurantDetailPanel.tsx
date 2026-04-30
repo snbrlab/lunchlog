@@ -23,7 +23,11 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [pending, startTransition] = useTransition();
-  const triggerRefresh = () => setRefreshKey((k) => k + 1);
+  // ReviewLog 내부 목록 + 부모 페이지의 restaurants(commit_count, last_commit_at) 둘 다 갱신
+  const triggerRefresh = () => {
+    setRefreshKey((k) => k + 1);
+    router.refresh();
+  };
 
   function onToggleClosed() {
     if (!restaurant) return;
