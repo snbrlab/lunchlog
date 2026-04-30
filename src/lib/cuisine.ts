@@ -62,7 +62,6 @@ export const CUISINE_GROUPS = [
     items: [
       { value: '파스타' },
       { value: '스테이크' },
-      { value: '햄버거', emoji: '🍔' },
       { value: '샐러드' },
       { value: '브런치' },
       { value: '멕시칸' },
@@ -112,6 +111,11 @@ export const CUISINE_GROUPS = [
     label: '피자',
     emoji: '🍕',
     items: [{ value: '피자' }] as const,
+  },
+  {
+    label: '버거',
+    emoji: '🍔',
+    items: [{ value: '햄버거' }] as const,
   },
   {
     label: '카페/디저트',
