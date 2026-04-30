@@ -34,6 +34,7 @@
 | P15 | **에러 추적 (Sentry 등)** | 사용자 늘면 추가 |
 | P16 | **백업** | Supabase 자동 백업 + 주간 SQL dump |
 | P17 | **데이터 export** | 사용자 본인 commit JSON 다운로드 (마이페이지) |
+| P18 | **영업시간 자동 채우기** | 카카오 비공식 endpoint `https://place.map.kakao.com/main/v/{placeId}` 의 `basicInfo.openHour` 활용. 이미 보유한 `kakao_place_url` 에서 placeId 추출. admin 페이지에 "영업시간 자동 채우기" 버튼 (좌표/place_url 자동 보정 패턴 따름). 스키마는 `opening_hours text` (간단) 또는 `jsonb` (요일별 + "지금 영업 중" 뱃지 가능). ⚠️ 비공식 API — 깨질 시 fallback 으로 카카오 링크 노출. 대안: Google Places API (공식, 결제카드 필요, 무료 티어 충분) |
 
 ## 🚀 큰 작업 (later)
 
