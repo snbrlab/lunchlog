@@ -10,7 +10,7 @@ import type { CuisineType, MealMode } from '@/types/db';
 interface CreateRestaurantInput {
   name: string;
   categories: MealMode[];
-  cuisineType: CuisineType;
+  cuisineTypes: CuisineType[];
   menuTags: string[];
   priceLevel: 1 | 2 | 3;
   latitude: number;
@@ -66,9 +66,15 @@ export async function createRestaurant(
     if (c !== 'lunch' && c !== 'dinner')
       return { ok: false, reason: 'invalid', message: '잘못된 카테고리' };
   }
-  if (!(ALL_CUISINES as readonly string[]).includes(input.cuisineType)) {
-    return { ok: false, reason: 'invalid', message: '잘못된 음식 종류' };
+  if (input.cuisineTypes.length === 0) {
+    return { ok: false, reason: 'invalid', message: '음식 종류 최소 1개 선택' };
   }
+  for (const c of input.cuisineTypes) {
+    if (!(ALL_CUISINES as readonly string[]).includes(c)) {
+      return { ok: false, reason: 'invalid', message: '잘못된 음식 종류' };
+    }
+  }
+  const dedupCuisines = Array.from(new Set(input.cuisineTypes));
   if (![1, 2, 3].includes(input.priceLevel)) {
     return { ok: false, reason: 'invalid', message: '가격대는 1~3' };
   }
@@ -137,11 +143,12 @@ export async function createRestaurant(
     const latDelta = NEAR_RADIUS_M / 111_000;
     const lngDelta = NEAR_RADIUS_M / (111_000 * Math.cos((input.latitude * Math.PI) / 180));
 
+    // overlaps: cuisine_types 배열에 입력 cuisine 중 하나라도 겹치면 매치
     const { data: candidates } = await supabase
       .from('restaurants')
-      .select('id, name, latitude, longitude, cuisine_type, is_closed')
+      .select('id, name, latitude, longitude, cuisine_types, is_closed')
       .eq('office_id', profile.office_id)
-      .eq('cuisine_type', input.cuisineType)
+      .overlaps('cuisine_types', dedupCuisines)
       .eq('is_closed', false)
       .gte('latitude', input.latitude - latDelta)
       .lte('latitude', input.latitude + latDelta)
@@ -169,7 +176,7 @@ export async function createRestaurant(
     .insert({
       name,
       categories: input.categories,
-      cuisine_type: input.cuisineType,
+      cuisine_types: dedupCuisines,
       menu_tags: input.menuTags.filter((t) => t.length > 0),
       price_level: input.priceLevel,
       latitude: input.latitude,

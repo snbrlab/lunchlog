@@ -17,7 +17,7 @@ export interface LogReviewRow {
   restaurant: {
     id: string;
     name: string;
-    cuisine_type: string;
+    cuisine_types: string[];
     is_closed: boolean;
   } | null;
 }
@@ -33,7 +33,7 @@ export default async function LogPage() {
     .select(
       'id, message, meal_time, party_size, hash, reverted, created_at, ' +
         'author:users!reviews_author_id_fkey ( name, avatar_emoji, avatar_color ), ' +
-        'restaurant:restaurants ( id, name, cuisine_type, is_closed )',
+        'restaurant:restaurants ( id, name, cuisine_types, is_closed )',
     )
     .order('created_at', { ascending: false })
     .limit(RECENT_LIMIT);

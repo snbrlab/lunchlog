@@ -18,7 +18,7 @@ export default function EditRestaurantForm({ restaurant }: Props) {
 
   const [name, setName] = useState(restaurant.name);
   const [categories, setCategories] = useState<MealMode[]>(restaurant.categories);
-  const [cuisine, setCuisine] = useState<CuisineType>(restaurant.cuisine_type);
+  const [cuisines, setCuisines] = useState<CuisineType[]>(restaurant.cuisine_types ?? []);
   const [menuTagInput, setMenuTagInput] = useState('');
   const [menuTags, setMenuTags] = useState<string[]>(restaurant.menu_tags);
   const [priceLevel, setPriceLevel] = useState<1 | 2 | 3>(restaurant.price_level);
@@ -85,7 +85,7 @@ export default function EditRestaurantForm({ restaurant }: Props) {
         id: restaurant.id,
         name,
         categories,
-        cuisineType: cuisine,
+        cuisineTypes: cuisines,
         menuTags,
         priceLevel,
         note: note.trim() || null,
@@ -171,9 +171,11 @@ export default function EditRestaurantForm({ restaurant }: Props) {
           </div>
         </div>
 
-        {/* cuisine */}
+        {/* cuisine — 복수 선택 가능 */}
         <div>
-          <span className="mb-1.5 block text-xs font-medium text-fg-muted">음식 종류</span>
+          <span className="mb-1.5 block text-xs font-medium text-fg-muted">
+            음식 종류 (1개 이상)
+          </span>
           <div className="space-y-2 rounded-md border border-border bg-surface p-3">
             {CUISINE_GROUPS.map((group) => (
               <div key={group.label} className="flex items-start gap-2">
@@ -181,18 +183,27 @@ export default function EditRestaurantForm({ restaurant }: Props) {
                   {group.label}
                 </span>
                 <div className="flex flex-1 flex-wrap gap-1">
-                  {group.items.map((item) => (
-                    <button
-                      type="button"
-                      key={item.value}
-                      onClick={() => setCuisine(item.value)}
-                      className={`rounded-full px-2.5 py-1 text-xs transition ${
-                        item.value === cuisine ? 'bg-fg text-bg' : 'bg-bg text-fg-muted hover:bg-fg/5'
-                      }`}
-                    >
-                      {cuisineLabelFor(item)}
-                    </button>
-                  ))}
+                  {group.items.map((item) => {
+                    const active = cuisines.includes(item.value);
+                    return (
+                      <button
+                        type="button"
+                        key={item.value}
+                        onClick={() =>
+                          setCuisines((prev) =>
+                            prev.includes(item.value)
+                              ? prev.filter((x) => x !== item.value)
+                              : [...prev, item.value],
+                          )
+                        }
+                        className={`rounded-full px-2.5 py-1 text-xs transition ${
+                          active ? 'bg-fg text-bg' : 'bg-bg text-fg-muted hover:bg-fg/5'
+                        }`}
+                      >
+                        {cuisineLabelFor(item)}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -332,7 +343,7 @@ export default function EditRestaurantForm({ restaurant }: Props) {
         </button>
         <button
           type="submit"
-          disabled={pending || categories.length === 0}
+          disabled={pending || categories.length === 0 || cuisines.length === 0}
           className="flex-1 rounded-md bg-fg px-4 py-2.5 text-sm font-semibold text-bg hover:opacity-90 disabled:opacity-40"
         >
           {pending ? '저장 중…' : '저장'}

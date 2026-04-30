@@ -27,8 +27,8 @@
 |---|---|---|
 | D1 | 인증 방식 | 회사 이메일 도메인 화이트리스트만 가입 가능 (게스트 모드 없음) |
 | D2 | 식당 카테고리 | `lunch` / `dinner` 다중 선택 가능 (둘 다 가능한 식당 존재) |
-| D3 | 음식 종류 | `cuisine_type` 필드 (단일 선택, 필수). 13개 그룹 × 70+ 세부 항목. 단일 source = `lib/cuisine.ts` 의 `CUISINE_GROUPS`. (D27 갱신) |
-| D4 | 추천메뉴 | `menu_tags` 필드 (다중, 선택). cuisine_type과 별개의 자유 태그 |
+| D3 | 음식 종류 | `cuisine_types` 필드 (다중, 1개 이상 필수, D39 에서 단일 → 배열로 변경). 13개 그룹 × 70+ 세부 항목. 단일 source = `lib/cuisine.ts` 의 `CUISINE_GROUPS`. (D27/D39 갱신) |
+| D4 | 추천메뉴 | `menu_tags` 필드 (다중, 선택). cuisine_types 와 별개의 자유 태그 |
 | D5 | 리뷰 작성 권한 | 누구나 작성 가능. 방문 여부 검증하지 않음 (메모/위시리스트성 글도 허용) |
 | D6 | 같은 작성자 연속 리뷰 | ~~최근 1개만 펼쳐 노출 + "이전 N개 더보기"로 접기~~ → **그룹화 안 하고 모두 펼쳐 노출** (운영 중 사용자 결정으로 보강) |
 | D7 | 점심/저녁 리뷰 분리 | 각 리뷰는 `meal_time: 'lunch' | 'dinner'` 가짐. 작성 시 사용자가 토글로 선택 (기본값: 현재 탭) |
@@ -63,6 +63,7 @@
 | D36 | 랭킹 (비공개) | `/ranking` 페이지에 인기 식당 / 활동러 / 최근 7일 핫함 / cuisine 분포 4섹션. 활동 점수 = 리뷰 1점 + 식당 등록 5점. **현재 UserMenu 에서 숨김** (`/ranking` url 직접 진입은 가능) — 추후 멤버 등급 기능 도입 후 공개 |
 | D37 | 멤버 등급 (TODO) | D36 의 점수 기반으로 추후 도입 예정. 브론즈/실버/골드 같은 등급 + 마이페이지/디테일패널에 배지 표시 |
 | D38 | admin 승인 가입 | OTP/메일 인프라 의존성을 제거. 사용자는 `/signup` 에서 이메일+이름+비번 입력 → `auth.users` 가 `email_confirm: false` 로 미리 생성되고 `signup_requests` row pending 상태. admin 이 `/admin/signups` 에서 승인하면 `email_confirmed_at` 세팅 + `users` 프로필 행 생성 (`password_set: true`). 거절 시 auth user 삭제 + `signup_requests.status='denied'`. 비번 분실은 admin 이 `/admin/users` 에서 임시비번 발급 → 사용자가 임시비번으로 로그인 시 `/set-password` 강제 |
+| D39 | cuisine 다중 선택 | 한일퓨전 등 여러 cuisine 그룹 걸치는 곳을 위해 `cuisine_type text` → `cuisine_types text[]` 로 전환. 등록/수정 폼에서 다중 선택 가능 (1개 이상 필수). 사이드바 그룹 필터는 배열 overlap 으로 매칭. 50m 중복 검사도 `.overlaps()` 로. 기존 `cuisine_type` 컬럼은 rollback 안전망으로 보존, gin 인덱스 `idx_restaurants_cuisines` 신규 |
 
 ---
 
@@ -126,7 +127,7 @@ create table restaurants (
   id uuid primary key default gen_random_uuid(),
   name text not null,
   categories text[] not null,           -- ['lunch'], ['dinner'], ['lunch','dinner']
-  cuisine_type text not null,           -- D3/D27, lib/cuisine.ts 의 ALL_CUISINES 중 하나
+  cuisine_types text[] not null,        -- D3/D27/D39, 배열. 각 원소가 lib/cuisine.ts 의 ALL_CUISINES 중 하나
   menu_tags text[] default '{}',        -- 추천메뉴 자유 태그
   price_level int not null check (price_level between 1 and 3),
   latitude double precision not null,

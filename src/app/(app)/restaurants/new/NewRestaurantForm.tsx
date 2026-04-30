@@ -27,7 +27,7 @@ export default function NewRestaurantForm({ origin }: Props) {
 
   // 사용자 입력
   const [categories, setCategories] = useState<MealMode[]>([mode]);
-  const [cuisine, setCuisine] = useState<CuisineType>('한식');
+  const [cuisines, setCuisines] = useState<CuisineType[]>([]);
   const [menuTagInput, setMenuTagInput] = useState('');
   const [menuTags, setMenuTags] = useState<string[]>([]);
   const [priceLevel, setPriceLevel] = useState<1 | 2 | 3>(2);
@@ -98,7 +98,7 @@ export default function NewRestaurantForm({ origin }: Props) {
       const r: CreateRestaurantResult = await createRestaurant({
         name,
         categories,
-        cuisineType: cuisine,
+        cuisineTypes: cuisines,
         menuTags,
         priceLevel,
         latitude,
@@ -177,10 +177,10 @@ export default function NewRestaurantForm({ origin }: Props) {
           </div>
         </div>
 
-        {/* cuisine */}
+        {/* cuisine — 복수 선택 가능 */}
         <div>
           <span className="mb-1.5 block text-xs font-medium text-fg-muted">
-            음식 종류 (단일) — 정확한 게 없으면 대분류 (한식/일식 등) 선택
+            음식 종류 (1개 이상 선택) — 한일퓨전 등 여러 그룹 걸치는 곳은 다중 선택
           </span>
           <div className="space-y-2 rounded-md border border-border bg-surface p-3">
             {CUISINE_GROUPS.map((group) => (
@@ -189,18 +189,27 @@ export default function NewRestaurantForm({ origin }: Props) {
                   {group.label}
                 </span>
                 <div className="flex flex-1 flex-wrap gap-1">
-                  {group.items.map((item) => (
-                    <button
-                      type="button"
-                      key={item.value}
-                      onClick={() => setCuisine(item.value)}
-                      className={`rounded-full px-2.5 py-1 text-xs transition ${
-                        item.value === cuisine ? 'bg-fg text-bg' : 'bg-bg text-fg-muted hover:bg-fg/5'
-                      }`}
-                    >
-                      {cuisineLabelFor(item)}
-                    </button>
-                  ))}
+                  {group.items.map((item) => {
+                    const active = cuisines.includes(item.value);
+                    return (
+                      <button
+                        type="button"
+                        key={item.value}
+                        onClick={() =>
+                          setCuisines((prev) =>
+                            prev.includes(item.value)
+                              ? prev.filter((x) => x !== item.value)
+                              : [...prev, item.value],
+                          )
+                        }
+                        className={`rounded-full px-2.5 py-1 text-xs transition ${
+                          active ? 'bg-fg text-bg' : 'bg-bg text-fg-muted hover:bg-fg/5'
+                        }`}
+                      >
+                        {cuisineLabelFor(item)}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
@@ -380,7 +389,13 @@ export default function NewRestaurantForm({ origin }: Props) {
         </button>
         <button
           type="submit"
-          disabled={pending || latitude == null || categories.length === 0 || !firstReview.trim()}
+          disabled={
+            pending ||
+            latitude == null ||
+            categories.length === 0 ||
+            cuisines.length === 0 ||
+            !firstReview.trim()
+          }
           className="flex-1 rounded-md bg-fg px-4 py-2.5 text-sm font-semibold text-bg hover:opacity-90 disabled:opacity-40"
         >
           {pending ? '등록 중…' : '등록 + 첫 commit'}

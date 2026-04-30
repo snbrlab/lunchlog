@@ -50,7 +50,9 @@ export function RestaurantSidebar({
       .filter((r) => {
         if (cuisine === '전체') return true;
         const values = GROUP_TO_VALUES[cuisine];
-        return values ? values.includes(r.cuisine_type) : false;
+        if (!values) return false;
+        // r.cuisine_types 의 어떤 항목이라도 그룹에 속하면 매치
+        return r.cuisine_types.some((c) => values.includes(c));
       })
       .filter((r) => {
         if (!q) return true;
@@ -187,7 +189,9 @@ export function RestaurantSidebar({
                   <p className="mt-0.5 text-xs text-fg-muted">
                     {Math.round(meters)}m · commit {r.commit_count} · {'₩'.repeat(r.price_level)}
                   </p>
-                  <p className="mt-0.5 text-[11px] text-fg-muted/80">{r.cuisine_type}</p>
+                  <p className="mt-0.5 text-[11px] text-fg-muted/80">
+                    {r.cuisine_types.join(' / ')}
+                  </p>
                 </div>
               </button>
             </li>

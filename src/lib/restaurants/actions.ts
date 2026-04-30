@@ -56,7 +56,7 @@ interface UpdateRestaurantInput {
   id: string;
   name: string;
   categories: MealMode[];
-  cuisineType: CuisineType;
+  cuisineTypes: CuisineType[];
   menuTags: string[];
   priceLevel: 1 | 2 | 3;
   note: string | null;
@@ -82,9 +82,16 @@ export async function updateRestaurant(
     if (c !== 'lunch' && c !== 'dinner')
       return { ok: false, reason: 'invalid', message: '잘못된 카테고리' };
   }
-  if (!(ALL_CUISINES as readonly string[]).includes(input.cuisineType)) {
-    return { ok: false, reason: 'invalid', message: '잘못된 음식 종류' };
+  if (input.cuisineTypes.length === 0) {
+    return { ok: false, reason: 'invalid', message: '음식 종류 최소 1개 선택' };
   }
+  for (const c of input.cuisineTypes) {
+    if (!(ALL_CUISINES as readonly string[]).includes(c)) {
+      return { ok: false, reason: 'invalid', message: '잘못된 음식 종류' };
+    }
+  }
+  // 중복 제거
+  const dedupCuisines = Array.from(new Set(input.cuisineTypes));
   if (![1, 2, 3].includes(input.priceLevel)) {
     return { ok: false, reason: 'invalid', message: '가격대는 1~3' };
   }
@@ -143,7 +150,7 @@ export async function updateRestaurant(
     .update({
       name,
       categories: input.categories,
-      cuisine_type: input.cuisineType,
+      cuisine_types: dedupCuisines,
       menu_tags: input.menuTags.filter((t) => t.length > 0),
       price_level: input.priceLevel,
       note: input.note?.trim() || null,

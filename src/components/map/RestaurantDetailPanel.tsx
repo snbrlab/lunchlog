@@ -137,9 +137,14 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
 
       {/* 3) cuisine + menu_tags */}
       <div className="flex flex-wrap items-center gap-1.5 px-5 pt-2">
-        <span className="rounded-full bg-fg/10 px-2.5 py-0.5 text-xs font-medium text-fg">
-          {restaurant.cuisine_type}
-        </span>
+        {restaurant.cuisine_types.map((c) => (
+          <span
+            key={c}
+            className="rounded-full bg-fg/10 px-2.5 py-0.5 text-xs font-medium text-fg"
+          >
+            {c}
+          </span>
+        ))}
         {restaurant.menu_tags.map((tag) => (
           <span
             key={tag}

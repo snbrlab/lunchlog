@@ -44,7 +44,7 @@ export interface Restaurant {
   id: string;
   name: string;
   categories: MealMode[];
-  cuisine_type: CuisineType;
+  cuisine_types: CuisineType[];
   menu_tags: string[];
   price_level: 1 | 2 | 3;
   latitude: number;

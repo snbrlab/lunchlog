@@ -153,7 +153,8 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect, includeClo
       const isStale = r.is_closed;
       const color = isStale ? staleColor : isSelected ? activeColor : inactiveColor;
       const dotSize = isSelected ? 36 : 30;
-      const emoji = emojiForCuisine(r.cuisine_type as never);
+      // 다중 cuisine 인 경우 첫 번째 cuisine 의 그룹 emoji 사용
+      const emoji = emojiForCuisine((r.cuisine_types[0] ?? '한식') as never);
 
       const el = document.createElement('div');
       el.style.cssText =

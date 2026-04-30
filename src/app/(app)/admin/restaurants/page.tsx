@@ -4,7 +4,7 @@ import RestaurantsAdminTable from './RestaurantsAdminTable';
 interface Row {
   id: string;
   name: string;
-  cuisine_type: string;
+  cuisine_types: string[];
   is_closed: boolean;
   commit_count: number;
   created_at: string;
@@ -17,7 +17,7 @@ export default async function AdminRestaurantsPage() {
   const { data } = await supabase
     .from('restaurants')
     .select(
-      'id, name, cuisine_type, is_closed, commit_count, created_at, kakao_place_url, ' +
+      'id, name, cuisine_types, is_closed, commit_count, created_at, kakao_place_url, ' +
         'creator:users!restaurants_created_by_fkey ( name )',
     )
     .order('created_at', { ascending: false });

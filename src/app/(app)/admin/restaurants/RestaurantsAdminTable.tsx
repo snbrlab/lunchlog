@@ -13,7 +13,7 @@ import { toggleRestaurantClosed } from '@/lib/restaurants/actions';
 interface Row {
   id: string;
   name: string;
-  cuisine_type: string;
+  cuisine_types: string[];
   is_closed: boolean;
   commit_count: number;
   created_at: string;
@@ -147,7 +147,7 @@ export default function RestaurantsAdminTable({ rows }: { rows: Row[] }) {
                   {r.name}
                 </Link>
               </td>
-              <td className="px-3 py-2 text-xs text-fg-muted">{r.cuisine_type}</td>
+              <td className="px-3 py-2 text-xs text-fg-muted">{r.cuisine_types.join(' / ')}</td>
               <td className="px-3 py-2 text-xs text-fg-muted">{r.creator?.name ?? '—'}</td>
               <td className="px-3 py-2 text-right font-mono text-xs">{r.commit_count}</td>
               <td className="px-3 py-2">

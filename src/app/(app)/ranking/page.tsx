@@ -22,7 +22,7 @@ export default async function RankingPage() {
   const { data: popularRaw } = await supabase
     .from('restaurants')
     .select(
-      'id, name, cuisine_type, commit_count, last_commit_at, has_alcohol, is_closed',
+      'id, name, cuisine_types, commit_count, last_commit_at, has_alcohol, is_closed',
     )
     .eq('office_id', officeId)
     .eq('is_closed', false)
@@ -36,14 +36,14 @@ export default async function RankingPage() {
     .select(
       'id, author_id, restaurant_id, created_at, ' +
         'author:users!reviews_author_id_fkey ( name, avatar_emoji, avatar_color ), ' +
-        'restaurant:restaurants!reviews_restaurant_id_fkey ( office_id, cuisine_type, name )',
+        'restaurant:restaurants!reviews_restaurant_id_fkey ( office_id, cuisine_types, name )',
     )
     .order('created_at', { ascending: false })
     .limit(500);
 
   type EnrichedReview = Review & {
     author: { name: string; avatar_emoji: string | null; avatar_color: string } | null;
-    restaurant: { office_id: string; cuisine_type: string; name: string } | null;
+    restaurant: { office_id: string; cuisine_types: string[]; name: string } | null;
   };
   const reviews = ((recentReviews ?? []) as unknown) as EnrichedReview[];
   const officeReviews = reviews.filter((r) => r.restaurant?.office_id === officeId);
@@ -120,7 +120,7 @@ export default async function RankingPage() {
     else
       hotMap.set(r.restaurant_id, {
         name: r.restaurant.name,
-        cuisine: r.restaurant.cuisine_type,
+        cuisine: r.restaurant.cuisine_types.join(' / '),
         count: 1,
       });
   }
@@ -132,13 +132,16 @@ export default async function RankingPage() {
   // 4) cuisine 그룹 분포
   const { data: allRestaurants } = await supabase
     .from('restaurants')
-    .select('cuisine_type, is_closed')
+    .select('cuisine_types, is_closed')
     .eq('office_id', officeId)
     .eq('is_closed', false);
 
+  // 다중 cuisine 인 식당은 첫 cuisine 의 그룹으로 카운트 (중복 합산 방지 — 총합이 식당 수와 일치)
   const groupCount = new Map<string, number>();
-  for (const r of (allRestaurants ?? []) as { cuisine_type: string }[]) {
-    const g = findCuisineGroup(r.cuisine_type as CuisineType) ?? '기타';
+  for (const r of (allRestaurants ?? []) as { cuisine_types: string[] }[]) {
+    const first = r.cuisine_types[0];
+    if (!first) continue;
+    const g = findCuisineGroup(first as CuisineType) ?? '기타';
     groupCount.set(g, (groupCount.get(g) ?? 0) + 1);
   }
   const groupDistribution = CUISINE_GROUPS.map((g) => ({
@@ -152,7 +155,7 @@ export default async function RankingPage() {
 
   const popular = (popularRaw ?? []) as Pick<
     Restaurant,
-    'id' | 'name' | 'cuisine_type' | 'commit_count' | 'last_commit_at' | 'has_alcohol' | 'is_closed'
+    'id' | 'name' | 'cuisine_types' | 'commit_count' | 'last_commit_at' | 'has_alcohol' | 'is_closed'
   >[];
 
   return (
