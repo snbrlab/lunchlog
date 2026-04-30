@@ -31,16 +31,49 @@ const RECENT_LIMIT = 100;
 export default async function LogPage() {
   const supabase = await createSupabaseServerClient();
 
-  const { data } = await supabase
+  // 1) 메인 reviews 조회 (parent 는 별도 fetch — self-referential FK 임베드 회피)
+  const { data: rawData } = await supabase
     .from('reviews')
     .select(
       'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
         'author:users!reviews_author_id_fkey ( name, avatar_emoji, avatar_color ), ' +
-        'restaurant:restaurants ( id, name, cuisine_types, is_closed ), ' +
-        'parent:reviews!reviews_parent_review_id_fkey ( hash, author:users!reviews_author_id_fkey ( name ) )',
+        'restaurant:restaurants ( id, name, cuisine_types, is_closed )',
     )
     .order('created_at', { ascending: false })
     .limit(RECENT_LIMIT);
+
+  type RawRow = Omit<LogReviewRow, 'parent'>;
+  const baseRows = (rawData ?? []) as unknown as RawRow[];
+
+  // 2) parent 정보 batched fetch
+  const parentIds = Array.from(
+    new Set(baseRows.map((r) => r.parent_review_id).filter((x): x is string => !!x)),
+  );
+  type ParentRow = {
+    id: string;
+    hash: string;
+    author: { name: string } | null;
+  };
+  const parentMap = new Map<string, ParentRow>();
+  if (parentIds.length > 0) {
+    const { data: parentData } = await supabase
+      .from('reviews')
+      .select('id, hash, author:users!reviews_author_id_fkey ( name )')
+      .in('id', parentIds);
+    for (const p of (parentData ?? []) as unknown as ParentRow[]) {
+      parentMap.set(p.id, p);
+    }
+  }
+
+  const rows: LogReviewRow[] = baseRows.map((r) => ({
+    ...r,
+    parent: r.parent_review_id
+      ? (parentMap.get(r.parent_review_id) ?? null) && {
+          hash: parentMap.get(r.parent_review_id)!.hash,
+          author: parentMap.get(r.parent_review_id)!.author,
+        }
+      : null,
+  }));
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8">
@@ -49,7 +82,7 @@ export default async function LogPage() {
         최근 {RECENT_LIMIT}건. 동료들이 어디 가고 있는지 한 눈에.
       </p>
       <div className="mt-5">
-        <LogList rows={(data ?? []) as unknown as LogReviewRow[]} />
+        <LogList rows={rows} />
       </div>
     </main>
   );
