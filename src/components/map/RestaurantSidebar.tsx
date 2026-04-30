@@ -103,7 +103,7 @@ export function RestaurantSidebar({
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="이름 / 메뉴 / 음식종류 검색"
-            className="w-full rounded-md border border-border bg-bg px-3 py-1.5 pr-7 text-xs text-fg outline-none focus:border-fg"
+            className="w-full rounded-md border border-border bg-bg px-3 py-1.5 pr-7 text-xs text-fg outline-none focus:border-fg [&::-webkit-search-cancel-button]:appearance-none"
           />
           {query && (
             <button
