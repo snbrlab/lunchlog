@@ -37,5 +37,6 @@ export const getCachedBuildings = unstable_cache(
 );
 
 export function invalidateOfficesCache() {
-  revalidateTag(TAG);
+  // Next.js 16: 두번째 인자 필수. 'max' = stale-while-revalidate (다음 방문 때 fresh fetch)
+  revalidateTag(TAG, 'max');
 }
