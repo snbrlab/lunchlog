@@ -480,10 +480,12 @@ export function getThemeTokens(mode: MealMode): ThemeTokens;
 ## 12. 시드 데이터 (개발용)
 
 `offices`:
-- 마곡 본부 (37.5604, 126.8255)
+- 마곡 (37.5604, 126.8255)
+- 여의도 (37.5266, 126.9279)
 
 `office_buildings`:
-- 마곡 A동, B동, C동 (실제 좌표는 개발 시 보정)
+- 마곡: W1~W10, ISC, E1~E14
+- 여의도: LG트윈타워
 
 `restaurants` 샘플 5개 (테마 확인용):
 - 하동관 본점 (lunch, 한식, 곰탕, ₩₩)
