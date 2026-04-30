@@ -87,6 +87,7 @@ export const CUISINE_GROUPS = [
       { value: '육회' },
       { value: '갈비' },
       { value: '양고기' },
+      { value: '오리' },
       { value: '곱창' },
       { value: '장어' },
       { value: '닭갈비' },
