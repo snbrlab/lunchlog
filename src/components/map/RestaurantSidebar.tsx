@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import type { Restaurant } from '@/types/db';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
@@ -66,9 +67,18 @@ export function RestaurantSidebar({
   return (
     <aside className="flex h-full w-[85vw] max-w-[320px] shrink-0 flex-col border-r border-border bg-surface lg:w-[280px]">
       <header className="border-b border-border px-4 py-3">
-        <p className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
-          SORTED BY DISTANCE
-        </p>
+        <div className="flex items-baseline justify-between">
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
+            SORTED BY DISTANCE
+          </p>
+          <Link
+            href="/log"
+            className="text-[10px] text-fg-muted underline-offset-2 hover:text-fg hover:underline"
+            title="최근 commit log 전체 보기"
+          >
+            📜 최근 commit →
+          </Link>
+        </div>
         <p className="mt-0.5 text-xs text-fg-muted">
           {items.length}개 식당 · {mode === 'lunch' ? '점심' : '저녁'} 메뉴
         </p>
