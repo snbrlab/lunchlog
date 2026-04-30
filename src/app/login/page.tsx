@@ -19,7 +19,7 @@ export default async function LoginPage({
       <div className="w-full max-w-sm">
         <div className="mb-10 text-center">
           <h1 className="text-2xl font-semibold tracking-tight">🍱 런치로그</h1>
-          <p className="mt-2 text-sm text-neutral-500">사내 동료끼리 쓰는 점심·저녁 지도</p>
+          <p className="mt-2 text-sm text-neutral-500">가본 곳에 한 줄 평 남기기</p>
         </div>
 
         {errorMessage && (

@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "런치로그",
-  description: "사내 동료들끼리 맛집을 공유하는 지도",
+  description: "가본 곳에 한 줄 평 남기기",
   robots: { index: false, follow: false },
 };
 
