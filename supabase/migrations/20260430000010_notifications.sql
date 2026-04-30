@@ -2,8 +2,10 @@
 -- 두 가지 트리거 케이스:
 -- 1) admin 이 사용자 제보를 업데이트 (status / admin_note 변경) → 제보자에게 노티
 -- 2) 사용자 commit 에 답글 commit 이 달림 (parent_review_id) → 부모 commit 작성자에게 노티
+--
+-- idempotent: 부분 적용 후 재실행해도 안전 (table/index/policy/trigger 모두 if not exists 또는 drop+create)
 
-create table notifications (
+create table if not exists notifications (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null references users(id) on delete cascade,
   type text not null check (type in ('report_update', 'review_reply')),
@@ -12,26 +14,26 @@ create table notifications (
   created_at timestamptz not null default now()
 );
 
-create index idx_notifications_user_unread
+create index if not exists idx_notifications_user_unread
   on notifications(user_id, created_at desc)
   where read_at is null;
-create index idx_notifications_user_all
+create index if not exists idx_notifications_user_all
   on notifications(user_id, created_at desc);
 
 alter table notifications enable row level security;
 
--- 본인 노티만 읽기
+drop policy if exists "notifications: read self" on notifications;
 create policy "notifications: read self"
   on notifications for select to authenticated
   using (user_id = auth.uid());
 
--- 본인 노티만 update (read_at 처리). user_id 변경은 with check 로 차단.
+drop policy if exists "notifications: update self" on notifications;
 create policy "notifications: update self"
   on notifications for update to authenticated
   using (user_id = auth.uid())
   with check (user_id = auth.uid());
 
--- 본인 노티 삭제 가능 (선택 — 안 쓰면 read_at 으로 충분)
+drop policy if exists "notifications: delete self" on notifications;
 create policy "notifications: delete self"
   on notifications for delete to authenticated
   using (user_id = auth.uid());
@@ -48,7 +50,6 @@ security definer
 set search_path = public
 as $$
 begin
-  -- status 또는 admin_note 가 실제로 바뀐 경우만
   if (new.status is distinct from old.status)
      or (new.admin_note is distinct from old.admin_note) then
     insert into notifications (user_id, type, payload)
