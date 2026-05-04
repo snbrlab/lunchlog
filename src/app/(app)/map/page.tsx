@@ -29,34 +29,41 @@ export default async function MapPage() {
   // commit_count 는 D42 trigger 가 revert 까지 정합성 유지 → 캐시 컬럼 그대로 신뢰.
   // office_id 필터 제거 (D43): 식당의 office_id 는 "누가 처음 등록했냐" 메타데이터일 뿐.
   // 거리는 사용자 본인 건물 기준이라 다른 사무실 동료가 등록한 식당도 다 보여야 함.
-  const { data: restaurants } = await supabase
-    .from('restaurants')
-    .select(
-      [
-        'id',
-        'name',
-        'categories',
-        'cuisine_types',
-        'menu_tags',
-        'price_level',
-        'latitude',
-        'longitude',
-        'address',
-        'note',
-        'office_id',
-        'is_closed',
-        'created_by',
-        'created_at',
-        'commit_count',
-        'last_commit_at',
-        'recommended_min_size',
-        'recommended_max_size',
-        'has_alcohol',
-        'kakao_place_url',
-        'creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
-      ].join(', '),
-    )
-    .order('last_commit_at', { ascending: false, nullsFirst: false });
+  const [{ data: restaurants }, { data: favorites }] = await Promise.all([
+    supabase
+      .from('restaurants')
+      .select(
+        [
+          'id',
+          'name',
+          'categories',
+          'cuisine_types',
+          'menu_tags',
+          'price_level',
+          'latitude',
+          'longitude',
+          'address',
+          'note',
+          'office_id',
+          'is_closed',
+          'created_by',
+          'created_at',
+          'commit_count',
+          'last_commit_at',
+          'recommended_min_size',
+          'recommended_max_size',
+          'has_alcohol',
+          'kakao_place_url',
+          'creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
+        ].join(', '),
+      )
+      .order('last_commit_at', { ascending: false, nullsFirst: false }),
+    supabase.from('favorites').select('restaurant_id').eq('user_id', user.id),
+  ]);
+
+  const favoriteIds = ((favorites ?? []) as { restaurant_id: string }[]).map(
+    (f) => f.restaurant_id,
+  );
 
   return (
     <MapShell
@@ -64,6 +71,7 @@ export default async function MapPage() {
       restaurants={(restaurants ?? []) as unknown as Restaurant[]}
       currentUserId={user.id}
       isAdmin={profile?.role === 'admin'}
+      favoriteIds={favoriteIds}
     />
   );
 }

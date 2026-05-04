@@ -44,7 +44,7 @@ export default async function MePage() {
   const officeName = profile?.office?.name ?? null;
   const buildingName = profile?.building?.name ?? null;
 
-  const [offices, buildings, { data: myReviews }] = await Promise.all([
+  const [offices, buildings, { data: myReviews }, { data: myFavorites }] = await Promise.all([
     getCachedOffices(),
     getCachedBuildings(),
     supabase
@@ -56,6 +56,14 @@ export default async function MePage() {
       .eq('author_id', user.id)
       .order('created_at', { ascending: false })
       .limit(50),
+    supabase
+      .from('favorites')
+      .select(
+        'created_at, ' +
+          'restaurant:restaurants ( id, name, cuisine_types, is_closed, commit_count )',
+      )
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false }),
   ]);
 
   const reviewItems = ((myReviews ?? []) as unknown) as Array<{
@@ -66,6 +74,17 @@ export default async function MePage() {
     hash: string;
     created_at: string;
     restaurant: { id: string; name: string; is_closed: boolean } | null;
+  }>;
+
+  const favoriteItems = ((myFavorites ?? []) as unknown) as Array<{
+    created_at: string;
+    restaurant: {
+      id: string;
+      name: string;
+      cuisine_types: string[];
+      is_closed: boolean;
+      commit_count: number;
+    } | null;
   }>;
 
   return (
@@ -123,6 +142,52 @@ export default async function MePage() {
       <section className="mb-8">
         <h2 className="mb-3 text-sm font-medium text-fg">비밀번호 변경</h2>
         <ChangePasswordForm />
+      </section>
+
+      {/* 찜한 곳 */}
+      <section className="mb-8">
+        <h2 className="mb-3 text-sm font-medium text-fg">
+          ⭐ 찜한 곳 ({favoriteItems.length}개)
+        </h2>
+        {favoriteItems.length === 0 ? (
+          <p className="rounded-lg border border-border bg-surface px-5 py-6 text-center text-xs text-fg-muted">
+            아직 찜한 식당이 없어요. /map 디테일 패널의 ☆ 를 눌러 찜할 수 있어요.
+          </p>
+        ) : (
+          <ol className="rounded-lg border border-border bg-surface">
+            {favoriteItems.map((f) =>
+              f.restaurant ? (
+                <li
+                  key={f.restaurant.id}
+                  className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm last:border-b-0"
+                >
+                  <Link
+                    href={`/map?focus=${f.restaurant.id}`}
+                    className="min-w-0 flex-1 truncate text-fg hover:underline"
+                  >
+                    <span className="text-amber-500">★</span>{' '}
+                    <span
+                      className={
+                        f.restaurant.is_closed ? 'text-fg-muted line-through' : 'text-fg'
+                      }
+                    >
+                      {f.restaurant.name}
+                    </span>
+                    <span className="ml-1.5 text-[11px] text-fg-muted">
+                      {f.restaurant.cuisine_types.join(' / ')}
+                    </span>
+                  </Link>
+                  <span className="text-[10px] text-fg-muted">
+                    commit {f.restaurant.commit_count}
+                  </span>
+                  <span className="text-[10px] text-fg-muted/70">
+                    {formatRelativeTime(new Date(f.created_at))} 찜
+                  </span>
+                </li>
+              ) : null,
+            )}
+          </ol>
+        )}
       </section>
 
       {/* 내 리뷰 목록 */}

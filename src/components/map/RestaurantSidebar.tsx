@@ -15,6 +15,7 @@ interface Props {
   onSelect: (id: string) => void;
   includeClosed: boolean;
   onIncludeClosedChange: (next: boolean) => void;
+  favoriteSet: Set<string>;
 }
 
 type GroupFilter = '전체' | (typeof CUISINE_GROUPS)[number]['label'];
@@ -36,6 +37,7 @@ export function RestaurantSidebar({
   onSelect,
   includeClosed,
   onIncludeClosedChange,
+  favoriteSet,
 }: Props) {
   const { mode } = useMealMode();
   const [cuisine, setCuisine] = useState<GroupFilter>('전체');
@@ -192,6 +194,11 @@ export function RestaurantSidebar({
                       r.is_closed ? 'line-through opacity-60' : ''
                     }`}
                   >
+                    {favoriteSet.has(r.id) && (
+                      <span aria-label="찜한 곳" className="mr-1 text-amber-500">
+                        ★
+                      </span>
+                    )}
                     {r.name}
                     {r.is_closed && (
                       <span className="ml-1.5 rounded bg-fg/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-fg-muted">

@@ -12,9 +12,22 @@ interface Props {
   restaurants: Restaurant[];
   currentUserId: string;
   isAdmin: boolean;
+  favoriteIds: string[];
 }
 
-export default function MapShell({ origin, restaurants, currentUserId, isAdmin }: Props) {
+export default function MapShell({
+  origin,
+  restaurants,
+  currentUserId,
+  isAdmin,
+  favoriteIds,
+}: Props) {
+  // 찜 목록은 client state 로 관리 — toggle 시 즉시 반영, server 는 router.refresh 로 동기
+  const [favoriteSet, setFavoriteSet] = useState(() => new Set(favoriteIds));
+  // server 에서 새 favoriteIds 가 내려오면 (router.refresh 후) 동기화
+  useEffect(() => {
+    setFavoriteSet(new Set(favoriteIds));
+  }, [favoriteIds]);
   const searchParams = useSearchParams();
   const focusParam = searchParams.get('focus');
 
@@ -52,6 +65,7 @@ export default function MapShell({ origin, restaurants, currentUserId, isAdmin }
           onSelect={setSelectedId}
           includeClosed={includeClosed}
           onIncludeClosedChange={setIncludeClosed}
+          favoriteSet={favoriteSet}
         />
       </div>
 
@@ -91,6 +105,15 @@ export default function MapShell({ origin, restaurants, currentUserId, isAdmin }
           currentUserId={currentUserId}
           isAdmin={isAdmin}
           onClose={() => setSelectedId(null)}
+          isFavorited={selected ? favoriteSet.has(selected.id) : false}
+          onFavoriteToggle={(restaurantId, next) => {
+            setFavoriteSet((prev) => {
+              const copy = new Set(prev);
+              if (next) copy.add(restaurantId);
+              else copy.delete(restaurantId);
+              return copy;
+            });
+          }}
         />
       </div>
     </div>

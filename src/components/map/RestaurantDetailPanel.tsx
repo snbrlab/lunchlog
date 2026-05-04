@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState, useTransition } from 'react';
 import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
 import { toggleRestaurantClosed } from '@/lib/restaurants/actions';
+import { toggleFavorite } from '@/lib/favorites/actions';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { ReviewLog } from './ReviewLog';
 import { ReviewComposer, type ReplyTarget } from './ReviewComposer';
@@ -16,10 +17,20 @@ interface Props {
   currentUserId: string;
   isAdmin: boolean;
   onClose: () => void;
+  isFavorited: boolean;
+  onFavoriteToggle: (restaurantId: string, next: boolean) => void;
 }
 
 // SPEC 5.4 디테일 패널.
-export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdmin, onClose }: Props) {
+export function RestaurantDetailPanel({
+  origin,
+  restaurant,
+  currentUserId,
+  isAdmin,
+  onClose,
+  isFavorited,
+  onFavoriteToggle,
+}: Props) {
   const router = useRouter();
   const [refreshKey, setRefreshKey] = useState(0);
   const [pending, startTransition] = useTransition();
@@ -101,6 +112,30 @@ export function RestaurantDetailPanel({ origin, restaurant, currentUserId, isAdm
       {/* 2) 식당 헤더 */}
       <div className="flex items-baseline justify-between gap-3 px-5 pt-3">
         <h2 className="flex min-w-0 items-center gap-1.5 truncate text-base font-semibold tracking-tight text-fg">
+          <button
+            type="button"
+            onClick={() => {
+              const next = !isFavorited;
+              // 낙관적 UI: 부모 state 즉시 업데이트
+              onFavoriteToggle(restaurant.id, next);
+              startTransition(async () => {
+                const r = await toggleFavorite(restaurant.id);
+                if (!r.ok) {
+                  // 실패 시 롤백
+                  onFavoriteToggle(restaurant.id, !next);
+                  alert(r.message);
+                }
+              });
+            }}
+            disabled={pending}
+            aria-label={isFavorited ? '찜 해제' : '찜하기'}
+            title={isFavorited ? '찜 해제' : '나중에 가볼 곳으로 찜'}
+            className="text-base disabled:opacity-50"
+          >
+            <span className={isFavorited ? 'text-amber-500' : 'text-fg-muted'}>
+              {isFavorited ? '★' : '☆'}
+            </span>
+          </button>
           <span className="truncate">{restaurant.name}</span>
           {restaurant.has_alcohol && (
             <span aria-label="술 가능" title="술 가능 (회식/한잔)">🍺</span>
