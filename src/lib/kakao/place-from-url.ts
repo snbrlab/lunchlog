@@ -126,11 +126,173 @@ export async function lookupPlaceManually(
   };
 }
 
-// 호환성: 기존 KakaoPlacesSearch 가 fetchKakaoPlaceFromUrl 을 import 하던 흔적 정리용
-// (이제는 manual lookup 으로 대체)
+// URL 만 입력받아 자동 파싱 — 카카오맵 식당 페이지의 HTML 을 fetch 해
+// og:title / og:description / JSON-LD / 내부 script 에서 name + address 추출,
+// 주소를 공식 geocoding 으로 좌표 변환. 모두 합치면 자동 prefill.
+//
+// HTML 파싱이라 카카오가 마크업 구조 살짝 바꾸면 깨질 수 있지만,
+// og 태그는 SEO/공유 미리보기 때문에 카카오가 쉽게 안 뺄 가능성이 높음.
+
+export async function parseKakaoPlaceFromUrl(
+  input: string,
+): Promise<ManualPlaceLookupResult> {
+  const placeId = extractPlaceIdFromInput(input);
+  if (!placeId) {
+    return { ok: false, message: '카카오맵 url 또는 place 번호를 정확히 입력해주세요' };
+  }
+
+  const placeUrl = `https://place.map.kakao.com/${placeId}`;
+  const ua =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+    '(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+
+  let html: string;
+  try {
+    const res = await fetch(placeUrl, {
+      headers: {
+        'User-Agent': ua,
+        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+      },
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      return {
+        ok: false,
+        message: `카카오맵 페이지 응답 오류 (HTTP ${res.status}). place_id=${placeId}`,
+      };
+    }
+    html = await res.text();
+  } catch (e) {
+    return { ok: false, message: `카카오맵 페이지 fetch 실패: ${(e as Error).message}` };
+  }
+
+  const name =
+    matchMeta(html, 'og:title') ??
+    matchMeta(html, 'twitter:title') ??
+    null;
+
+  // 주소 후보들 — og:description 은 종종 "맛집 ..." 같은 설명이라 주소만 있는 다른 후보도 같이
+  const candidates = [
+    matchInline(html, /"addrnewfullname"\s*:\s*"([^"]+)"/),
+    matchInline(html, /"newaddrfullname"\s*:\s*"([^"]+)"/),
+    matchInline(html, /"newaddr_fullname"\s*:\s*"([^"]+)"/),
+    matchInline(html, /"address_name"\s*:\s*"([^"]+)"/),
+    matchInline(html, /"addr"\s*:\s*"([^"]+)"/),
+  ].filter(Boolean) as string[];
+  const address = candidates[0] ?? matchMeta(html, 'og:description') ?? null;
+
+  // 좌표 후보들 — 페이지 안에 lat/lng 이 보통 박혀있음
+  const lat =
+    matchInlineNum(html, /"lat"\s*:\s*"?(-?\d+\.\d+)"?/) ??
+    matchInlineNum(html, /"latitude"\s*:\s*"?(-?\d+\.\d+)"?/) ??
+    matchInlineNum(html, /"y"\s*:\s*"?(-?\d+\.\d+)"?/);
+  const lng =
+    matchInlineNum(html, /"lng"\s*:\s*"?(-?\d+\.\d+)"?/) ??
+    matchInlineNum(html, /"longitude"\s*:\s*"?(-?\d+\.\d+)"?/) ??
+    matchInlineNum(html, /"x"\s*:\s*"?(-?\d+\.\d+)"?/);
+
+  if (!name) {
+    return {
+      ok: false,
+      message: '식당 이름을 페이지에서 못 찾았어요. 직접 입력 모드를 사용해주세요',
+    };
+  }
+
+  // 좌표 못 찾으면 주소로 geocoding fallback
+  let finalLat = lat;
+  let finalLng = lng;
+  let roadAddress = '';
+  let fullAddress = address ?? '';
+  if (finalLat == null || finalLng == null) {
+    if (!address) {
+      return {
+        ok: false,
+        message: '좌표·주소 모두 못 찾았어요. 직접 입력 모드를 사용해주세요',
+      };
+    }
+    const { kakaoRestKey } = getServerEnv();
+    if (!kakaoRestKey) {
+      return { ok: false, message: 'KAKAO_REST_KEY 미설정' };
+    }
+    const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
+    const res = await fetch(url, {
+      headers: { Authorization: `KakaoAK ${kakaoRestKey}` },
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const json = (await res.json()) as KakaoAddressResponse;
+      const first = json.documents?.[0];
+      if (first) {
+        finalLat = parseFloat(first.y);
+        finalLng = parseFloat(first.x);
+        roadAddress = first.road_address?.address_name ?? '';
+        fullAddress = first.address_name ?? address;
+      }
+    }
+    if (finalLat == null || finalLng == null) {
+      return { ok: false, message: '좌표를 못 가져왔어요. 직접 입력 모드를 사용해주세요' };
+    }
+  }
+
+  return {
+    ok: true,
+    place: {
+      place_name: name,
+      road_address_name: roadAddress,
+      address_name: fullAddress,
+      x: String(finalLng),
+      y: String(finalLat),
+      place_url: placeUrl,
+    },
+  };
+}
+
+function extractPlaceIdFromInput(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  if (/^\d{4,}$/.test(trimmed)) return trimmed;
+  try {
+    const u = new URL(trimmed);
+    if (!u.hostname.includes('kakao.com')) return null;
+    const m = u.pathname.match(PLACE_ID_REGEX);
+    if (m) return m[1]!;
+    const itemId = u.searchParams.get('itemId');
+    if (itemId && /^\d+$/.test(itemId)) return itemId;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function matchMeta(html: string, prop: string): string | null {
+  const r1 = new RegExp(
+    `<meta[^>]*property=["']${prop}["'][^>]*content=["']([^"']+)["']`,
+    'i',
+  );
+  const r2 = new RegExp(
+    `<meta[^>]*name=["']${prop}["'][^>]*content=["']([^"']+)["']`,
+    'i',
+  );
+  return html.match(r1)?.[1] ?? html.match(r2)?.[1] ?? null;
+}
+
+function matchInline(html: string, re: RegExp): string | null {
+  const m = html.match(re);
+  return m?.[1] ?? null;
+}
+
+function matchInlineNum(html: string, re: RegExp): number | null {
+  const m = html.match(re);
+  if (!m?.[1]) return null;
+  const n = parseFloat(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+// 호환성: 기존 stub
 export async function fetchKakaoPlaceFromUrl(): Promise<ManualPlaceLookupResult> {
   return {
     ok: false,
-    message: '이 기능은 더 이상 동작하지 않습니다. 직접 입력 모드를 사용해주세요.',
+    message: '이 기능은 더 이상 동작하지 않습니다. parseKakaoPlaceFromUrl 또는 직접 입력 모드를 사용해주세요.',
   };
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { loadKakaoMaps } from '@/lib/kakao-loader';
-import { lookupPlaceManually } from '@/lib/kakao/place-from-url';
+import { lookupPlaceManually, parseKakaoPlaceFromUrl } from '@/lib/kakao/place-from-url';
 import type { KakaoPlaceItem } from '@/types/kakao-maps';
 
 interface Props {
@@ -19,7 +19,13 @@ export function KakaoPlacesSearch({ origin, onSelect }: Props) {
   const [, startTransition] = useTransition();
   const ready = useRef(false);
 
-  // 직접 입력 fallback state — keyword search 에 안 잡히는 식당용
+  // URL 자동 파싱 state — 카카오맵 url 만 넣으면 HTML 파싱으로 자동 채움
+  const [autoUrl, setAutoUrl] = useState('');
+  const [autoStatus, setAutoStatus] = useState<'idle' | 'fetching'>('idle');
+  const [autoError, setAutoError] = useState<string | null>(null);
+  const [, startAutoTransition] = useTransition();
+
+  // 직접 입력 fallback state — URL 파싱도 실패할 때
   const [manualName, setManualName] = useState('');
   const [manualAddress, setManualAddress] = useState('');
   const [manualKakaoUrl, setManualKakaoUrl] = useState('');
@@ -77,6 +83,30 @@ export function KakaoPlacesSearch({ origin, onSelect }: Props) {
       e.preventDefault();
       runSearch();
     }
+  }
+
+  function runAutoFromUrl() {
+    if (!autoUrl.trim()) return;
+    setAutoStatus('fetching');
+    setAutoError(null);
+    startAutoTransition(async () => {
+      const r = await parseKakaoPlaceFromUrl(autoUrl);
+      setAutoStatus('idle');
+      if (!r.ok) {
+        setAutoError(r.message);
+        return;
+      }
+      setAutoUrl('');
+      onSelect({
+        ...r.place,
+        id: `auto-${Date.now()}`,
+        category_name: '',
+        category_group_code: '',
+        category_group_name: '',
+        phone: '',
+        distance: '',
+      } as KakaoPlaceItem);
+    });
   }
 
   function runManualLookup() {
@@ -168,15 +198,54 @@ export function KakaoPlacesSearch({ origin, onSelect }: Props) {
         </ol>
       )}
 
-      {/* 직접 입력 — keyword search 에 안 잡히는 식당용 */}
+      {/* URL 자동 파싱 — 카카오맵 url 만 넣으면 자동 채움 */}
       <details className="mt-4 border-t border-border pt-3">
         <summary className="cursor-pointer text-[11px] text-fg-muted hover:text-fg">
-          ✏️ 검색 안 나오면 직접 입력
+          🔗 검색 안 나오면 카카오맵 url 로 자동 추가
         </summary>
         <div className="mt-2 space-y-2">
           <p className="text-[10px] text-fg-muted/80 leading-relaxed">
-            식당 이름과 도로명 주소를 직접 입력해주세요. 좌표는 주소로 자동 변환돼요.<br />
-            (선택) 카카오맵 url 도 함께 넣으면 디테일 패널의 외부 링크로 쓰여요.
+            카카오맵 앱/웹에서 식당 페이지 url 을 복사해 붙여넣으세요.<br />
+            예: <span className="font-mono">https://place.map.kakao.com/27260928</span>
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={autoUrl}
+              onChange={(e) => setAutoUrl(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  runAutoFromUrl();
+                }
+              }}
+              placeholder="카카오맵 url 또는 place 번호"
+              className="flex-1 rounded-md border border-border bg-bg px-3 py-2 text-xs text-fg outline-none focus:border-fg"
+            />
+            <button
+              type="button"
+              onClick={runAutoFromUrl}
+              disabled={autoStatus === 'fetching' || !autoUrl.trim()}
+              className="rounded-md bg-fg px-3 py-2 text-xs font-semibold text-bg hover:opacity-90 disabled:opacity-40"
+            >
+              {autoStatus === 'fetching' ? '파싱 중…' : '자동 추가'}
+            </button>
+          </div>
+          {autoError && <p className="text-xs text-red-500">{autoError}</p>}
+          <p className="text-[10px] text-fg-muted/60">
+            ※ 자동 파싱이 실패하면 아래 "직접 입력"을 써주세요.
+          </p>
+        </div>
+      </details>
+
+      {/* 직접 입력 — URL 파싱도 안 될 때 최후의 fallback */}
+      <details className="mt-2 border-t border-border pt-3">
+        <summary className="cursor-pointer text-[11px] text-fg-muted hover:text-fg">
+          ✏️ 직접 입력
+        </summary>
+        <div className="mt-2 space-y-2">
+          <p className="text-[10px] text-fg-muted/80 leading-relaxed">
+            이름 + 도로명 주소를 직접 입력해주세요. 좌표는 주소로 자동 변환돼요.
           </p>
           <input
             type="text"
