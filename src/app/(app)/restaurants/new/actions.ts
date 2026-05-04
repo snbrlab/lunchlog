@@ -143,11 +143,11 @@ export async function createRestaurant(
     const latDelta = NEAR_RADIUS_M / 111_000;
     const lngDelta = NEAR_RADIUS_M / (111_000 * Math.cos((input.latitude * Math.PI) / 180));
 
-    // overlaps: cuisine_types 배열에 입력 cuisine 중 하나라도 겹치면 매치
+    // overlaps: cuisine_types 배열에 입력 cuisine 중 하나라도 겹치면 매치.
+    // office_id 필터 없음 (D43): 다른 사무실 사람이 이미 등록한 식당이라도 중복 잡아줌.
     const { data: candidates } = await supabase
       .from('restaurants')
       .select('id, name, latitude, longitude, cuisine_types, is_closed')
-      .eq('office_id', profile.office_id)
       .overlaps('cuisine_types', dedupCuisines)
       .eq('is_closed', false)
       .gte('latitude', input.latitude - latDelta)

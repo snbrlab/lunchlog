@@ -27,6 +27,8 @@ export default async function MapPage() {
 
   // 사이드바 + 디테일 패널에 필요한 컬럼만 명시. SELECT * 회피 (egress 절약).
   // commit_count 는 D42 trigger 가 revert 까지 정합성 유지 → 캐시 컬럼 그대로 신뢰.
+  // office_id 필터 제거 (D43): 식당의 office_id 는 "누가 처음 등록했냐" 메타데이터일 뿐.
+  // 거리는 사용자 본인 건물 기준이라 다른 사무실 동료가 등록한 식당도 다 보여야 함.
   const { data: restaurants } = await supabase
     .from('restaurants')
     .select(
@@ -54,7 +56,6 @@ export default async function MapPage() {
         'creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
       ].join(', '),
     )
-    .eq('office_id', profile?.office_id ?? '')
     .order('last_commit_at', { ascending: false, nullsFirst: false });
 
   return (
