@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import { loadKakaoMaps } from '@/lib/kakao-loader';
+import { fetchKakaoPlaceFromUrl } from '@/lib/kakao/place-from-url';
 import type { KakaoPlaceItem } from '@/types/kakao-maps';
 
 interface Props {
@@ -10,12 +11,19 @@ interface Props {
 }
 
 // 카카오 키워드 검색. origin 기준 1km 이내 우선.
+// 키워드 검색에 안 잡히는 식당은 카카오맵 url 직접 붙여넣기 fallback (D45).
 export function KakaoPlacesSearch({ origin, onSelect }: Props) {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<KakaoPlaceItem[]>([]);
   const [status, setStatus] = useState<'idle' | 'searching' | 'ok' | 'empty' | 'error'>('idle');
   const [, startTransition] = useTransition();
   const ready = useRef(false);
+
+  // URL fallback state
+  const [urlInput, setUrlInput] = useState('');
+  const [urlStatus, setUrlStatus] = useState<'idle' | 'fetching' | 'error'>('idle');
+  const [urlError, setUrlError] = useState<string | null>(null);
+  const [, startUrlTransition] = useTransition();
 
   useEffect(() => {
     loadKakaoMaps()
@@ -66,6 +74,40 @@ export function KakaoPlacesSearch({ origin, onSelect }: Props) {
     if (e.key === 'Enter') {
       e.preventDefault();
       runSearch();
+    }
+  }
+
+  function runUrlFetch() {
+    const v = urlInput.trim();
+    if (!v) return;
+    setUrlStatus('fetching');
+    setUrlError(null);
+    startUrlTransition(async () => {
+      const r = await fetchKakaoPlaceFromUrl(v);
+      if (!r.ok) {
+        setUrlStatus('error');
+        setUrlError(r.message);
+        return;
+      }
+      setUrlStatus('idle');
+      setUrlInput('');
+      // KakaoPlaceItem 형태로 onSelect — id 는 임시값 (검색 결과가 아니라 URL 직접 입력이라 id 없음)
+      onSelect({
+        ...r.place,
+        id: `url-${Date.now()}`,
+        category_name: '',
+        category_group_code: '',
+        category_group_name: '',
+        phone: '',
+        distance: '',
+      } as KakaoPlaceItem);
+    });
+  }
+
+  function onUrlKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      runUrlFetch();
     }
   }
 
@@ -126,6 +168,40 @@ export function KakaoPlacesSearch({ origin, onSelect }: Props) {
           ))}
         </ol>
       )}
+
+      {/* URL fallback — 카카오 keyword search 에 안 잡히는 식당용 */}
+      <details className="mt-4 border-t border-border pt-3">
+        <summary className="cursor-pointer text-[11px] text-fg-muted hover:text-fg">
+          🔗 검색 안 나오면 카카오맵 url 로 직접 추가
+        </summary>
+        <div className="mt-2 space-y-2">
+          <p className="text-[10px] text-fg-muted/80 leading-relaxed">
+            카카오맵 앱/웹에서 식당 페이지의 url 을 복사해 붙여넣으세요.<br />
+            예: <span className="font-mono">https://place.map.kakao.com/27260928</span>
+          </p>
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={urlInput}
+              onChange={(e) => setUrlInput(e.target.value)}
+              onKeyDown={onUrlKeyDown}
+              placeholder="카카오맵 url 또는 place 번호"
+              className="flex-1 rounded-md border border-border bg-bg px-3 py-2 text-xs text-fg outline-none focus:border-fg"
+            />
+            <button
+              type="button"
+              onClick={runUrlFetch}
+              disabled={urlStatus === 'fetching' || !urlInput.trim()}
+              className="rounded-md bg-fg px-3 py-2 text-xs font-semibold text-bg hover:opacity-90 disabled:opacity-40"
+            >
+              {urlStatus === 'fetching' ? '가져오는 중…' : '추가'}
+            </button>
+          </div>
+          {urlError && (
+            <p className="text-xs text-red-500">{urlError}</p>
+          )}
+        </div>
+      </details>
     </div>
   );
 }
