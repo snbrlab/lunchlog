@@ -1,10 +1,16 @@
 'use server';
 
-// 카카오 Places API (keyword search) 에 잡히지 않는 식당 우회 등록.
-// 카카오맵 (place.map.kakao.com) 의 비공식 JSON endpoint 활용 — UI 에 보이는 모든 식당 cover.
-// ⚠️ 비공식 — 카카오가 응답 형식 바꾸거나 차단하면 깨질 수 있음. P18 영업시간 기능과 동일 endpoint.
+// 카카오 Places API (keyword search) 에 잡히지 않는 식당을 위한 우회 등록.
+//
+// 비공식 endpoint (place.map.kakao.com/main/v/{id}) 는 카카오가 막아두어 더 이상 동작 안 함.
+// 대신 공식 Kakao Local REST API 의 주소 → 좌표 geocoding 을 활용:
+//   - 사용자가 이름 + 주소를 직접 입력
+//   - 주소를 /v2/local/search/address.json 으로 좌표 변환
+//   - (선택) 카카오맵 url 도 같이 저장 → 디테일 패널의 외부 링크로 사용
 
-export type FetchPlaceResult =
+import { getServerEnv } from '@/lib/env';
+
+export type ManualPlaceLookupResult =
   | {
       ok: true;
       place: {
@@ -18,148 +24,113 @@ export type FetchPlaceResult =
     }
   | { ok: false; message: string };
 
+interface KakaoAddressDoc {
+  address_name: string; // 지번 fullname
+  road_address?: { address_name: string } | null;
+  x: string;
+  y: string;
+}
+interface KakaoAddressResponse {
+  documents?: KakaoAddressDoc[];
+}
+
 const PLACE_ID_REGEX = /\/(\d{4,})(?:\/?|\?|$)/;
 
-function extractPlaceId(input: string): string | null {
+function extractKakaoPlaceUrl(input: string): string | null {
   const trimmed = input.trim();
-  // 그냥 숫자만 입력한 경우도 허용
-  if (/^\d{4,}$/.test(trimmed)) return trimmed;
+  if (!trimmed) return null;
+  if (/^\d{4,}$/.test(trimmed)) {
+    return `https://place.map.kakao.com/${trimmed}`;
+  }
   try {
     const u = new URL(trimmed);
     if (!u.hostname.includes('kakao.com')) return null;
-    // place.map.kakao.com/27260928, m.place.map.kakao.com/27260928
-    const pathMatch = u.pathname.match(PLACE_ID_REGEX);
-    if (pathMatch) return pathMatch[1]!;
-    // map.kakao.com/?itemId=27260928
+    const m = u.pathname.match(PLACE_ID_REGEX);
+    if (m) return `https://place.map.kakao.com/${m[1]}`;
     const itemId = u.searchParams.get('itemId');
-    if (itemId && /^\d+$/.test(itemId)) return itemId;
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-interface KakaoPlaceJson {
-  basicInfo?: {
-    placenamefull?: string;
-    cid?: string | number;
-    address?: {
-      newaddrfullname?: string;
-      addrbunho?: string;
-      newaddr?: { newaddrfull?: string };
-      region?: { fullname?: string };
-      addrnewfull?: string;
-    };
-    feedback?: { kakaomapUrl?: string };
-    // 좌표 — 문서화 안 됐지만 보통 위치 정보가 어딘가에
-    coordinate?: { x?: string | number; y?: string | number };
-  };
-}
-
-export async function fetchKakaoPlaceFromUrl(input: string): Promise<FetchPlaceResult> {
-  const placeId = extractPlaceId(input);
-  if (!placeId) {
-    return {
-      ok: false,
-      message: '카카오맵 url 또는 place 번호를 정확히 입력해주세요',
-    };
-  }
-
-  // 카카오가 endpoint 경로를 바꿀 수 있어서 알려진 변형들 차례로 시도
-  const candidates = [
-    `https://place.map.kakao.com/main/v/${placeId}`,
-    `https://place-api.map.kakao.com/places/panel3/${placeId}`,
-    `https://place.map.kakao.com/places/panel3/${placeId}`,
-  ];
-  const realisticUserAgent =
-    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
-    '(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
-
-  let res: Response | null = null;
-  let lastStatus = 0;
-  let lastUrl = '';
-  for (const url of candidates) {
-    try {
-      const r = await fetch(url, {
-        headers: {
-          'User-Agent': realisticUserAgent,
-          Referer: 'https://place.map.kakao.com/',
-          Origin: 'https://place.map.kakao.com',
-          Accept: 'application/json, text/plain, */*',
-          'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
-        },
-        cache: 'no-store',
-      });
-      lastStatus = r.status;
-      lastUrl = url;
-      if (r.ok) {
-        res = r;
-        break;
-      }
-    } catch (e) {
-      lastStatus = -1;
-      lastUrl = url;
-      // 다음 candidate 로
-      console.error('[fetchKakaoPlaceFromUrl] fetch error', url, (e as Error).message);
+    if (itemId && /^\d+$/.test(itemId)) {
+      return `https://place.map.kakao.com/${itemId}`;
     }
+    // 그 외 카카오맵 url 은 그대로 저장 (검증 통과)
+    return trimmed;
+  } catch {
+    return null;
   }
+}
 
-  if (!res) {
+interface LookupInput {
+  name: string;
+  address: string; // 도로명 또는 지번 주소
+  kakaoUrl?: string; // 선택. 카카오맵 식당 페이지 url
+}
+
+export async function lookupPlaceManually(
+  input: LookupInput,
+): Promise<ManualPlaceLookupResult> {
+  const name = input.name.trim();
+  const address = input.address.trim();
+  if (!name) return { ok: false, message: '식당 이름을 입력해주세요' };
+  if (!address) return { ok: false, message: '주소를 입력해주세요' };
+
+  const { kakaoRestKey } = getServerEnv();
+  if (!kakaoRestKey) {
     return {
       ok: false,
-      message: `카카오맵 응답 오류 (HTTP ${lastStatus}). place_id=${placeId}. 비공식 endpoint 가 막혔거나 path 가 바뀐 것 같아요. 디버그: ${lastUrl}`,
+      message: 'KAKAO_REST_KEY 가 설정 안 됨 — 관리자에게 문의해주세요',
     };
   }
 
-  let json: KakaoPlaceJson;
+  const url = `https://dapi.kakao.com/v2/local/search/address.json?query=${encodeURIComponent(address)}`;
+  let res: Response;
   try {
-    json = (await res.json()) as KakaoPlaceJson;
-  } catch {
-    return { ok: false, message: '카카오맵 응답을 JSON 으로 파싱하지 못했어요' };
+    res = await fetch(url, {
+      headers: { Authorization: `KakaoAK ${kakaoRestKey}` },
+      cache: 'no-store',
+    });
+  } catch (e) {
+    return { ok: false, message: `geocoding 실패: ${(e as Error).message}` };
+  }
+  if (!res.ok) {
+    return { ok: false, message: `geocoding HTTP ${res.status}` };
   }
 
-  const b = json.basicInfo;
-  if (!b) {
-    return { ok: false, message: 'basicInfo 누락 — 폐업했거나 비공개 식당일 수 있어요' };
+  const json = (await res.json()) as KakaoAddressResponse;
+  const first = json.documents?.[0];
+  if (!first) {
+    return {
+      ok: false,
+      message: '주소로 좌표를 못 찾았어요. 도로명 주소로 다시 시도해보세요',
+    };
   }
 
-  const name = b.placenamefull?.trim();
-  if (!name) {
-    return { ok: false, message: '식당 이름을 가져오지 못했어요' };
-  }
-
-  // 좌표는 비공식 endpoint 응답 구조가 종종 변하니 여러 후보 시도
-  const lat =
-    typeof b.coordinate?.y === 'string'
-      ? parseFloat(b.coordinate.y)
-      : typeof b.coordinate?.y === 'number'
-        ? b.coordinate.y
-        : NaN;
-  const lng =
-    typeof b.coordinate?.x === 'string'
-      ? parseFloat(b.coordinate.x)
-      : typeof b.coordinate?.x === 'number'
-        ? b.coordinate.x
-        : NaN;
-
+  const lat = parseFloat(first.y);
+  const lng = parseFloat(first.x);
   if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
-    return { ok: false, message: '좌표를 가져오지 못했어요 (응답 구조 변경 가능성)' };
+    return { ok: false, message: '좌표 파싱 실패' };
   }
 
-  // 도로명 주소 우선, 없으면 fullname
-  const roadAddress =
-    b.address?.newaddr?.newaddrfull ?? b.address?.newaddrfullname ?? '';
-  const fullAddress = b.address?.addrnewfull ?? b.address?.region?.fullname ?? '';
+  const placeUrl = input.kakaoUrl
+    ? (extractKakaoPlaceUrl(input.kakaoUrl) ?? '')
+    : '';
 
   return {
     ok: true,
     place: {
       place_name: name,
-      road_address_name: roadAddress,
-      address_name: fullAddress,
+      road_address_name: first.road_address?.address_name ?? '',
+      address_name: first.address_name ?? address,
       x: String(lng),
       y: String(lat),
-      place_url: b.feedback?.kakaomapUrl ?? `https://place.map.kakao.com/${placeId}`,
+      place_url: placeUrl,
     },
+  };
+}
+
+// 호환성: 기존 KakaoPlacesSearch 가 fetchKakaoPlaceFromUrl 을 import 하던 흔적 정리용
+// (이제는 manual lookup 으로 대체)
+export async function fetchKakaoPlaceFromUrl(): Promise<ManualPlaceLookupResult> {
+  return {
+    ok: false,
+    message: '이 기능은 더 이상 동작하지 않습니다. 직접 입력 모드를 사용해주세요.',
   };
 }
