@@ -65,23 +65,50 @@ export async function fetchKakaoPlaceFromUrl(input: string): Promise<FetchPlaceR
     };
   }
 
-  let res: Response;
-  try {
-    res = await fetch(`https://place.map.kakao.com/main/v/${placeId}`, {
-      headers: {
-        'User-Agent':
-          'Mozilla/5.0 (compatible; lunchlog/1.0; +https://lunchlog-rho.vercel.app)',
-        Referer: 'https://place.map.kakao.com/',
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
-    });
-  } catch (e) {
-    return { ok: false, message: `카카오맵 fetch 실패: ${(e as Error).message}` };
+  // 카카오가 endpoint 경로를 바꿀 수 있어서 알려진 변형들 차례로 시도
+  const candidates = [
+    `https://place.map.kakao.com/main/v/${placeId}`,
+    `https://place-api.map.kakao.com/places/panel3/${placeId}`,
+    `https://place.map.kakao.com/places/panel3/${placeId}`,
+  ];
+  const realisticUserAgent =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 ' +
+    '(KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36';
+
+  let res: Response | null = null;
+  let lastStatus = 0;
+  let lastUrl = '';
+  for (const url of candidates) {
+    try {
+      const r = await fetch(url, {
+        headers: {
+          'User-Agent': realisticUserAgent,
+          Referer: 'https://place.map.kakao.com/',
+          Origin: 'https://place.map.kakao.com',
+          Accept: 'application/json, text/plain, */*',
+          'Accept-Language': 'ko-KR,ko;q=0.9,en;q=0.8',
+        },
+        cache: 'no-store',
+      });
+      lastStatus = r.status;
+      lastUrl = url;
+      if (r.ok) {
+        res = r;
+        break;
+      }
+    } catch (e) {
+      lastStatus = -1;
+      lastUrl = url;
+      // 다음 candidate 로
+      console.error('[fetchKakaoPlaceFromUrl] fetch error', url, (e as Error).message);
+    }
   }
 
-  if (!res.ok) {
-    return { ok: false, message: `카카오맵 응답 오류 (HTTP ${res.status})` };
+  if (!res) {
+    return {
+      ok: false,
+      message: `카카오맵 응답 오류 (HTTP ${lastStatus}). place_id=${placeId}. 비공식 endpoint 가 막혔거나 path 가 바뀐 것 같아요. 디버그: ${lastUrl}`,
+    };
   }
 
   let json: KakaoPlaceJson;
