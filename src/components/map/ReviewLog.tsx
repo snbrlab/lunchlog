@@ -4,7 +4,6 @@ import { useEffect, useMemo, useState, useTransition } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
-import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
 import { deleteReview, revertReview, setReviewMealTime } from '@/lib/reviews/actions';
 import type { MealMode, Review } from '@/types/db';
 
@@ -38,14 +37,11 @@ export function ReviewLog({
   onMutated,
   onReply,
 }: Props) {
-  const { mode } = useMealMode();
   const [reviews, setReviews] = useState<EnrichedReview[]>([]);
   const [loading, setLoading] = useState(true);
-  // SPEC D8: 기본값은 현재 탭. 모드 토글 시 자동 sync.
-  const [filter, setFilter] = useState<'all' | MealMode>(mode);
-  useEffect(() => {
-    setFilter(mode);
-  }, [mode]);
+  // 식당 클릭 시점엔 그 식당의 전체 컨텍스트가 더 가치 있음 → 기본 '전체'.
+  // (사이드바는 모드 필터 유지 — 식당 결정 단계에서만 모드가 핵심)
+  const [filter, setFilter] = useState<'all' | MealMode>('all');
   const [pendingMutateId, setPendingMutateId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
