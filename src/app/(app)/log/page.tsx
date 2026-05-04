@@ -1,4 +1,5 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCachedOffices } from '@/lib/cache/offices';
 import LogList from './LogList';
 
 export interface LogReviewRow {
@@ -14,6 +15,7 @@ export interface LogReviewRow {
     name: string;
     avatar_emoji: string | null;
     avatar_color: string;
+    office_id: string | null;
   } | null;
   restaurant: {
     id: string;
@@ -32,15 +34,19 @@ export default async function LogPage() {
   const supabase = await createSupabaseServerClient();
 
   // 1) 메인 reviews 조회 (parent 는 별도 fetch — self-referential FK 임베드 회피)
-  const { data: rawData } = await supabase
-    .from('reviews')
-    .select(
-      'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
-        'author:users!reviews_author_id_fkey ( name, avatar_emoji, avatar_color ), ' +
-        'restaurant:restaurants ( id, name, cuisine_types, is_closed )',
-    )
-    .order('created_at', { ascending: false })
-    .limit(RECENT_LIMIT);
+  // author.office_id 까지 같이 가져와서 근무지별 필터링 가능 (D46)
+  const [{ data: rawData }, offices] = await Promise.all([
+    supabase
+      .from('reviews')
+      .select(
+        'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
+          'author:users!reviews_author_id_fkey ( name, avatar_emoji, avatar_color, office_id ), ' +
+          'restaurant:restaurants ( id, name, cuisine_types, is_closed )',
+      )
+      .order('created_at', { ascending: false })
+      .limit(RECENT_LIMIT),
+    getCachedOffices(),
+  ]);
 
   type RawRow = Omit<LogReviewRow, 'parent'>;
   const baseRows = (rawData ?? []) as unknown as RawRow[];
@@ -82,7 +88,7 @@ export default async function LogPage() {
         최근 {RECENT_LIMIT}건. 동료들이 어디 가고 있는지 한 눈에.
       </p>
       <div className="mt-5">
-        <LogList rows={rows} />
+        <LogList rows={rows} offices={offices} />
       </div>
     </main>
   );

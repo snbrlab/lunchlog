@@ -5,15 +5,24 @@ import { useMemo, useState } from 'react';
 import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import type { LogReviewRow } from './page';
+import type { Office } from '@/types/db';
 
 type MealFilter = 'all' | 'lunch' | 'dinner';
 type DateRange = 'all' | '7d' | '30d';
 
-export default function LogList({ rows }: { rows: LogReviewRow[] }) {
+export default function LogList({
+  rows,
+  offices,
+}: {
+  rows: LogReviewRow[];
+  offices: Office[];
+}) {
   const [meal, setMeal] = useState<MealFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [showReverted, setShowReverted] = useState(false);
   const [query, setQuery] = useState('');
+  // 작성자 근무지 필터 — 'all' 또는 office.id (D46)
+  const [officeFilter, setOfficeFilter] = useState<string>('all');
 
   const filtered = useMemo(() => {
     const now = Date.now();
@@ -28,6 +37,7 @@ export default function LogList({ rows }: { rows: LogReviewRow[] }) {
       if (!showReverted && r.reverted) return false;
       if (meal !== 'all' && r.meal_time !== meal) return false;
       if (cutoff > 0 && new Date(r.created_at).getTime() < cutoff) return false;
+      if (officeFilter !== 'all' && r.author?.office_id !== officeFilter) return false;
       if (q) {
         const hay = [
           r.message,
@@ -41,7 +51,7 @@ export default function LogList({ rows }: { rows: LogReviewRow[] }) {
       }
       return true;
     });
-  }, [rows, meal, dateRange, showReverted, query]);
+  }, [rows, meal, dateRange, showReverted, query, officeFilter]);
 
   return (
     <div className="space-y-3">
@@ -94,6 +104,36 @@ export default function LogList({ rows }: { rows: LogReviewRow[] }) {
           />
           revert 포함
         </label>
+      </div>
+
+      {/* 작성자 근무지 필터 (D46) */}
+      <div className="flex flex-wrap items-center gap-1">
+        <span className="mr-1 text-[10px] text-fg-muted">작성자 근무지</span>
+        <button
+          type="button"
+          onClick={() => setOfficeFilter('all')}
+          className={`rounded-full px-2 py-0.5 text-[11px] transition ${
+            officeFilter === 'all'
+              ? 'bg-fg text-bg'
+              : 'bg-surface text-fg-muted hover:bg-fg/5'
+          }`}
+        >
+          전체
+        </button>
+        {offices.map((o) => (
+          <button
+            key={o.id}
+            type="button"
+            onClick={() => setOfficeFilter(o.id)}
+            className={`rounded-full px-2 py-0.5 text-[11px] transition ${
+              officeFilter === o.id
+                ? 'bg-fg text-bg'
+                : 'bg-surface text-fg-muted hover:bg-fg/5'
+            }`}
+          >
+            {o.name}
+          </button>
+        ))}
       </div>
 
       <div className="text-xs text-fg-muted">{filtered.length} 건</div>
