@@ -12,8 +12,8 @@ export default function SignupPage() {
           </p>
         </div>
         <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs leading-relaxed text-amber-900">
-          모든 commit 엔 author 가 박혀요.<br />
-          blame 했을 때 떳떳한 한 줄만! ✌️
+          사내 동료들과 함께 쌓는 commit log 예요.<br />
+          가볍고 따뜻한 한 줄 부탁해요 ☕
         </div>
         <SignupForm />
         <div className="mt-6 text-center text-xs text-neutral-500">
