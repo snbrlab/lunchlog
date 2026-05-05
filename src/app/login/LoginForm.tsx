@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { signInWithPassword, type SignInWithPasswordResult } from './actions';
+import PasswordInput from '@/components/auth/PasswordInput';
 
 export default function LoginForm() {
   const [pending, startTransition] = useTransition();
@@ -35,13 +36,11 @@ export default function LoginForm() {
 
         <label className="block text-sm">
           <span className="mb-1.5 block font-medium text-neutral-700">비밀번호</span>
-          <input
-            type="password"
+          <PasswordInput
             name="password"
             required
             autoComplete="current-password"
             disabled={pending}
-            className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
           />
         </label>
 

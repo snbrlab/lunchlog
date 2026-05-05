@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useState, useTransition } from 'react';
 import { requestSignup, type RequestSignupResult } from './actions';
+import PasswordInput from '@/components/auth/PasswordInput';
 
 export default function SignupForm() {
   const [pending, startTransition] = useTransition();
@@ -78,28 +79,24 @@ export default function SignupForm() {
 
       <label className="block text-sm">
         <span className="mb-1.5 block font-medium text-neutral-700">비밀번호</span>
-        <input
-          type="password"
+        <PasswordInput
           name="password"
           required
           minLength={8}
           autoComplete="new-password"
           disabled={pending}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
         />
-        <span className="mt-1 block text-xs text-neutral-500">8자 이상</span>
+        <span className="mt-1 block text-xs text-neutral-500">8자 이상 (영문/숫자 권장)</span>
       </label>
 
       <label className="block text-sm">
         <span className="mb-1.5 block font-medium text-neutral-700">비밀번호 확인</span>
-        <input
-          type="password"
+        <PasswordInput
           name="password_confirm"
           required
           minLength={8}
           autoComplete="new-password"
           disabled={pending}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
         />
       </label>
 

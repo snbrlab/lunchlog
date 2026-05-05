@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from 'react';
 import { setPassword, type SetPasswordResult } from './actions';
+import PasswordInput from '@/components/auth/PasswordInput';
 
 export default function SetPasswordForm() {
   const [pending, startTransition] = useTransition();
@@ -20,8 +21,7 @@ export default function SetPasswordForm() {
     <form action={onSubmit} className="space-y-4">
       <label className="block text-sm">
         <span className="mb-1.5 block font-medium text-neutral-700">새 비밀번호</span>
-        <input
-          type="password"
+        <PasswordInput
           name="password"
           required
           minLength={8}
@@ -29,21 +29,18 @@ export default function SetPasswordForm() {
           autoComplete="new-password"
           autoFocus
           disabled={pending}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
         />
       </label>
 
       <label className="block text-sm">
         <span className="mb-1.5 block font-medium text-neutral-700">비밀번호 확인</span>
-        <input
-          type="password"
+        <PasswordInput
           name="confirm"
           required
           minLength={8}
           maxLength={72}
           autoComplete="new-password"
           disabled={pending}
-          className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
         />
       </label>
 
