@@ -14,14 +14,15 @@ export async function Header() {
 
   if (!user) return null;
 
+  // D50: users.email 은 column-level GRANT 로 SELECT 차단됨. 본인 email 은 auth.getUser() 로
   const { data: profile } = await supabase
     .from('users')
-    .select('name, email, avatar_color, avatar_emoji, role')
+    .select('name, avatar_color, avatar_emoji, role')
     .eq('id', user.id)
     .maybeSingle();
 
   const name = profile?.name ?? user.email ?? '익명';
-  const email = profile?.email ?? user.email ?? '';
+  const email = user.email ?? '';
   const avatarColor = profile?.avatar_color ?? '#fde68a';
   const avatarEmoji = resolveAvatarEmoji(profile?.avatar_emoji, name + user.id);
   const isAdmin = profile?.role === 'admin';

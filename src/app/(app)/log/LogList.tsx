@@ -184,7 +184,16 @@ function LogItem({ row }: { row: LogReviewRow }) {
             {row.hash}
           </span>
           <span>·</span>
-          <span className="font-medium text-fg">{authorName}</span>
+          {row.author?.id ? (
+            <Link
+              href={`/u/${row.author.id}`}
+              className="font-medium text-fg hover:underline"
+            >
+              {authorName}
+            </Link>
+          ) : (
+            <span className="font-medium text-fg">{authorName}</span>
+          )}
           <span>가</span>
           {restaurantNode}
           <span>에</span>

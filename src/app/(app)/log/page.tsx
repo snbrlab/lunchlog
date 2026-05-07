@@ -12,6 +12,7 @@ export interface LogReviewRow {
   parent_review_id: string | null;
   created_at: string;
   author: {
+    id: string;
     name: string;
     avatar_emoji: string | null;
     avatar_color: string;
@@ -40,7 +41,7 @@ export default async function LogPage() {
       .from('reviews')
       .select(
         'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
-          'author:users!reviews_author_id_fkey ( name, avatar_emoji, avatar_color, office_id ), ' +
+          'author:users!reviews_author_id_fkey ( id, name, avatar_emoji, avatar_color, office_id ), ' +
           'restaurant:restaurants ( id, name, cuisine_types, is_closed )',
       )
       .order('created_at', { ascending: false })

@@ -1,4 +1,6 @@
+import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import ReportsAdminTable from './ReportsAdminTable';
 
 interface Row {
@@ -13,8 +15,22 @@ interface Row {
 }
 
 export default async function AdminReportsPage() {
+  // admin 가드 (D50: author email 노출 보호)
   const supabase = await createSupabaseServerClient();
-  const { data } = await supabase
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) redirect('/login');
+  const { data: me } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (me?.role !== 'admin') redirect('/map');
+
+  // service-role 로 author email 까지 fetch
+  const sa = getSupabaseAdminClient();
+  const { data } = await sa
     .from('reports')
     .select(
       'id, category, message, status, admin_note, created_at, resolved_at, ' +

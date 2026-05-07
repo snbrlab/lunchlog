@@ -13,10 +13,11 @@ export default async function MePage() {
   } = await supabase.auth.getUser();
   if (!user) return null;
 
+  // D50: users.email column-level GRANT 로 SELECT 차단됨 → 본인 email 은 auth.getUser() 로
   const { data: profileRaw } = await supabase
     .from('users')
     .select(
-      'name, email, avatar_color, avatar_emoji, role, department, office_id, building_id, ' +
+      'name, avatar_color, avatar_emoji, role, department, office_id, building_id, ' +
         'office:offices ( name ), building:office_buildings!users_building_id_fkey ( name )',
     )
     .eq('id', user.id)
@@ -25,7 +26,6 @@ export default async function MePage() {
   const profile = profileRaw as unknown as
     | {
         name: string;
-        email: string;
         avatar_color: string;
         avatar_emoji: string | null;
         role: 'member' | 'admin';
@@ -38,7 +38,7 @@ export default async function MePage() {
     | null;
 
   const name = profile?.name ?? '';
-  const email = profile?.email ?? user.email ?? '';
+  const email = user.email ?? '';
   const avatarEmoji = resolveAvatarEmoji(profile?.avatar_emoji, name + user.id);
   const avatarColor = profile?.avatar_color ?? '#fde68a';
   const officeName = profile?.office?.name ?? null;

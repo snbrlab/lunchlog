@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState, useTransition } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@/lib/format-time';
@@ -343,7 +344,12 @@ function ReviewRow({
           >
             {authorEmoji}
           </span>
-          <span className="font-medium text-fg">{authorName}</span>
+          <Link
+            href={`/u/${review.author_id}`}
+            className="font-medium text-fg hover:underline"
+          >
+            {authorName}
+          </Link>
           <span>·</span>
           <span>{formatRelativeTime(created)}</span>
           {isAdmin ? (
