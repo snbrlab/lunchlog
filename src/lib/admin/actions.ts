@@ -81,17 +81,10 @@ export type CreateOfficeResult =
   | { ok: true; id: string }
   | { ok: false; message: string };
 
-export async function createOffice(
-  name: string,
-  latitude: number,
-  longitude: number,
-): Promise<CreateOfficeResult> {
+export async function createOffice(name: string): Promise<CreateOfficeResult> {
   const trimmed = name.trim();
   if (!trimmed || trimmed.length > 30) {
     return { ok: false, message: '사무실 이름 1~30자 입력해주세요' };
-  }
-  if (!isValidCoord(latitude, longitude)) {
-    return { ok: false, message: '좌표가 올바르지 않아요' };
   }
 
   let admin;
@@ -101,10 +94,12 @@ export async function createOffice(
     return { ok: false, message: (e as Error).message };
   }
 
+  // default_lat/lng 는 NOT NULL 이지만 실제 코드에선 안 쓰이는 legacy 컬럼.
+  // 건물의 lat/lng 가 회사 마커 origin 으로 쓰임. 그래서 placeholder 값 (서울 시청) 사용.
   const slug = generateSlug(trimmed);
   const { data, error } = await admin.supabase
     .from('offices')
-    .insert({ name: trimmed, slug, default_lat: latitude, default_lng: longitude })
+    .insert({ name: trimmed, slug, default_lat: 37.5666, default_lng: 126.9784 })
     .select('id')
     .single();
   if (error) return { ok: false, message: error.message };

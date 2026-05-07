@@ -9,7 +9,12 @@ import {
   updateBuildingCoord,
   type AutoFillResult,
 } from '@/lib/admin/actions';
+import { KakaoPlacesSearch } from '@/components/map/KakaoPlacesSearch';
 import type { Office, OfficeBuilding } from '@/types/db';
+import type { KakaoPlaceItem } from '@/types/kakao-maps';
+
+// 카카오 검색의 origin (거리 정렬용 기본값) — 서울 시청
+const SEARCH_ORIGIN = { lat: 37.5666, lng: 126.9784 };
 
 interface Props {
   offices: Office[];
@@ -173,29 +178,18 @@ function NewOfficeForm() {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [name, setName] = useState('');
-  const [lat, setLat] = useState('');
-  const [lng, setLng] = useState('');
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
-  function reset() {
-    setName('');
-    setLat('');
-    setLng('');
-    setError(null);
-  }
-
   function submit() {
     setError(null);
-    const latNum = Number(lat);
-    const lngNum = Number(lng);
     startTransition(async () => {
-      const r = await createOffice(name, latNum, lngNum);
+      const r = await createOffice(name);
       if (!r.ok) {
         setError(r.message);
         return;
       }
-      reset();
+      setName('');
       setOpen(false);
       router.refresh();
     });
@@ -214,7 +208,7 @@ function NewOfficeForm() {
       {open && (
         <div className="space-y-2 border-t border-border px-5 py-4">
           <p className="text-[11px] text-fg-muted">
-            사무실 이름과 default 좌표 (사무실 중심) 입력. 좌표는 카카오맵에서 검색해서 옮겨도 되고, 대략값 박고 자동 보정으로 정정해도 됨.
+            사무실 이름만 입력. 실제 좌표는 아래 "건물 추가" 에서 검색으로 채움.
           </p>
           <input
             type="text"
@@ -224,31 +218,11 @@ function NewOfficeForm() {
             disabled={pending}
             className="w-full rounded border border-border bg-bg px-2 py-1.5 text-xs outline-none focus:border-fg"
           />
-          <div className="flex gap-2">
-            <input
-              type="number"
-              step="any"
-              value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              placeholder="lat (위도) — 예: 37.55"
-              disabled={pending}
-              className="flex-1 rounded border border-border bg-bg px-2 py-1.5 font-mono text-xs outline-none focus:border-fg"
-            />
-            <input
-              type="number"
-              step="any"
-              value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              placeholder="lng (경도) — 예: 126.97"
-              disabled={pending}
-              className="flex-1 rounded border border-border bg-bg px-2 py-1.5 font-mono text-xs outline-none focus:border-fg"
-            />
-          </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
           <button
             type="button"
             onClick={submit}
-            disabled={pending || !name.trim() || !lat || !lng}
+            disabled={pending || !name.trim()}
             className="rounded bg-fg px-3 py-1.5 text-xs font-semibold text-bg transition hover:opacity-90 disabled:opacity-40"
           >
             {pending ? '저장 중…' : '사무실 추가'}
@@ -303,9 +277,9 @@ function NewBuildingForm({ offices }: { offices: Office[] }) {
         <span className="text-xs text-fg-muted">{open ? '▲' : '▼'}</span>
       </button>
       {open && (
-        <div className="space-y-2 border-t border-border px-5 py-4">
+        <div className="space-y-3 border-t border-border px-5 py-4">
           <p className="text-[11px] text-fg-muted">
-            기존 사무실에 건물 추가. 좌표 대략값 박고 자동 보정으로 정정 가능.
+            카카오 검색으로 건물 좌표 자동 채우기 (예: "LG트윈타워", "LG디지털파크"). 검색 결과 클릭 시 이름·좌표 prefill — 이름은 수정 가능.
           </p>
           <select
             value={officeId}
@@ -318,33 +292,49 @@ function NewBuildingForm({ offices }: { offices: Office[] }) {
               <option key={o.id} value={o.id}>{o.name}</option>
             ))}
           </select>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="건물 이름 (예: LG트윈타워, W1, ISC 등)"
-            disabled={pending}
-            className="w-full rounded border border-border bg-bg px-2 py-1.5 text-xs outline-none focus:border-fg"
+          <KakaoPlacesSearch
+            origin={SEARCH_ORIGIN}
+            onSelect={(item: KakaoPlaceItem) => {
+              setName(item.place_name);
+              setLat(item.y);
+              setLng(item.x);
+              setError(null);
+            }}
           />
-          <div className="flex gap-2">
-            <input
-              type="number"
-              step="any"
-              value={lat}
-              onChange={(e) => setLat(e.target.value)}
-              placeholder="lat — 예: 37.55"
-              disabled={pending}
-              className="flex-1 rounded border border-border bg-bg px-2 py-1.5 font-mono text-xs outline-none focus:border-fg"
-            />
-            <input
-              type="number"
-              step="any"
-              value={lng}
-              onChange={(e) => setLng(e.target.value)}
-              placeholder="lng — 예: 126.97"
-              disabled={pending}
-              className="flex-1 rounded border border-border bg-bg px-2 py-1.5 font-mono text-xs outline-none focus:border-fg"
-            />
+          <div className="border-t border-border pt-3">
+            <span className="mb-1.5 block text-[11px] font-medium text-fg-muted">
+              직접 입력 (또는 검색 결과 수정)
+            </span>
+            <div className="space-y-2">
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="건물 이름 (예: LG트윈타워)"
+                disabled={pending}
+                className="w-full rounded border border-border bg-bg px-2 py-1.5 text-xs outline-none focus:border-fg"
+              />
+              <div className="flex gap-2">
+                <input
+                  type="number"
+                  step="any"
+                  value={lat}
+                  onChange={(e) => setLat(e.target.value)}
+                  placeholder="lat (위도)"
+                  disabled={pending}
+                  className="flex-1 rounded border border-border bg-bg px-2 py-1.5 font-mono text-xs outline-none focus:border-fg"
+                />
+                <input
+                  type="number"
+                  step="any"
+                  value={lng}
+                  onChange={(e) => setLng(e.target.value)}
+                  placeholder="lng (경도)"
+                  disabled={pending}
+                  className="flex-1 rounded border border-border bg-bg px-2 py-1.5 font-mono text-xs outline-none focus:border-fg"
+                />
+              </div>
+            </div>
           </div>
           {error && <p className="text-xs text-red-500">{error}</p>}
           <button
