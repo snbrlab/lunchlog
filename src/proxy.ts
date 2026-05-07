@@ -1,10 +1,11 @@
 // 인증 + 온보딩 가드 (Next 16 proxy convention, 구 middleware)
-// /login, /signup, /auth/* 외 모든 경로는 인증 + 온보딩 완료 체크.
+// /login, /signup, /forgot-password, /auth/* 외 모든 경로는 인증 + 온보딩 완료 체크.
+// (/reset-password 는 인증 필요 — auth/callback 통해 들어와야 정상 동작)
 
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/proxy';
 
-const PUBLIC_PATHS = ['/login', '/signup', '/auth'];
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/auth'];
 const ONBOARDING_PATH = '/onboarding';
 const SET_PASSWORD_PATH = '/set-password';
 

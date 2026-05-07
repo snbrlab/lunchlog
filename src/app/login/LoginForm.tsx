@@ -58,12 +58,14 @@ export default function LoginForm() {
       <div className="text-center text-xs text-neutral-500">
         처음이세요?{' '}
         <Link href="/signup" className="font-medium underline-offset-2 hover:underline">
-          가입 신청하기
+          회원가입
         </Link>
       </div>
 
       <p className="text-center text-[11px] text-neutral-400">
-        비밀번호 분실 시 관리자에게 메신저로 문의 → 임시 비번 발급
+        <Link href="/forgot-password" className="underline-offset-2 hover:underline">
+          비밀번호를 잊으셨나요?
+        </Link>
       </p>
     </div>
   );
