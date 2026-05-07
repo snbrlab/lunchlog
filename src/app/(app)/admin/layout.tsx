@@ -27,7 +27,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminNavLink href="/admin/restaurants">식당</AdminNavLink>
         <AdminNavLink href="/admin/reviews">리뷰</AdminNavLink>
         <AdminNavLink href="/admin/users">사용자</AdminNavLink>
-        <AdminNavLink href="/admin/signups">가입 요청</AdminNavLink>
+        {/* D47: 가입 요청 흐름 (D38) → OTP 자동 가입으로 대체. nav 에서 숨김.
+            url 직접 진입은 가능 — 과거 pending 처리 등 롤백용으로 보존 */}
         <AdminNavLink href="/admin/reports">제보</AdminNavLink>
         <Link
           href="/map"

@@ -1,53 +1,122 @@
 'use client';
 
-import Link from 'next/link';
 import { useState, useTransition } from 'react';
-import { requestSignup, type RequestSignupResult } from './actions';
-import PasswordInput from '@/components/auth/PasswordInput';
+import {
+  requestOtp,
+  verifyOtp,
+  type RequestOtpResult,
+  type VerifyOtpResult,
+} from './actions';
+
+type Step = 'email' | 'code';
 
 export default function SignupForm() {
   const [pending, startTransition] = useTransition();
+  const [step, setStep] = useState<Step>('email');
+  const [submittedEmail, setSubmittedEmail] = useState('');
+  const [submittedName, setSubmittedName] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [submittedEmail, setSubmittedEmail] = useState<string | null>(null);
 
-  function onSubmit(formData: FormData) {
+  function onRequestSubmit(formData: FormData) {
     setError(null);
     const email = String(formData.get('email') ?? '').trim().toLowerCase();
+    const name = String(formData.get('name') ?? '').trim();
     startTransition(async () => {
-      const r: RequestSignupResult = await requestSignup(formData);
+      const r: RequestOtpResult = await requestOtp(formData);
       if (!r.ok) {
         setError(r.message);
         return;
       }
       setSubmittedEmail(email);
+      setSubmittedName(name);
+      setStep('code');
     });
   }
 
-  if (submittedEmail) {
+  function onVerifySubmit(formData: FormData) {
+    setError(null);
+    formData.set('email', submittedEmail);
+    startTransition(async () => {
+      const r: VerifyOtpResult = await verifyOtp(formData);
+      if (!r.ok) setError(r.message);
+    });
+  }
+
+  function onResend() {
+    if (!submittedEmail || !submittedName) return;
+    setError(null);
+    startTransition(async () => {
+      const fd = new FormData();
+      fd.set('email', submittedEmail);
+      fd.set('name', submittedName);
+      const r = await requestOtp(fd);
+      if (!r.ok) setError(r.message);
+    });
+  }
+
+  if (step === 'code') {
     return (
-      <div className="space-y-4">
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-4 text-sm text-emerald-800">
-          <p className="font-medium">가입 신청 완료!</p>
-          <p className="mt-1.5 break-all">
-            <span className="font-mono">{submittedEmail}</span> 으로 신청했어요. 관리자가 승인하면
-            로그인 가능해요.
-          </p>
-          <p className="mt-2 text-xs text-emerald-700/80">
-            ※ 승인 알림은 따로 가지 않으니, 잠시 뒤 로그인 페이지에서 다시 시도해주세요.
+      <form action={onVerifySubmit} className="space-y-4">
+        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          <p className="font-medium">메일 발송 완료!</p>
+          <p className="mt-1 break-all">
+            <span className="font-mono">{submittedEmail}</span> 메일함에서 인증 코드를 확인해주세요.
           </p>
         </div>
-        <Link
-          href="/login"
-          className="block w-full rounded-md bg-neutral-900 py-2.5 text-center text-sm font-medium text-white hover:bg-neutral-800"
+
+        <label className="block text-sm">
+          <span className="mb-1.5 block font-medium text-neutral-700">인증 코드</span>
+          <input
+            type="text"
+            name="token"
+            required
+            autoFocus
+            inputMode="numeric"
+            pattern="\d{6,10}"
+            maxLength={10}
+            autoComplete="one-time-code"
+            placeholder="메일에 적힌 숫자 코드"
+            disabled={pending}
+            className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-center font-mono text-lg tracking-widest outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10 disabled:bg-neutral-50"
+          />
+        </label>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <button
+          type="submit"
+          disabled={pending}
+          className="w-full rounded-md bg-neutral-900 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:opacity-50"
         >
-          로그인 페이지로
-        </Link>
-      </div>
+          {pending ? '확인 중…' : '인증하고 가입 완료'}
+        </button>
+
+        <div className="flex justify-between text-xs text-neutral-500">
+          <button
+            type="button"
+            onClick={() => {
+              setStep('email');
+              setError(null);
+            }}
+            className="underline-offset-2 hover:underline"
+          >
+            ← 이메일 다시 입력
+          </button>
+          <button
+            type="button"
+            onClick={onResend}
+            disabled={pending}
+            className="underline-offset-2 hover:underline disabled:opacity-50"
+          >
+            코드 재전송
+          </button>
+        </div>
+      </form>
     );
   }
 
   return (
-    <form action={onSubmit} className="space-y-4">
+    <form action={onRequestSubmit} className="space-y-4">
       <label className="block text-sm">
         <span className="mb-1.5 block font-medium text-neutral-700">회사 이메일</span>
         <input
@@ -77,29 +146,6 @@ export default function SignupForm() {
         <span className="mt-1 block text-xs text-neutral-500">동료들에게 표시될 이름이에요</span>
       </label>
 
-      <label className="block text-sm">
-        <span className="mb-1.5 block font-medium text-neutral-700">비밀번호</span>
-        <PasswordInput
-          name="password"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          disabled={pending}
-        />
-        <span className="mt-1 block text-xs text-neutral-500">8자 이상 (영문/숫자 권장)</span>
-      </label>
-
-      <label className="block text-sm">
-        <span className="mb-1.5 block font-medium text-neutral-700">비밀번호 확인</span>
-        <PasswordInput
-          name="password_confirm"
-          required
-          minLength={8}
-          autoComplete="new-password"
-          disabled={pending}
-        />
-      </label>
-
       {error && <p className="text-sm text-red-600">{error}</p>}
 
       <button
@@ -107,7 +153,7 @@ export default function SignupForm() {
         disabled={pending}
         className="w-full rounded-md bg-neutral-900 py-2.5 text-sm font-medium text-white transition hover:bg-neutral-800 disabled:opacity-50"
       >
-        {pending ? '신청 중…' : '가입 신청'}
+        {pending ? '메일 보내는 중…' : '인증 코드 받기'}
       </button>
     </form>
   );

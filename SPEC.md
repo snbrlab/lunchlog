@@ -71,6 +71,7 @@
 | D44 | 찜 (favorites) | `favorites (user_id, restaurant_id, created_at)` 테이블, PK 두 컬럼으로 중복 방지. RLS: 본인 row 만 read/insert/delete. 디테일 패널 헤더에 ☆/★ 토글 버튼 (낙관적 UI: 즉시 반영 + 서버 비동기). 사이드바 카드 식당명 옆엔 시각적 ★ 만 (별도 토글 X — 정보 밀도 부담). 마이페이지에 "⭐ 찜한 곳" 섹션: 찜한 식당 목록 + cuisine + commit 수 + 찜한 시간, 식당명 클릭 시 `/map?focus=id` |
 | D45 | 직접 입력 fallback 등록 | 카카오 Local API (keyword search) 에 indexing 안 된 식당 등록용. 처음엔 비공식 endpoint `place.map.kakao.com/main/v/{id}` 시도했으나 카카오가 막아둠 (404). 두 단계 fallback: (1) URL 자동 파싱 — 카카오맵 식당 페이지 HTML 을 fetch 해 og:title + 내부 script 정규식으로 name/lat/lng/addr 추출, 좌표 못 찾으면 주소 geocoding fallback. (2) 직접 입력 — 사용자가 이름/도로명 주소 직접 타이핑, 주소는 공식 `/v2/local/search/address.json` 으로 좌표 변환. KakaoPlacesSearch 하단의 두 details 섹션에서 노출 |
 | D46 | /log 작성자 근무지 필터 | 동료들이 어디 가는지 사무실별로 보고 싶을 때 사용. /log 의 LogList 에 office chip 필터 추가 — 전체/마곡/여의도/평택. reviews fetch 시 author.office_id 같이 가져오고, offices 는 캐시된 목록 (D42) 활용. 클라이언트에서 row.author.office_id 매칭으로 필터링 |
+| D47 | OTP 가입 부활 (Brevo SMTP) | D38 admin 승인 흐름이 admin 손이 너무 많이 가서 OTP 자동 가입으로 회귀. Brevo Custom SMTP 로 lge.com 메일 발송 검증 완료 → Supabase Auth → Emails → SMTP 에 Brevo 연결 (smtp-relay.brevo.com:587). 흐름: /signup 에서 이메일+닉네임 입력 → `signInWithOtp({ data: { name } })` 로 user_metadata 에 닉네임 임시 저장 → 메일에 6~8자리 코드 발송 → 같은 페이지에서 코드 입력 → `verifyOtp` 후 users 행 자동 생성 (메타데이터의 닉네임 사용) → /onboarding (사무실/건물/이모지) → /set-password → /map. D38 의 signup_requests 테이블 / `/admin/signups` / `signup_request_new` 노티는 코드/DB 보존하되 admin nav 에서 숨김 — 롤백 가능 |
 
 ---
 

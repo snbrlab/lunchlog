@@ -6,9 +6,9 @@ export default function SignupPage() {
     <main className="flex flex-1 items-center justify-center px-6 py-16">
       <div className="w-full max-w-sm">
         <div className="mb-8 text-center">
-          <h1 className="text-2xl font-semibold tracking-tight">🍱 런치로그 가입 신청</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">🍱 런치로그 가입</h1>
           <p className="mt-2 text-sm text-neutral-500">
-            관리자가 승인하면 가입이 완료됩니다.
+            회사 이메일로 인증 코드를 받아 가입해요.
           </p>
         </div>
         <div className="mb-5 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-center text-xs leading-relaxed text-amber-900">
