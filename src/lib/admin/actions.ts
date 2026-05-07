@@ -57,6 +57,113 @@ export async function updateBuildingCoord(
   return { ok: true };
 }
 
+// ---------------------------------------------------------------
+// 사무실 / 건물 생성 (D49) — admin 페이지에서 직접 추가
+// ---------------------------------------------------------------
+
+function isValidCoord(lat: number, lng: number): boolean {
+  return (
+    Number.isFinite(lat) &&
+    Number.isFinite(lng) &&
+    lat >= -90 && lat <= 90 &&
+    lng >= -180 && lng <= 180
+  );
+}
+
+function generateSlug(name: string): string {
+  // 영문/숫자만 추출 → lowercase. 비어있거나 짧으면 random uuid prefix
+  const ascii = name.toLowerCase().replace(/[^a-z0-9]/g, '');
+  if (ascii.length >= 3) return `${ascii}-${Math.random().toString(36).slice(2, 8)}`;
+  return `office-${crypto.randomUUID().slice(0, 8)}`;
+}
+
+export type CreateOfficeResult =
+  | { ok: true; id: string }
+  | { ok: false; message: string };
+
+export async function createOffice(
+  name: string,
+  latitude: number,
+  longitude: number,
+): Promise<CreateOfficeResult> {
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length > 30) {
+    return { ok: false, message: '사무실 이름 1~30자 입력해주세요' };
+  }
+  if (!isValidCoord(latitude, longitude)) {
+    return { ok: false, message: '좌표가 올바르지 않아요' };
+  }
+
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+
+  const slug = generateSlug(trimmed);
+  const { data, error } = await admin.supabase
+    .from('offices')
+    .insert({ name: trimmed, slug, default_lat: latitude, default_lng: longitude })
+    .select('id')
+    .single();
+  if (error) return { ok: false, message: error.message };
+  invalidateOfficesCache();
+  return { ok: true, id: data.id };
+}
+
+export type CreateBuildingResult =
+  | { ok: true; id: string }
+  | { ok: false; message: string };
+
+export async function createBuilding(
+  officeId: string,
+  name: string,
+  latitude: number,
+  longitude: number,
+): Promise<CreateBuildingResult> {
+  const trimmed = name.trim();
+  if (!trimmed || trimmed.length > 30) {
+    return { ok: false, message: '건물 이름 1~30자 입력해주세요' };
+  }
+  if (!isValidCoord(latitude, longitude)) {
+    return { ok: false, message: '좌표가 올바르지 않아요' };
+  }
+  if (!officeId) return { ok: false, message: '사무실을 선택해주세요' };
+
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+
+  // display_order 는 해당 office 의 기존 max + 1
+  const { data: maxRow } = await admin.supabase
+    .from('office_buildings')
+    .select('display_order')
+    .eq('office_id', officeId)
+    .order('display_order', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  const nextOrder = (maxRow?.display_order ?? 0) + 1;
+
+  const { data, error } = await admin.supabase
+    .from('office_buildings')
+    .insert({
+      office_id: officeId,
+      name: trimmed,
+      latitude,
+      longitude,
+      display_order: nextOrder,
+    })
+    .select('id')
+    .single();
+  if (error) return { ok: false, message: error.message };
+  invalidateOfficesCache();
+  return { ok: true, id: data.id };
+}
+
 export type AutoFillResult =
   | {
       ok: true;
