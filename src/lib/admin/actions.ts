@@ -547,3 +547,66 @@ function generateTempPassword(len: number): string {
   }
   return out;
 }
+
+// ---------------------------------------------------------------
+// D51: admin 이 임의 이메일로 사용자 직접 생성 (도메인 체크 우회)
+// 외부 손님 / 도메인 안 맞는 사우 / 테스트 계정 등
+// ---------------------------------------------------------------
+
+export type CreateUserManuallyResult =
+  | { ok: true; email: string; tempPassword: string }
+  | { ok: false; message: string };
+
+export async function createUserManually(
+  email: string,
+  name: string,
+): Promise<CreateUserManuallyResult> {
+  const trimmedEmail = email.trim().toLowerCase();
+  const trimmedName = name.trim();
+  if (!trimmedEmail || !trimmedEmail.includes('@')) {
+    return { ok: false, message: '이메일을 정확히 입력해주세요' };
+  }
+  if (!trimmedName || trimmedName.length > 30) {
+    return { ok: false, message: '닉네임 1~30자 입력해주세요' };
+  }
+
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+
+  const sa = getSupabaseAdminClient();
+  const tempPassword = generateTempPassword(12);
+
+  // auth.users 생성 — email_confirm: true 로 즉시 활성, 도메인 체크 안 함
+  const { data: created, error: createError } = await sa.auth.admin.createUser({
+    email: trimmedEmail,
+    password: tempPassword,
+    email_confirm: true,
+    user_metadata: { name: trimmedName },
+  });
+  if (createError || !created?.user) {
+    const msg = createError?.message ?? '계정 생성 실패';
+    if (msg.toLowerCase().includes('already')) {
+      return { ok: false, message: '이미 가입된 이메일이에요' };
+    }
+    return { ok: false, message: msg };
+  }
+
+  // users 프로필 행 — password_set: false → 첫 로그인 시 /set-password 강제
+  const { error: insertError } = await sa.from('users').insert({
+    id: created.user.id,
+    email: trimmedEmail,
+    name: trimmedName,
+    avatar_color: avatarColorFor(trimmedName + created.user.id),
+    password_set: false,
+  });
+  if (insertError) {
+    // users 행 생성 실패 → auth.users 도 롤백
+    await sa.auth.admin.deleteUser(created.user.id);
+    return { ok: false, message: insertError.message };
+  }
+
+  return { ok: true, email: trimmedEmail, tempPassword };
+}
