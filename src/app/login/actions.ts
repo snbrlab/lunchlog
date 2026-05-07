@@ -2,7 +2,6 @@
 
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { isAllowedEmail } from '@/lib/auth/email-domain';
 
 export type SignInWithPasswordResult =
   | { ok: false; reason: 'invalid' | 'domain' | 'wrong_credentials' | 'pending_approval' | 'unknown'; message: string };
@@ -15,9 +14,8 @@ export async function signInWithPassword(formData: FormData): Promise<SignInWith
   if (!email || !email.includes('@') || !password) {
     return { ok: false, reason: 'invalid', message: '이메일과 비밀번호를 입력해주세요' };
   }
-  if (!isAllowedEmail(email)) {
-    return { ok: false, reason: 'domain', message: '허용된 회사 이메일 도메인이 아니에요' };
-  }
+  // 도메인 체크는 /signup 에서만. 로그인은 admin 이 직접 만든 외부 이메일 (D51) 도 통과해야 함.
+  // 가입 안 된 이메일이면 Supabase 가 알아서 wrong_credentials 처리.
 
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
