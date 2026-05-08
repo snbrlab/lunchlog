@@ -3,7 +3,8 @@ import { notFound } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { formatRelativeTime } from '@/lib/format-time';
-import { ActivityHeatmap, aggregateCounts } from '@/components/ActivityHeatmap';
+import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import { aggregateCounts } from '@/lib/heatmap';
 
 interface PageProps {
   params: Promise<{ id: string }>;

@@ -3,7 +3,8 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCachedOffices, getCachedBuildings } from '@/lib/cache/offices';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { formatRelativeTime } from '@/lib/format-time';
-import { ActivityHeatmap, aggregateCounts } from '@/components/ActivityHeatmap';
+import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import { aggregateCounts } from '@/lib/heatmap';
 import ChangePasswordForm from './ChangePasswordForm';
 import ProfileEditForm from './ProfileEditForm';
 

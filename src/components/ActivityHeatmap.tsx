@@ -1,6 +1,11 @@
+'use client';
+
 // D52: GitHub 잔디 스타일 활동 히트맵.
 // counts: 'YYYY-MM-DD' (KST) → 그날의 commit 수
 // 7 (요일) × 53 (주) 그리드. 가로 스크롤 (모바일 친화).
+// 마운트 시 우측(=오늘) 으로 자동 스크롤 → 이번 달이 먼저 보임.
+
+import { useEffect, useRef } from 'react';
 
 interface Props {
   counts: Record<string, number>;
@@ -10,6 +15,7 @@ const WEEKS = 53;
 const TZ = 'Asia/Seoul';
 
 const SHORT_FMT = new Intl.DateTimeFormat('en-CA', { timeZone: TZ });
+const MONTH_FMT = new Intl.DateTimeFormat('en-US', { timeZone: TZ, month: 'short' });
 
 function ymdKst(d: Date): string {
   return SHORT_FMT.format(d);
@@ -35,6 +41,8 @@ function kstWeekday(date: Date): number {
 }
 
 export function ActivityHeatmap({ counts }: Props) {
+  const scrollRef = useRef<HTMLDivElement>(null);
+
   const todayKstStr = ymdKst(new Date());
   // KST 자정 기준 Date (UTC+9)
   const todayKst = new Date(todayKstStr + 'T00:00:00+09:00');
@@ -67,32 +75,66 @@ export function ActivityHeatmap({ counts }: Props) {
     weeks.push(week);
   }
 
+  // 월 라벨: 각 주 컬럼 위에, 그 주에 새로운 달이 시작되면 표시
+  const monthLabels: (string | null)[] = weeks.map((w, i) => {
+    const firstReal = w.find((c) => c !== null);
+    if (!firstReal) return null;
+    const d = new Date(firstReal.date + 'T00:00:00+09:00');
+    const label = MONTH_FMT.format(d);
+    if (i === 0) return label;
+    const prev = weeks[i - 1]!.find((c) => c !== null);
+    if (!prev) return label;
+    const prevLabel = MONTH_FMT.format(new Date(prev.date + 'T00:00:00+09:00'));
+    return label === prevLabel ? null : label;
+  });
+
   const total = days.reduce((s, d) => s + d.count, 0);
   const activeDays = days.filter((d) => d.count > 0).length;
 
+  // 마운트 시 우측 끝(=오늘)으로 스크롤 → 이번 달 포커스
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, []);
+
   return (
     <div>
-      <div className="overflow-x-auto pb-1">
+      <div ref={scrollRef} className="overflow-x-auto pb-1">
         <div className="flex gap-[3px]">
-          {/* 요일 라벨 (월/수/금) */}
-          <div className="flex flex-col gap-[3px] pr-1 text-[9px] text-fg-muted/70">
+          {/* 요일 라벨 (월/수/금) — sticky 로 스크롤해도 고정 */}
+          <div className="sticky left-0 z-10 flex flex-col gap-[3px] bg-surface pr-1 text-[9px] text-fg-muted/70">
+            {/* 월 라벨 줄 자리 비워주는 spacer */}
+            <span className="h-[10px]" />
             {KST_DAY_NAMES.map((d, i) => (
               <span key={d} className="h-[12px] leading-[12px]">
                 {i % 2 === 1 ? d : ''}
               </span>
             ))}
           </div>
-          {weeks.map((w, i) => (
-            <div key={i} className="flex flex-col gap-[3px]">
-              {w.map((cell, j) => (
-                <div
-                  key={j}
-                  title={cell ? `${cell.date} · commit ${cell.count}` : ''}
-                  className={`h-[12px] w-[12px] rounded-sm ${cell ? colorClass(cell.count) : 'bg-transparent'}`}
-                />
+          <div>
+            {/* 월 라벨 줄 */}
+            <div className="mb-[3px] flex gap-[3px] text-[9px] text-fg-muted/70">
+              {monthLabels.map((m, i) => (
+                <span key={i} className="w-[12px] leading-[10px]">
+                  {m ?? ''}
+                </span>
               ))}
             </div>
-          ))}
+            {/* 셀 그리드 */}
+            <div className="flex gap-[3px]">
+              {weeks.map((w, i) => (
+                <div key={i} className="flex flex-col gap-[3px]">
+                  {w.map((cell, j) => (
+                    <div
+                      key={j}
+                      title={cell ? `${cell.date} · commit ${cell.count}` : ''}
+                      className={`h-[12px] w-[12px] rounded-sm ${cell ? colorClass(cell.count) : 'bg-transparent'}`}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
       <div className="mt-2 flex items-center justify-between text-[10px] text-fg-muted">
@@ -111,14 +153,4 @@ export function ActivityHeatmap({ counts }: Props) {
       </div>
     </div>
   );
-}
-
-// helper for /me, /u 에서 reviews dates 를 counts 맵으로 집계
-export function aggregateCounts(dates: string[]): Record<string, number> {
-  const map: Record<string, number> = {};
-  for (const iso of dates) {
-    const day = SHORT_FMT.format(new Date(iso));
-    map[day] = (map[day] ?? 0) + 1;
-  }
-  return map;
 }
