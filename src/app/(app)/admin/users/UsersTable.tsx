@@ -2,7 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { setUserRole, resetUserPassword, createUserManually } from '@/lib/admin/actions';
+import {
+  setUserRole,
+  resetUserPassword,
+  createUserManually,
+  deleteUser,
+} from '@/lib/admin/actions';
 
 interface Row {
   id: string;
@@ -25,6 +30,7 @@ export default function UsersTable({
   const [tempPwModal, setTempPwModal] = useState<{ name: string; email: string; pw: string } | null>(
     null,
   );
+  const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
   const [, startTransition] = useTransition();
 
   function toggleRole(row: Row) {
@@ -131,6 +137,16 @@ export default function UsersTable({
                   >
                     비번 reset
                   </button>
+                  {r.id !== currentUserId && (
+                    <button
+                      type="button"
+                      onClick={() => setDeleteTarget(r)}
+                      disabled={pendingId === r.id}
+                      className="rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 transition hover:border-red-500 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      삭제
+                    </button>
+                  )}
                 </div>
               </td>
             </tr>
@@ -146,6 +162,97 @@ export default function UsersTable({
           onClose={() => setTempPwModal(null)}
         />
       )}
+      {deleteTarget && (
+        <DeleteUserModal
+          target={deleteTarget}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => {
+            setDeleteTarget(null);
+            router.refresh();
+          }}
+        />
+      )}
+    </div>
+  );
+}
+
+// D53: 삭제는 위험하므로 닉네임을 다시 입력해야 확정.
+// 리뷰/등록 식당은 보존 (FK on delete set null), 찜/알림은 cascade 삭제.
+function DeleteUserModal({
+  target,
+  onClose,
+  onDeleted,
+}: {
+  target: Row;
+  onClose: () => void;
+  onDeleted: () => void;
+}) {
+  const [confirmText, setConfirmText] = useState('');
+  const [pending, startTransition] = useTransition();
+  const [error, setError] = useState<string | null>(null);
+
+  function submit() {
+    if (confirmText.trim() !== target.name) {
+      setError('닉네임이 일치하지 않아요');
+      return;
+    }
+    setError(null);
+    startTransition(async () => {
+      const r = await deleteUser(target.id);
+      if (!r.ok) {
+        setError(r.message);
+        return;
+      }
+      onDeleted();
+    });
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-lg border border-border bg-surface p-5 shadow-xl">
+        <h3 className="text-sm font-semibold text-red-600">사용자 삭제</h3>
+        <p className="mt-2 text-xs text-fg-muted">
+          <span className="font-medium text-fg">{target.name}</span>{' '}
+          <span className="font-mono">({target.email})</span> 계정을 삭제합니다.
+        </p>
+        <ul className="mt-3 list-disc space-y-1 pl-4 text-[11px] text-fg-muted">
+          <li>
+            작성한 commit / 등록한 식당은 <strong>보존</strong>됩니다 (작성자 표기는 익명 처리)
+          </li>
+          <li>찜한 곳, 알림, 신고 기록은 함께 삭제됩니다</li>
+          <li>되돌릴 수 없어요</li>
+        </ul>
+        <p className="mt-4 text-[11px] text-fg-muted">
+          확인을 위해 닉네임{' '}
+          <span className="font-mono text-fg">{target.name}</span> 을 그대로 입력해주세요
+        </p>
+        <input
+          type="text"
+          value={confirmText}
+          onChange={(e) => setConfirmText(e.target.value)}
+          disabled={pending}
+          className="mt-2 w-full rounded border border-border bg-bg px-2 py-1.5 text-xs outline-none focus:border-fg"
+        />
+        {error && <p className="mt-2 text-xs text-red-500">{error}</p>}
+        <div className="mt-4 flex justify-end gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={pending}
+            className="rounded-md border border-border bg-bg px-3 py-1.5 text-xs text-fg hover:bg-fg/5 disabled:opacity-50"
+          >
+            취소
+          </button>
+          <button
+            type="button"
+            onClick={submit}
+            disabled={pending || confirmText.trim() !== target.name}
+            className="rounded-md bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-40"
+          >
+            {pending ? '삭제 중…' : '영구 삭제'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

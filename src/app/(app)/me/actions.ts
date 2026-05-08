@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { EMOJI_POOL } from '@/lib/avatar-emoji';
+import { isNicknameTaken, validateNicknameShape } from '@/lib/auth/nickname';
 
 export type ChangePasswordResult =
   | { ok: true }
@@ -50,9 +51,9 @@ interface UpdateProfileInput {
 }
 
 export async function updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult> {
-  const name = input.name.trim();
-  if (!name) return { ok: false, message: '표시 이름을 입력해주세요' };
-  if (name.length > 40) return { ok: false, message: '이름은 40자 이내로 입력해주세요' };
+  const nameCheck = validateNicknameShape(input.name);
+  if (!nameCheck.ok) return { ok: false, message: nameCheck.message };
+  const name = nameCheck.normalized;
   if (!input.officeId) return { ok: false, message: '사무실을 선택해주세요' };
   if (!input.buildingId) return { ok: false, message: '건물을 선택해주세요' };
   if (!(EMOJI_POOL as readonly string[]).includes(input.avatarEmoji)) {
@@ -64,6 +65,11 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: '세션이 만료됐어요. 다시 로그인해주세요' };
+
+  // D53: 닉네임 중복 체크 (본인 행은 제외)
+  if (await isNicknameTaken(supabase, name, user.id)) {
+    return { ok: false, message: '이미 사용 중인 닉네임이에요' };
+  }
 
   // 건물이 선택한 사무실 소속인지 검증 (클라 변조 방지)
   const { data: building } = await supabase

@@ -5,6 +5,7 @@ import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { invalidateOfficesCache } from '@/lib/cache/offices';
 import { getServerEnv } from '@/lib/env';
 import { avatarColorFor } from '@/lib/avatar-color';
+import { isNicknameTaken, validateNicknameShape } from '@/lib/auth/nickname';
 
 async function requireAdmin() {
   const supabase = await createSupabaseServerClient();
@@ -562,13 +563,12 @@ export async function createUserManually(
   name: string,
 ): Promise<CreateUserManuallyResult> {
   const trimmedEmail = email.trim().toLowerCase();
-  const trimmedName = name.trim();
   if (!trimmedEmail || !trimmedEmail.includes('@')) {
     return { ok: false, message: '이메일을 정확히 입력해주세요' };
   }
-  if (!trimmedName || trimmedName.length > 30) {
-    return { ok: false, message: '닉네임 1~30자 입력해주세요' };
-  }
+  const nameCheck = validateNicknameShape(name);
+  if (!nameCheck.ok) return { ok: false, message: nameCheck.message };
+  const trimmedName = nameCheck.normalized;
 
   try {
     await requireAdmin();
@@ -577,6 +577,11 @@ export async function createUserManually(
   }
 
   const sa = getSupabaseAdminClient();
+
+  if (await isNicknameTaken(sa, trimmedName)) {
+    return { ok: false, message: '이미 사용 중인 닉네임이에요' };
+  }
+
   const tempPassword = generateTempPassword(12);
 
   // auth.users 생성 — email_confirm: true 로 즉시 활성, 도메인 체크 안 함
@@ -609,4 +614,48 @@ export async function createUserManually(
   }
 
   return { ok: true, email: trimmedEmail, tempPassword };
+}
+
+// ---------------------------------------------------------------
+// D53: 사용자 삭제
+// 리뷰/등록 식당은 D14 원칙대로 보존됨 (FK on delete set null).
+// favorites / notifications / reports 는 cascade 로 같이 삭제.
+// ---------------------------------------------------------------
+
+export type DeleteUserResult = { ok: true } | { ok: false; message: string };
+
+export async function deleteUser(userId: string): Promise<DeleteUserResult> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+
+  if (admin.userId === userId) {
+    return { ok: false, message: '본인 계정은 직접 삭제할 수 없어요' };
+  }
+
+  const sa = getSupabaseAdminClient();
+
+  // 마지막 admin 보호
+  const { data: target } = await sa
+    .from('users')
+    .select('role')
+    .eq('id', userId)
+    .maybeSingle();
+  if (target?.role === 'admin') {
+    const { count } = await sa
+      .from('users')
+      .select('id', { count: 'exact', head: true })
+      .eq('role', 'admin');
+    if ((count ?? 0) <= 1) {
+      return { ok: false, message: '마지막 admin 은 삭제할 수 없어요' };
+    }
+  }
+
+  // auth.users 삭제 → users 는 on delete cascade 로 같이 삭제 → reviews/restaurants 는 set null
+  const { error } = await sa.auth.admin.deleteUser(userId);
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
 }

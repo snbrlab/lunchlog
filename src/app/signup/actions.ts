@@ -4,6 +4,8 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { isAllowedEmail, suggestNameFromEmail } from '@/lib/auth/email-domain';
 import { avatarColorFor } from '@/lib/avatar-color';
+import { isNicknameTaken } from '@/lib/auth/nickname';
+import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
 // D47: OTP 가입 흐름 부활 — Brevo SMTP 로 메일 도달 검증 끝나서 admin 승인 (D38) 대체.
 // 1) /signup: 이메일 + 닉네임 → requestOtp → Brevo 가 6~8자리 코드 발송
@@ -42,6 +44,17 @@ export async function requestOtp(formData: FormData): Promise<RequestOtpResult> 
       ok: false,
       reason: 'invalid',
       message: `닉네임을 입력해주세요 (1~${NAME_MAX}자)`,
+    };
+  }
+
+  // D53: 닉네임 중복 체크 — 인증 메일 보내기 전에 거름.
+  // service-role 로 체크 (회원가입 전이라 RLS 영향 X 한 번 더 확실히)
+  const sa = getSupabaseAdminClient();
+  if (await isNicknameTaken(sa, name)) {
+    return {
+      ok: false,
+      reason: 'invalid',
+      message: '이미 사용 중인 닉네임이에요. 다른 닉네임을 입력해주세요',
     };
   }
 
@@ -117,6 +130,24 @@ export async function verifyOtp(formData: FormData): Promise<VerifyOtpResult> {
         ? (user.user_metadata.name as string).trim()
         : '';
     const name = metaName || suggestNameFromEmail(user.email);
+
+    // D53: requestOtp 와 verifyOtp 사이에 누군가 같은 닉네임을 선점했을 수 있음 (race).
+    // unique index 가 최종 방어선이지만 메시지를 친절하게.
+    if (await isNicknameTaken(supabase, name)) {
+      // 이메일 인증은 끝났으니 auto-suggest 로 회피값 만들어서 임시로 넣어주고 onboarding 에서 바꾸게.
+      const fallback = `${name}-${user.id.slice(0, 4)}`;
+      const { error: insertError } = await supabase.from('users').insert({
+        id: user.id,
+        email: user.email,
+        name: fallback,
+        avatar_color: avatarColorFor(fallback + user.id),
+      });
+      if (insertError) {
+        return { ok: false, reason: 'unknown', message: insertError.message };
+      }
+      redirect('/onboarding');
+    }
+
     const { error: insertError } = await supabase.from('users').insert({
       id: user.id,
       email: user.email,
