@@ -96,6 +96,7 @@ export default function MapShell({
             restaurants={restaurants}
             selectedId={selectedId}
             onSelect={setSelectedId}
+            onDeselect={() => setSelectedId(null)}
             includeClosed={includeClosed}
           />
         </div>

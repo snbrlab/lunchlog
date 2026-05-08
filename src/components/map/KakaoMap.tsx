@@ -26,6 +26,7 @@ interface Props {
   restaurants: Restaurant[];
   selectedId: string | null;
   onSelect: (id: string) => void;
+  onDeselect: () => void;
   includeClosed: boolean;
 }
 
@@ -36,7 +37,14 @@ function readToken(name: string, fallback: string): string {
   return v || fallback;
 }
 
-export function KakaoMap({ origin, restaurants, selectedId, onSelect, includeClosed }: Props) {
+export function KakaoMap({
+  origin,
+  restaurants,
+  selectedId,
+  onSelect,
+  onDeselect,
+  includeClosed,
+}: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // map 인스턴스를 state 로 관리 — 비동기 init 완료 시 dependent effect 들이 자동 재실행.
   const [map, setMap] = useState<KakaoMapInst | null>(null);
@@ -97,6 +105,19 @@ export function KakaoMap({ origin, restaurants, selectedId, onSelect, includeClo
     if (!map) return;
     map.panTo(new window.kakao.maps.LatLng(origin.lat, origin.lng));
   }
+
+  // 지도 빈 곳 터치/클릭 시 선택 해제 (모바일에서 디테일 패널 닫기 용도, 데스크탑도 동작)
+  // 핀(CustomOverlay) 클릭은 element click 으로 별도 처리되므로 여기엔 안 잡힘.
+  useEffect(() => {
+    if (!map) return;
+    const handler = () => {
+      if (selectedId) onDeselect();
+    };
+    window.kakao.maps.event.addListener(map, 'click', handler);
+    return () => {
+      window.kakao.maps.event.removeListener(map, 'click', handler);
+    };
+  }, [map, selectedId, onDeselect]);
 
   // origin 변경 시 회사 마커 재생성 + 중심 이동
   useEffect(() => {
