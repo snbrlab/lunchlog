@@ -3,6 +3,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCachedOffices, getCachedBuildings } from '@/lib/cache/offices';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { formatRelativeTime } from '@/lib/format-time';
+import { ActivityHeatmap, aggregateCounts } from '@/components/ActivityHeatmap';
 import ChangePasswordForm from './ChangePasswordForm';
 import ProfileEditForm from './ProfileEditForm';
 
@@ -44,7 +45,17 @@ export default async function MePage() {
   const officeName = profile?.office?.name ?? null;
   const buildingName = profile?.building?.name ?? null;
 
-  const [offices, buildings, { data: myReviews }, { data: myFavorites }] = await Promise.all([
+  // D52: 잔디용 — 지난 1년 commit 일자 (reverted 포함, 활동량 표시 목적)
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+  const [
+    offices,
+    buildings,
+    { data: myReviews },
+    { data: myFavorites },
+    { data: heatmapRows },
+  ] = await Promise.all([
     getCachedOffices(),
     getCachedBuildings(),
     supabase
@@ -64,7 +75,16 @@ export default async function MePage() {
       )
       .eq('user_id', user.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('reviews')
+      .select('created_at')
+      .eq('author_id', user.id)
+      .gte('created_at', oneYearAgo.toISOString()),
   ]);
+
+  const heatmapCounts = aggregateCounts(
+    ((heatmapRows ?? []) as { created_at: string }[]).map((r) => r.created_at),
+  );
 
   const reviewItems = ((myReviews ?? []) as unknown) as Array<{
     id: string;
@@ -123,25 +143,10 @@ export default async function MePage() {
         </div>
       </section>
 
-      {/* 프로필 편집 */}
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-fg">프로필 편집</h2>
-        <ProfileEditForm
-          initialName={name}
-          initialDepartment={profile?.department ?? ''}
-          initialOfficeId={profile?.office_id ?? ''}
-          initialBuildingId={profile?.building_id ?? ''}
-          initialEmoji={avatarEmoji}
-          avatarColor={avatarColor}
-          offices={offices}
-          buildings={buildings}
-        />
-      </section>
-
-      {/* 비밀번호 변경 */}
-      <section className="mb-8">
-        <h2 className="mb-3 text-sm font-medium text-fg">비밀번호 변경</h2>
-        <ChangePasswordForm />
+      {/* D52: 활동 잔디 — 지난 1년 */}
+      <section className="mb-8 rounded-lg border border-border bg-surface p-4">
+        <h2 className="mb-3 text-sm font-medium text-fg">🌱 활동</h2>
+        <ActivityHeatmap counts={heatmapCounts} />
       </section>
 
       {/* 찜한 곳 */}
@@ -229,6 +234,36 @@ export default async function MePage() {
             ))}
           </ol>
         )}
+      </section>
+
+      {/* D52: 설정 — 자주 안 여니까 collapse */}
+      <section className="mt-10 space-y-3">
+        <details className="rounded-lg border border-border bg-surface">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
+            ⚙️ 프로필 편집
+          </summary>
+          <div className="border-t border-border px-4 py-4">
+            <ProfileEditForm
+              initialName={name}
+              initialDepartment={profile?.department ?? ''}
+              initialOfficeId={profile?.office_id ?? ''}
+              initialBuildingId={profile?.building_id ?? ''}
+              initialEmoji={avatarEmoji}
+              avatarColor={avatarColor}
+              offices={offices}
+              buildings={buildings}
+            />
+          </div>
+        </details>
+
+        <details className="rounded-lg border border-border bg-surface">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
+            🔒 비밀번호 변경
+          </summary>
+          <div className="border-t border-border px-4 py-4">
+            <ChangePasswordForm />
+          </div>
+        </details>
       </section>
     </main>
   );

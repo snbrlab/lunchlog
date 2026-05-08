@@ -3,6 +3,7 @@ import { notFound } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { formatRelativeTime } from '@/lib/format-time';
+import { ActivityHeatmap, aggregateCounts } from '@/components/ActivityHeatmap';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -45,7 +46,11 @@ export default async function UserProfilePage({ params }: PageProps) {
   const isMe = viewer?.id === profile.id;
   const avatarEmoji = resolveAvatarEmoji(profile.avatar_emoji, profile.name + profile.id);
 
-  const [{ data: reviews }, { data: favorites }] = await Promise.all([
+  // D52: 잔디용 — 지난 1년 commit 일자
+  const oneYearAgo = new Date();
+  oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
+
+  const [{ data: reviews }, { data: favorites }, { data: heatmapRows }] = await Promise.all([
     supabase
       .from('reviews')
       .select(
@@ -63,7 +68,16 @@ export default async function UserProfilePage({ params }: PageProps) {
       )
       .eq('user_id', profile.id)
       .order('created_at', { ascending: false }),
+    supabase
+      .from('reviews')
+      .select('created_at')
+      .eq('author_id', profile.id)
+      .gte('created_at', oneYearAgo.toISOString()),
   ]);
+
+  const heatmapCounts = aggregateCounts(
+    ((heatmapRows ?? []) as { created_at: string }[]).map((r) => r.created_at),
+  );
 
   const reviewItems = ((reviews ?? []) as unknown) as Array<{
     id: string;
@@ -128,6 +142,12 @@ export default async function UserProfilePage({ params }: PageProps) {
             )}
           </div>
         </div>
+      </section>
+
+      {/* D52: 활동 잔디 — 지난 1년 */}
+      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
+        <h2 className="mb-3 text-sm font-medium text-fg">🌱 활동</h2>
+        <ActivityHeatmap counts={heatmapCounts} />
       </section>
 
       {/* 작성한 commit */}
