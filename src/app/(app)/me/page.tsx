@@ -144,6 +144,36 @@ export default async function MePage() {
         </div>
       </section>
 
+      {/* D52: 설정 — 자주 안 여니까 collapse */}
+      <section className="mb-6 space-y-3">
+        <details className="rounded-lg border border-border bg-surface">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
+            ⚙️ 프로필 편집
+          </summary>
+          <div className="border-t border-border px-4 py-4">
+            <ProfileEditForm
+              initialName={name}
+              initialDepartment={profile?.department ?? ''}
+              initialOfficeId={profile?.office_id ?? ''}
+              initialBuildingId={profile?.building_id ?? ''}
+              initialEmoji={avatarEmoji}
+              avatarColor={avatarColor}
+              offices={offices}
+              buildings={buildings}
+            />
+          </div>
+        </details>
+
+        <details className="rounded-lg border border-border bg-surface">
+          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
+            🔒 비밀번호 변경
+          </summary>
+          <div className="border-t border-border px-4 py-4">
+            <ChangePasswordForm />
+          </div>
+        </details>
+      </section>
+
       {/* D52: 활동 잔디 — 지난 1년 */}
       <section className="mb-8 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-3 text-sm font-medium text-fg">🌱 활동</h2>
@@ -235,36 +265,6 @@ export default async function MePage() {
             ))}
           </ol>
         )}
-      </section>
-
-      {/* D52: 설정 — 자주 안 여니까 collapse */}
-      <section className="mt-10 space-y-3">
-        <details className="rounded-lg border border-border bg-surface">
-          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
-            ⚙️ 프로필 편집
-          </summary>
-          <div className="border-t border-border px-4 py-4">
-            <ProfileEditForm
-              initialName={name}
-              initialDepartment={profile?.department ?? ''}
-              initialOfficeId={profile?.office_id ?? ''}
-              initialBuildingId={profile?.building_id ?? ''}
-              initialEmoji={avatarEmoji}
-              avatarColor={avatarColor}
-              offices={offices}
-              buildings={buildings}
-            />
-          </div>
-        </details>
-
-        <details className="rounded-lg border border-border bg-surface">
-          <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
-            🔒 비밀번호 변경
-          </summary>
-          <div className="border-t border-border px-4 py-4">
-            <ChangePasswordForm />
-          </div>
-        </details>
       </section>
     </main>
   );
