@@ -101,7 +101,7 @@ export function UserMenu({ name, email, avatarColor, avatarEmoji, isAdmin }: Pro
             role="menuitem"
             className="block px-4 py-2.5 text-sm text-fg hover:bg-fg/5"
           >
-            📜 릴리즈 노트
+            🏷️ 릴리즈 노트
           </Link>
           <Link
             href="/report"

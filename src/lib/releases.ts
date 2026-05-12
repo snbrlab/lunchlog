@@ -1,6 +1,6 @@
-// D60: 릴리즈 노트 — 코드와 함께 버전 관리.
-// 사용자 시점에서 한 줄로 요약. 너무 디테일하지 않게.
-// 새 항목은 배열 맨 앞에 추가 (latest first). 날짜는 KST 실제 커밋일.
+// D60: 릴리즈 노트 — 사용자 시점에서 한 줄 요약.
+// admin 전용 변경은 제외. 새 항목은 배열 맨 앞에 추가 (latest first).
+// 날짜는 KST 실제 커밋일.
 
 export interface ReleaseItem {
   version: string;
@@ -16,14 +16,7 @@ export const RELEASES: ReleaseItem[] = [
     hash: 'c925248',
     date: '2026-05-12',
     title: '공지 배너',
-    bullets: ['관리자가 헤더 아래에 짧은 공지를 띄울 수 있어요'],
-  },
-  {
-    version: 'D58',
-    hash: 'baa50f8',
-    date: '2026-05-12',
-    title: '관리자 사용자 검색',
-    bullets: ['/admin/users 에서 이메일/이름 검색 + 도메인 필터'],
+    bullets: ['헤더 아래에 공지가 한 줄로 떠요 — ✕ 누르면 다시 안 보여요'],
   },
   {
     version: 'D57',
@@ -47,11 +40,8 @@ export const RELEASES: ReleaseItem[] = [
     version: 'D53',
     hash: '8569e5e',
     date: '2026-05-08',
-    title: '사용자 삭제 / 닉네임 중복 방지',
-    bullets: [
-      '관리자가 사용자를 삭제할 수 있어요 (작성한 글은 보존)',
-      '같은 닉네임 중복 가입 방지',
-    ],
+    title: '닉네임 중복 방지',
+    bullets: ['같은 닉네임으로는 가입 / 변경이 안 돼요'],
   },
   {
     version: 'D52',
@@ -59,13 +49,6 @@ export const RELEASES: ReleaseItem[] = [
     date: '2026-05-08',
     title: '활동 잔디',
     bullets: ['마이페이지와 프로필에 1년 활동 잔디 (GitHub 스타일)'],
-  },
-  {
-    version: 'D51',
-    hash: '6474edf',
-    date: '2026-05-07',
-    title: '관리자 임의 사용자 추가',
-    bullets: ['사내 도메인이 아닌 이메일도 관리자가 직접 계정 생성'],
   },
   {
     version: 'D50',
@@ -90,5 +73,14 @@ export const RELEASES: ReleaseItem[] = [
     date: '2026-05-07',
     title: 'OTP 가입',
     bullets: ['이메일 인증 코드로 가입 — 관리자 승인 없이 바로 시작'],
+  },
+  {
+    version: 'v0',
+    hash: '03de8cc',
+    date: '2026-04-29',
+    title: '런치로그 첫 commit 🎉',
+    bullets: [
+      '동료끼리 사내 맛집을 git commit 스타일로 공유하는 지도 서비스 시작',
+    ],
   },
 ];

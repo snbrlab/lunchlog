@@ -5,7 +5,7 @@ import { RELEASES } from '@/lib/releases';
 export default function ReleasesPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-8">
-      <h1 className="text-xl font-semibold tracking-tight text-fg">📜 릴리즈 노트</h1>
+      <h1 className="text-xl font-semibold tracking-tight text-fg">🏷️ 릴리즈 노트</h1>
 
       <ol className="mt-6 font-mono text-[13px]">
         {RELEASES.map((r, i) => {
