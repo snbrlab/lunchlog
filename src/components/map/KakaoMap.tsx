@@ -5,6 +5,7 @@ import { loadKakaoMaps } from '@/lib/kakao-loader';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
 import type {
   KakaoCustomOverlay,
+  KakaoLatLng,
   KakaoMap as KakaoMapInst,
   KakaoMarker,
   KakaoPolyline,
@@ -54,6 +55,8 @@ export function KakaoMap({
   const walkBadgeRef = useRef<KakaoCustomOverlay | null>(null);
   // D56: 같은 좌표 클러스터 — 어느 그룹의 popover 가 열려있는지
   const [openClusterKey, setOpenClusterKey] = useState<string | null>(null);
+  // D57: 줌/팬 후 픽셀 기반 재클러스터 트리거 (kakao map idle 이벤트)
+  const [mapVersion, setMapVersion] = useState(0);
 
   const { mode } = useMealMode();
 
@@ -122,6 +125,18 @@ export function KakaoMap({
     };
   }, [map, selectedId, onDeselect, openClusterKey]);
 
+  // D57: 줌/팬 후 픽셀 기반 재클러스터 — idle 이벤트 한 번에 한 번씩 bump
+  useEffect(() => {
+    if (!map) return;
+    const handler = () => setMapVersion((v) => v + 1);
+    window.kakao.maps.event.addListener(map, 'idle', handler);
+    // 초기 1회 강제 트리거 — getProjection 이 준비된 후 첫 클러스터링 계산
+    setMapVersion((v) => v + 1);
+    return () => {
+      window.kakao.maps.event.removeListener(map, 'idle', handler);
+    };
+  }, [map]);
+
   // origin 변경 시 회사 마커 재생성 + 중심 이동
   useEffect(() => {
     if (!map) return;
@@ -169,15 +184,79 @@ export function KakaoMap({
     const fgColor = readToken('--fg', '#1a1a1a');
     const borderColor = readToken('--border', 'rgba(0,0,0,0.08)');
 
-    // 1) 좌표 키로 그룹화 — 모드/폐업 필터 통과한 식당만
+    // 1) 픽셀 기반 동적 클러스터링 (D57)
+    //    - 필터 통과한 식당만 lat/lng → 화면 픽셀 좌표로 투영
+    //    - 그리디 (O(n²), 100개대까지 충분): 첫 식당부터 cluster 시드,
+    //      각 후보를 모든 기존 cluster centroid 와 비교해서 가까우면 흡수
+    //    - centroid 는 누적 평균으로 갱신
+    //    - 줌 레벨이 작을수록(=zoomed out) 모일 가능성 큼 → threshold 는 픽셀 고정
+    //    - 그룹 key 는 정렬된 멤버 id join → 줌/팬 후에도 같은 멤버면 같은 key (popover 유지)
+    const PX_THRESHOLD = 40;
+    const projection = (map as unknown as {
+      getProjection: () => {
+        containerPointFromCoords: (latlng: KakaoLatLng) => { x: number; y: number };
+      };
+    }).getProjection();
+
+    type Cluster = {
+      items: typeof restaurants;
+      sumX: number;
+      sumY: number;
+      sumLat: number;
+      sumLng: number;
+    };
+    const eligible = restaurants.filter((r) => {
+      if (!r.categories.includes(mode)) return false;
+      if (r.is_closed && !includeClosed && r.id !== selectedId) return false;
+      return true;
+    });
+
+    const clusters: Cluster[] = [];
+    for (const r of eligible) {
+      const pt = projection.containerPointFromCoords(
+        new window.kakao.maps.LatLng(r.latitude, r.longitude),
+      );
+      let absorbed = false;
+      for (const c of clusters) {
+        const cx = c.sumX / c.items.length;
+        const cy = c.sumY / c.items.length;
+        const dx = pt.x - cx;
+        const dy = pt.y - cy;
+        if (dx * dx + dy * dy <= PX_THRESHOLD * PX_THRESHOLD) {
+          c.items.push(r);
+          c.sumX += pt.x;
+          c.sumY += pt.y;
+          c.sumLat += r.latitude;
+          c.sumLng += r.longitude;
+          absorbed = true;
+          break;
+        }
+      }
+      if (!absorbed) {
+        clusters.push({
+          items: [r],
+          sumX: pt.x,
+          sumY: pt.y,
+          sumLat: r.latitude,
+          sumLng: r.longitude,
+        });
+      }
+    }
+
+    // Map<groupKey, items> 로 변환 — key 는 정렬된 멤버 id join (안정)
+    // 클러스터 중심 lat/lng 는 별도 lookup map 에
     const groups = new Map<string, typeof restaurants>();
-    for (const r of restaurants) {
-      if (!r.categories.includes(mode)) continue;
-      if (r.is_closed && !includeClosed && r.id !== selectedId) continue;
-      const key = `${r.latitude.toFixed(5)},${r.longitude.toFixed(5)}`;
-      const arr = groups.get(key) ?? [];
-      arr.push(r);
-      groups.set(key, arr);
+    const centroidByKey = new Map<string, { lat: number; lng: number }>();
+    for (const c of clusters) {
+      const key =
+        c.items.length === 1
+          ? `solo_${c.items[0]!.id}`
+          : `cluster_${[...c.items].map((i) => i.id).sort().join(',')}`;
+      groups.set(key, c.items);
+      centroidByKey.set(key, {
+        lat: c.sumLat / c.items.length,
+        lng: c.sumLng / c.items.length,
+      });
     }
 
     // 2) 그룹마다 핀 하나 렌더
@@ -276,8 +355,12 @@ export function KakaoMap({
         }
       });
 
+      // 클러스터 핀은 centroid (=묶인 식당들 평균 좌표) 에 표시, 단일은 정확 좌표
+      const pinCenter = isCluster
+        ? (centroidByKey.get(groupKey) ?? { lat: primary.latitude, lng: primary.longitude })
+        : { lat: primary.latitude, lng: primary.longitude };
       const overlay = new window.kakao.maps.CustomOverlay({
-        position: new window.kakao.maps.LatLng(primary.latitude, primary.longitude),
+        position: new window.kakao.maps.LatLng(pinCenter.lat, pinCenter.lng),
         content: el,
         yAnchor: 0.5,
         xAnchor: 0.5,
@@ -292,7 +375,12 @@ export function KakaoMap({
     if (openClusterKey) {
       const items = groups.get(openClusterKey);
       if (items && items.length > 1) {
-        const first = items[0]!;
+        // popover 도 centroid 위에 띄움 — 핀 위치와 일치
+        const popPos = centroidByKey.get(openClusterKey) ?? {
+          lat: items[0]!.latitude,
+          lng: items[0]!.longitude,
+        };
+        // popover 가 너무 길어지지 않게 — 6개 넘으면 스크롤
         const pop = document.createElement('div');
         pop.style.cssText =
           'display:flex;flex-direction:column;min-width:200px;max-width:260px;' +
@@ -306,7 +394,7 @@ export function KakaoMap({
           'display:flex;align-items:center;justify-content:space-between;gap:6px;' +
           `padding:6px 10px;border-bottom:1px solid ${borderColor};` +
           'font-size:11px;font-weight:600;line-height:1.2;';
-        header.innerHTML = `<span>같은 위치 ${items.length}곳</span>`;
+        header.innerHTML = `<span>이 근처 ${items.length}곳</span>`;
         const closeBtn = document.createElement('button');
         closeBtn.type = 'button';
         closeBtn.textContent = '✕';
@@ -344,7 +432,7 @@ export function KakaoMap({
         }
 
         const popOverlay = new window.kakao.maps.CustomOverlay({
-          position: new window.kakao.maps.LatLng(first.latitude, first.longitude),
+          position: new window.kakao.maps.LatLng(popPos.lat, popPos.lng),
           content: pop,
           yAnchor: 1.25, // 핀 위에 띄움
           xAnchor: 0.5,
@@ -354,7 +442,7 @@ export function KakaoMap({
         popOverlay.setMap(map);
         pinRefs.current.set(`__popover__${openClusterKey}`, popOverlay);
       } else {
-        // 그룹이 사라졌거나 1개로 줄어든 경우 자동 닫기
+        // 그룹이 사라졌거나 1개로 줄어든 경우 자동 닫기 (줌인 등)
         setOpenClusterKey(null);
       }
     }
@@ -363,7 +451,8 @@ export function KakaoMap({
       pinRefs.current.forEach((ov) => ov.setMap(null));
       pinRefs.current.clear();
     };
-  }, [map, restaurants, selectedId, mode, includeClosed, onSelect, openClusterKey]);
+    // D57: mapVersion 도 deps 에 — 줌/팬 후 픽셀 좌표 재계산
+  }, [map, restaurants, selectedId, mode, includeClosed, onSelect, openClusterKey, mapVersion]);
 
   // 선택된 식당이 있으면 경로 라인. 없으면 지움.
   useEffect(() => {
