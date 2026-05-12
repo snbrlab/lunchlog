@@ -3,6 +3,7 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { ALL_CUISINES } from '@/lib/cuisine';
+import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
 import type { CuisineType, MealMode } from '@/types/db';
 
 function isAllowedKakaoUrl(url: string): boolean {
@@ -49,6 +50,7 @@ export async function toggleRestaurantClosed(
     .eq('id', restaurantId);
 
   if (error) return { ok: false, message: error.message };
+  invalidateRestaurantsCache();
   return { ok: true, isClosed: nextClosed };
 }
 
@@ -165,5 +167,6 @@ export async function updateRestaurant(
     .eq('id', input.id);
 
   if (error) return { ok: false, reason: 'unknown', message: error.message };
+  invalidateRestaurantsCache();
   redirect('/map');
 }

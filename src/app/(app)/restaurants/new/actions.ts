@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { generateCommitHash } from '@/lib/hash';
 import { haversineDistanceMeters } from '@/lib/distance';
 import { ALL_CUISINES } from '@/lib/cuisine';
+import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
 import type { CuisineType, MealMode } from '@/types/db';
 
 interface CreateRestaurantInput {
@@ -209,9 +210,11 @@ export async function createRestaurant(
 
   if (reviewErr) {
     // 식당은 이미 생성됨. 리뷰 실패는 알림만 — 식당 자체는 살아있음.
+    invalidateRestaurantsCache(); // 식당은 이미 추가됐으니 캐시는 갱신
     return { ok: false, reason: 'unknown', message: `식당은 등록됐지만 첫 리뷰 작성에 실패했어요: ${reviewErr.message}` };
   }
 
+  invalidateRestaurantsCache();
   // /map 으로 이동. redirect() 는 NEXT_REDIRECT throw — client 의 useTransition 이 자연스럽게 종료됨.
   redirect('/map');
 }

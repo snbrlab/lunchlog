@@ -1,6 +1,7 @@
 'use server';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
 import type { MealMode } from '@/types/db';
 
 export type CreateReviewResult =
@@ -81,6 +82,8 @@ export async function createReview(input: CreateReviewInput): Promise<CreateRevi
     .single();
 
   if (error) return { ok: false, message: error.message };
+  // commit_count / last_commit_at 트리거가 갱신 → 식당 캐시 무효화
+  invalidateRestaurantsCache();
   return { ok: true, id: data.id };
 }
 
@@ -89,6 +92,7 @@ export async function deleteReview(id: string): Promise<DeleteReviewResult> {
   const supabase = await createSupabaseServerClient();
   const { error } = await supabase.from('reviews').delete().eq('id', id);
   if (error) return { ok: false, message: error.message };
+  invalidateRestaurantsCache();
   return { ok: true };
 }
 
@@ -104,6 +108,7 @@ export async function revertReview(id: string): Promise<RevertReviewResult> {
     .update({ reverted: true })
     .eq('id', id);
   if (error) return { ok: false, message: error.message };
+  invalidateRestaurantsCache();
   return { ok: true };
 }
 

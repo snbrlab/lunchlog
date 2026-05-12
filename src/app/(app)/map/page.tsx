@@ -1,8 +1,8 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCachedBuildings } from '@/lib/cache/offices';
+import { getCachedRestaurants } from '@/lib/cache/restaurants';
 import MapShell from './MapShell';
-import type { Restaurant } from '@/types/db';
 
 // 카카오맵 + 사이드바. 디테일 패널은 Phase 5 에서 추가.
 export default async function MapPage() {
@@ -12,54 +12,30 @@ export default async function MapPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data: profile } = await supabase
-    .from('users')
-    .select('office_id, building_id, role')
-    .eq('id', user.id)
-    .maybeSingle();
+  // 사용자별 가벼운 fetch (profile, favorites) 와 글로벌 캐시된 fetch (buildings, restaurants) 병렬.
+  // D54: restaurants 는 모든 사용자에게 동일한 데이터 → unstable_cache 로 묶음.
+  // commit/식당 변경 action 들이 invalidateRestaurantsCache 호출로 즉시 무효화.
+  const [
+    { data: profile },
+    buildings,
+    restaurants,
+    { data: favorites },
+  ] = await Promise.all([
+    supabase
+      .from('users')
+      .select('office_id, building_id, role')
+      .eq('id', user.id)
+      .maybeSingle(),
+    getCachedBuildings(),
+    getCachedRestaurants(),
+    supabase.from('favorites').select('restaurant_id').eq('user_id', user.id),
+  ]);
 
-  // 사용자 건물 좌표 → 회사 마커 origin (전체 buildings 는 캐시됨)
-  const buildings = await getCachedBuildings();
+  // 사용자 건물 좌표 → 회사 마커 origin
   const building = buildings.find((b) => b.id === profile?.building_id);
   const origin = building
     ? { lat: building.latitude, lng: building.longitude }
     : { lat: 37.5604, lng: 126.8255 }; // LG사이언스파크 fallback
-
-  // 사이드바 + 디테일 패널에 필요한 컬럼만 명시. SELECT * 회피 (egress 절약).
-  // commit_count 는 D42 trigger 가 revert 까지 정합성 유지 → 캐시 컬럼 그대로 신뢰.
-  // office_id 필터 제거 (D43): 식당의 office_id 는 "누가 처음 등록했냐" 메타데이터일 뿐.
-  // 거리는 사용자 본인 건물 기준이라 다른 사무실 동료가 등록한 식당도 다 보여야 함.
-  const [{ data: restaurants }, { data: favorites }] = await Promise.all([
-    supabase
-      .from('restaurants')
-      .select(
-        [
-          'id',
-          'name',
-          'categories',
-          'cuisine_types',
-          'menu_tags',
-          'price_level',
-          'latitude',
-          'longitude',
-          'address',
-          'note',
-          'office_id',
-          'is_closed',
-          'created_by',
-          'created_at',
-          'commit_count',
-          'last_commit_at',
-          'recommended_min_size',
-          'recommended_max_size',
-          'has_alcohol',
-          'kakao_place_url',
-          'creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
-        ].join(', '),
-      )
-      .order('last_commit_at', { ascending: false, nullsFirst: false }),
-    supabase.from('favorites').select('restaurant_id').eq('user_id', user.id),
-  ]);
 
   const favoriteIds = ((favorites ?? []) as { restaurant_id: string }[]).map(
     (f) => f.restaurant_id,
@@ -68,7 +44,7 @@ export default async function MapPage() {
   return (
     <MapShell
       origin={origin}
-      restaurants={(restaurants ?? []) as unknown as Restaurant[]}
+      restaurants={restaurants}
       currentUserId={user.id}
       isAdmin={profile?.role === 'admin'}
       favoriteIds={favoriteIds}

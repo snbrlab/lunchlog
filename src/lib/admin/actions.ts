@@ -3,6 +3,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { invalidateOfficesCache } from '@/lib/cache/offices';
+import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
 import { getServerEnv } from '@/lib/env';
 import { avatarColorFor } from '@/lib/avatar-color';
 import { isNicknameTaken, validateNicknameShape } from '@/lib/auth/nickname';
@@ -347,6 +348,7 @@ export async function autoFillKakaoPlaceUrlsForRestaurants(): Promise<AutoFillPl
     }),
   );
 
+  invalidateRestaurantsCache();
   return { ok: true, results };
 }
 
@@ -366,6 +368,7 @@ export async function deleteRestaurant(restaurantId: string): Promise<DeleteRest
     .delete()
     .eq('id', restaurantId);
   if (error) return { ok: false, message: error.message };
+  invalidateRestaurantsCache();
   return { ok: true };
 }
 
@@ -657,5 +660,7 @@ export async function deleteUser(userId: string): Promise<DeleteUserResult> {
   // auth.users 삭제 → users 는 on delete cascade 로 같이 삭제 → reviews/restaurants 는 set null
   const { error } = await sa.auth.admin.deleteUser(userId);
   if (error) return { ok: false, message: error.message };
+  // restaurants 의 creator join 결과가 NULL 로 바뀌므로 캐시 무효화
+  invalidateRestaurantsCache();
   return { ok: true };
 }
