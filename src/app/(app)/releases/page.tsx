@@ -6,9 +6,6 @@ export default function ReleasesPage() {
   return (
     <main className="mx-auto w-full max-w-3xl px-5 py-8">
       <h1 className="text-xl font-semibold tracking-tight text-fg">📜 릴리즈 노트</h1>
-      <p className="mt-1 text-xs text-fg-muted">
-        런치로그가 어떻게 변해왔는지. 최신이 위.
-      </p>
 
       <ol className="mt-6 font-mono text-[13px]">
         {RELEASES.map((r, i) => {
