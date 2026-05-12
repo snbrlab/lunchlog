@@ -52,6 +52,8 @@ export function KakaoMap({
   const pinRefs = useRef<Map<string, KakaoCustomOverlay>>(new Map());
   const polylineRef = useRef<KakaoPolyline | null>(null);
   const walkBadgeRef = useRef<KakaoCustomOverlay | null>(null);
+  // D56: 같은 좌표 클러스터 — 어느 그룹의 popover 가 열려있는지
+  const [openClusterKey, setOpenClusterKey] = useState<string | null>(null);
 
   const { mode } = useMealMode();
 
@@ -106,18 +108,19 @@ export function KakaoMap({
     map.panTo(new window.kakao.maps.LatLng(origin.lat, origin.lng));
   }
 
-  // 지도 빈 곳 터치/클릭 시 선택 해제 (모바일에서 디테일 패널 닫기 용도, 데스크탑도 동작)
+  // 지도 빈 곳 터치/클릭 시 선택 해제 + 열린 클러스터 popover 닫기.
   // 핀(CustomOverlay) 클릭은 element click 으로 별도 처리되므로 여기엔 안 잡힘.
   useEffect(() => {
     if (!map) return;
     const handler = () => {
+      if (openClusterKey) setOpenClusterKey(null);
       if (selectedId) onDeselect();
     };
     window.kakao.maps.event.addListener(map, 'click', handler);
     return () => {
       window.kakao.maps.event.removeListener(map, 'click', handler);
     };
-  }, [map, selectedId, onDeselect]);
+  }, [map, selectedId, onDeselect, openClusterKey]);
 
   // origin 변경 시 회사 마커 재생성 + 중심 이동
   useEffect(() => {
@@ -150,6 +153,8 @@ export function KakaoMap({
   }, [map, origin.lat, origin.lng]);
 
   // 식당 핀 갱신 (목록 변동 또는 mode/선택 변동 시 재계산)
+  // D56: 같은 좌표 (소수점 5자리 = ~1m) 에 식당이 여러 개면 클러스터 핀 하나 + "+N" 배지.
+  //      클러스터 클릭 시 popover 가 떠서 목록에서 골라 선택 가능.
   useEffect(() => {
     if (!map) return;
 
@@ -164,25 +169,41 @@ export function KakaoMap({
     const fgColor = readToken('--fg', '#1a1a1a');
     const borderColor = readToken('--border', 'rgba(0,0,0,0.08)');
 
+    // 1) 좌표 키로 그룹화 — 모드/폐업 필터 통과한 식당만
+    const groups = new Map<string, typeof restaurants>();
     for (const r of restaurants) {
-      // 현재 모드(점심/저녁)에 해당 안 하는 식당은 핀 안 그림
       if (!r.categories.includes(mode)) continue;
-      // 폐업 식당은 사이드바 토글 따라감 (선택된 식당이면 표시는 유지)
       if (r.is_closed && !includeClosed && r.id !== selectedId) continue;
+      const key = `${r.latitude.toFixed(5)},${r.longitude.toFixed(5)}`;
+      const arr = groups.get(key) ?? [];
+      arr.push(r);
+      groups.set(key, arr);
+    }
 
-      const isSelected = r.id === selectedId;
-      const isStale = r.is_closed;
+    // 2) 그룹마다 핀 하나 렌더
+    for (const [groupKey, items] of groups) {
+      // 그룹 내 selected 가 있으면 그게 대표, 없으면 첫 식당
+      const selectedInGroup = items.find((i) => i.id === selectedId) ?? null;
+      const primary = selectedInGroup ?? items[0]!;
+      const isSelected = !!selectedInGroup;
+      const isStale = primary.is_closed;
+      const groupSize = items.length;
+      const isCluster = groupSize > 1;
       const color = isStale ? staleColor : isSelected ? activeColor : inactiveColor;
       const dotSize = isSelected ? 36 : 30;
-      // 다중 cuisine 인 경우 첫 번째 cuisine 의 그룹 emoji 사용
-      const emoji = emojiForCuisine((r.cuisine_types[0] ?? '한식') as never);
+      const emoji = emojiForCuisine((primary.cuisine_types[0] ?? '한식') as never);
 
       const el = document.createElement('div');
       el.style.cssText =
         'position:relative;display:flex;align-items:center;justify-content:center;' +
         'cursor:pointer;';
-      el.setAttribute('aria-label', `식당 ${r.name}`);
-      el.title = r.name;
+      el.setAttribute(
+        'aria-label',
+        isCluster ? `${groupSize}개 식당 (${items.map((i) => i.name).join(', ')})` : `식당 ${primary.name}`,
+      );
+      el.title = isCluster
+        ? `${groupSize}개 식당: ${items.map((i) => i.name).join(' / ')}`
+        : primary.name;
 
       // 라벨 (선택 시 항상 보임 / 그 외엔 hover 시만)
       const label = document.createElement('div');
@@ -196,7 +217,11 @@ export function KakaoMap({
         'white-space:nowrap;pointer-events:none;' +
         `opacity:${isSelected ? '1' : '0'};` +
         'transition:opacity 0.15s ease;';
-      label.textContent = isStale ? `${r.name} (폐업)` : r.name;
+      label.textContent = isCluster
+        ? `${primary.name} 외 ${groupSize - 1}곳`
+        : isStale
+          ? `${primary.name} (폐업)`
+          : primary.name;
       el.appendChild(label);
 
       // 핀: 흰 배경 동그라미 + 이모지 + 색 테두리
@@ -210,13 +235,25 @@ export function KakaoMap({
         `font-size:${isSelected ? 18 : 15}px;line-height:1;` +
         `${isStale ? 'opacity:0.55;' : ''}`;
       dot.innerHTML = `<span aria-hidden>${emoji}</span>`;
-      if (isStale) {
+      if (isStale && !isCluster) {
         const x = document.createElement('span');
         x.textContent = '✕';
         x.style.cssText =
           'position:absolute;inset:0;display:flex;align-items:center;justify-content:center;' +
           'color:#ef4444;font-size:18px;font-weight:900;line-height:1;text-shadow:0 0 2px white;';
         dot.appendChild(x);
+      }
+      // D56: 클러스터 +N 배지 (우상단)
+      if (isCluster) {
+        const badge = document.createElement('span');
+        badge.textContent = `+${groupSize - 1}`;
+        badge.style.cssText =
+          'position:absolute;top:-6px;right:-6px;' +
+          'min-width:18px;height:18px;padding:0 4px;border-radius:9999px;' +
+          `background:${activeColor};color:#ffffff;` +
+          'font-size:10px;font-weight:700;line-height:18px;text-align:center;' +
+          'box-shadow:0 1px 3px rgba(0,0,0,0.3);';
+        dot.appendChild(badge);
       }
       el.appendChild(dot);
 
@@ -229,10 +266,18 @@ export function KakaoMap({
           label.style.opacity = '0';
         });
       }
-      el.addEventListener('click', () => onSelect(r.id));
+      el.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (isCluster) {
+          // 같은 키 다시 누르면 닫기, 다른 키 누르면 그쪽 열기
+          setOpenClusterKey((k) => (k === groupKey ? null : groupKey));
+        } else {
+          onSelect(primary.id);
+        }
+      });
 
       const overlay = new window.kakao.maps.CustomOverlay({
-        position: new window.kakao.maps.LatLng(r.latitude, r.longitude),
+        position: new window.kakao.maps.LatLng(primary.latitude, primary.longitude),
         content: el,
         yAnchor: 0.5,
         xAnchor: 0.5,
@@ -240,14 +285,85 @@ export function KakaoMap({
         clickable: true,
       });
       overlay.setMap(map);
-      pinRefs.current.set(r.id, overlay);
+      pinRefs.current.set(`group_${groupKey}`, overlay);
+    }
+
+    // 3) popover (선택된 클러스터가 있으면)
+    if (openClusterKey) {
+      const items = groups.get(openClusterKey);
+      if (items && items.length > 1) {
+        const first = items[0]!;
+        const pop = document.createElement('div');
+        pop.style.cssText =
+          'display:flex;flex-direction:column;min-width:200px;max-width:260px;' +
+          `background:${surfaceColor};color:${fgColor};` +
+          `border:1px solid ${borderColor};border-radius:10px;` +
+          'box-shadow:0 6px 18px rgba(0,0,0,0.18);overflow:hidden;';
+        pop.addEventListener('click', (e) => e.stopPropagation());
+
+        const header = document.createElement('div');
+        header.style.cssText =
+          'display:flex;align-items:center;justify-content:space-between;gap:6px;' +
+          `padding:6px 10px;border-bottom:1px solid ${borderColor};` +
+          'font-size:11px;font-weight:600;line-height:1.2;';
+        header.innerHTML = `<span>같은 위치 ${items.length}곳</span>`;
+        const closeBtn = document.createElement('button');
+        closeBtn.type = 'button';
+        closeBtn.textContent = '✕';
+        closeBtn.setAttribute('aria-label', '닫기');
+        closeBtn.style.cssText =
+          'border:0;background:transparent;cursor:pointer;font-size:12px;color:inherit;opacity:0.6;padding:0;';
+        closeBtn.addEventListener('click', () => setOpenClusterKey(null));
+        header.appendChild(closeBtn);
+        pop.appendChild(header);
+
+        for (const it of items) {
+          const itemEmoji = emojiForCuisine((it.cuisine_types[0] ?? '한식') as never);
+          const row = document.createElement('button');
+          row.type = 'button';
+          row.style.cssText =
+            'display:flex;align-items:center;gap:8px;width:100%;' +
+            'padding:7px 10px;border:0;background:transparent;cursor:pointer;' +
+            `border-top:1px solid ${borderColor};` +
+            'text-align:left;font-size:12px;line-height:1.3;color:inherit;';
+          row.addEventListener('mouseenter', () => {
+            row.style.background = 'rgba(0,0,0,0.04)';
+          });
+          row.addEventListener('mouseleave', () => {
+            row.style.background = 'transparent';
+          });
+          row.innerHTML =
+            `<span aria-hidden style="font-size:14px">${itemEmoji}</span>` +
+            `<span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;${it.is_closed ? 'text-decoration:line-through;opacity:0.6;' : ''}">${it.name}</span>` +
+            `<span style="font-size:10px;opacity:0.6">commit ${it.commit_count}</span>`;
+          row.addEventListener('click', () => {
+            onSelect(it.id);
+            setOpenClusterKey(null);
+          });
+          pop.appendChild(row);
+        }
+
+        const popOverlay = new window.kakao.maps.CustomOverlay({
+          position: new window.kakao.maps.LatLng(first.latitude, first.longitude),
+          content: pop,
+          yAnchor: 1.25, // 핀 위에 띄움
+          xAnchor: 0.5,
+          zIndex: 20,
+          clickable: true,
+        });
+        popOverlay.setMap(map);
+        pinRefs.current.set(`__popover__${openClusterKey}`, popOverlay);
+      } else {
+        // 그룹이 사라졌거나 1개로 줄어든 경우 자동 닫기
+        setOpenClusterKey(null);
+      }
     }
 
     return () => {
       pinRefs.current.forEach((ov) => ov.setMap(null));
       pinRefs.current.clear();
     };
-  }, [map, restaurants, selectedId, mode, includeClosed, onSelect]);
+  }, [map, restaurants, selectedId, mode, includeClosed, onSelect, openClusterKey]);
 
   // 선택된 식당이 있으면 경로 라인. 없으면 지움.
   useEffect(() => {
