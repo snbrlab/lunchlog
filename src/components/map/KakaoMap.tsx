@@ -189,9 +189,11 @@ export function KakaoMap({
     //    - 그리디 (O(n²), 100개대까지 충분): 첫 식당부터 cluster 시드,
     //      각 후보를 모든 기존 cluster centroid 와 비교해서 가까우면 흡수
     //    - centroid 는 누적 평균으로 갱신
-    //    - 줌 레벨이 작을수록(=zoomed out) 모일 가능성 큼 → threshold 는 픽셀 고정
     //    - 그룹 key 는 정렬된 멤버 id join → 줌/팬 후에도 같은 멤버면 같은 key (popover 유지)
-    const PX_THRESHOLD = 40;
+    //    - threshold 는 줌 레벨에 따라 동적: 가까이 볼수록 작아져서 거의 안 묶임 (D57 보강)
+    //      kakao zoom level: 1 = 가장 가까이, 14 = 멀리
+    const level = map.getLevel();
+    const PX_THRESHOLD = Math.max(8, Math.min(45, (level - 1) * 8 + 8));
     const projection = (map as unknown as {
       getProjection: () => {
         containerPointFromCoords: (latlng: KakaoLatLng) => { x: number; y: number };
