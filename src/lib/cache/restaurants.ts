@@ -12,12 +12,13 @@
 
 import { unstable_cache, revalidateTag } from 'next/cache';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
-import type { Restaurant } from '@/types/db';
+import type { RestaurantListItem } from '@/types/db';
 
 const TAG = 'restaurants';
 const REVALIDATE_SECONDS = 60 * 60; // 1h. 변경 시엔 invalidateRestaurantsCache() 로 즉시 무효화.
 
-const SELECT_COLUMNS = [
+// D55: 사이드바 + 지도 마커가 쓰는 컬럼만. 디테일 패널은 별도 단건 fetch.
+const LIST_COLUMNS = [
   'id',
   'name',
   'categories',
@@ -26,19 +27,10 @@ const SELECT_COLUMNS = [
   'price_level',
   'latitude',
   'longitude',
-  'address',
-  'note',
-  'office_id',
   'is_closed',
-  'created_by',
-  'created_at',
   'commit_count',
   'last_commit_at',
-  'recommended_min_size',
-  'recommended_max_size',
   'has_alcohol',
-  'kakao_place_url',
-  'creator:users!restaurants_created_by_fkey ( name, avatar_emoji, avatar_color )',
 ].join(', ');
 
 export const getCachedRestaurants = unstable_cache(
@@ -46,11 +38,11 @@ export const getCachedRestaurants = unstable_cache(
     const supabase = getSupabaseAdminClient();
     const { data } = await supabase
       .from('restaurants')
-      .select(SELECT_COLUMNS)
+      .select(LIST_COLUMNS)
       .order('last_commit_at', { ascending: false, nullsFirst: false });
-    return (data ?? []) as unknown as Restaurant[];
+    return (data ?? []) as unknown as RestaurantListItem[];
   },
-  ['restaurants-all'],
+  ['restaurants-list-v2'], // v1 (full row) 캐시와 키 분리
   { revalidate: REVALIDATE_SECONDS, tags: [TAG] },
 );
 

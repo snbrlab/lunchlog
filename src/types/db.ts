@@ -69,6 +69,26 @@ export interface Restaurant {
   } | null;
 }
 
+// D55: /map 사이드바 + 지도 마커가 실제로 쓰는 컬럼만.
+// 전체 Restaurant 의 strict subset → 캐시 페이로드 슬림화.
+// 디테일 패널 (address/note/recommended_*/kakao_place_url/creator 등) 은
+// 패널 오픈 시점에 fetchRestaurantDetail(id) 로 단건 조회.
+export type RestaurantListItem = Pick<
+  Restaurant,
+  | 'id'
+  | 'name'
+  | 'categories'
+  | 'cuisine_types'
+  | 'menu_tags'
+  | 'price_level'
+  | 'latitude'
+  | 'longitude'
+  | 'is_closed'
+  | 'commit_count'
+  | 'last_commit_at'
+  | 'has_alcohol'
+>;
+
 export type ReportCategory = 'bug' | 'feature' | 'restaurant' | 'other';
 export type ReportStatus = 'open' | 'reviewing' | 'resolved';
 

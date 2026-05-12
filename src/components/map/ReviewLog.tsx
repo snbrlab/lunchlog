@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useEffect, useMemo, useState, useTransition } from 'react';
+import { useEffect, useMemo, useRef, useState, useTransition } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
@@ -18,6 +18,13 @@ type AuthorMeta = {
 type EnrichedReview = Review & { author: AuthorMeta | null };
 
 const FRESH_DAYS = 7;
+
+// D55: 모듈 레벨 메모리 캐시. 식당 디테일 패널을 왔다갔다 할 때 매번 fetch 하던 걸 제거.
+// - TTL 60s 내 hit → 네트워크 skip, 즉시 표시
+// - mutation (refreshKey 증가) → 해당 식당 키 invalidate
+// 페이지 리로드 시 자연 소멸 → stale 위험 적음.
+const REVIEWS_CACHE = new Map<string, { data: EnrichedReview[]; at: number }>();
+const REVIEWS_TTL_MS = 60 * 1000;
 
 interface Props {
   restaurantId: string;
@@ -46,10 +53,35 @@ export function ReviewLog({
   const [pendingMutateId, setPendingMutateId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
-  // 식당 변경 또는 refreshKey 증가 시 fetch
+  // D55: refreshKey 가 증가한 사이클이면 해당 식당의 캐시 무효화 (mutate 후 fresh)
+  const lastRefreshKeyRef = useRef(refreshKey);
+
+  // 식당 변경 또는 refreshKey 증가 시 fetch (단, 캐시 hit + fresh 면 skip)
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
+
+    // 1) refreshKey 변동 감지 → 그 시점에 보고 있던 식당 캐시 invalidate
+    if (lastRefreshKeyRef.current !== refreshKey) {
+      REVIEWS_CACHE.delete(restaurantId);
+      lastRefreshKeyRef.current = refreshKey;
+    }
+
+    // 2) 캐시 hit + 신선 → 즉시 표시, 네트워크 skip
+    const cached = REVIEWS_CACHE.get(restaurantId);
+    if (cached && Date.now() - cached.at < REVIEWS_TTL_MS) {
+      setReviews(cached.data);
+      setLoading(false);
+      return;
+    }
+
+    // 3) stale 캐시라도 있으면 우선 보여주고 (no flash), 백그라운드에서 새로 받기
+    if (cached) {
+      setReviews(cached.data);
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
+
     const supabase = createSupabaseBrowserClient();
     (async () => {
       const { data, error } = await supabase
@@ -66,12 +98,12 @@ export function ReviewLog({
         console.error('reviews fetch failed:', error.message);
         setReviews([]);
       } else {
-        setReviews(
-          (data ?? []).map((r) => ({
-            ...(r as unknown as Review),
-            author: (r as unknown as { author: AuthorMeta | null }).author,
-          })),
-        );
+        const items: EnrichedReview[] = (data ?? []).map((r) => ({
+          ...(r as unknown as Review),
+          author: (r as unknown as { author: AuthorMeta | null }).author,
+        }));
+        REVIEWS_CACHE.set(restaurantId, { data: items, at: Date.now() });
+        setReviews(items);
       }
       setLoading(false);
     })();

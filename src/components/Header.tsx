@@ -1,25 +1,17 @@
 import Link from 'next/link';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
+import { getCurrentUserOrNull } from '@/lib/auth/current-user';
 import { MealModeToggle } from './MealModeToggle';
 import { UserMenu } from './UserMenu';
 
 // 인증된 영역의 공용 헤더 (SPEC 5.1).
 // 좌: 로고. 중: 점심/저녁 토글. 우: 아바타 드롭다운.
+// D55: getCurrentUserOrNull 은 React cache() 로 한 요청 내 dedupe.
+//      페이지 (/map, /me 등) 가 동일 호출 시 DB 왕복은 한 번만.
 export async function Header() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) return null;
-
-  // D50: users.email 은 column-level GRANT 로 SELECT 차단됨. 본인 email 은 auth.getUser() 로
-  const { data: profile } = await supabase
-    .from('users')
-    .select('name, avatar_color, avatar_emoji, role')
-    .eq('id', user.id)
-    .maybeSingle();
+  const me = await getCurrentUserOrNull();
+  if (!me) return null;
+  const { user, profile } = me;
 
   const name = profile?.name ?? user.email ?? '익명';
   const email = user.email ?? '';

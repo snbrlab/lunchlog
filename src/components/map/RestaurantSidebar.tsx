@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import type { Restaurant } from '@/types/db';
+import type { RestaurantListItem } from '@/types/db';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
 import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
 import { CUISINE_GROUPS, findCuisineGroup } from '@/lib/cuisine';
@@ -10,7 +10,7 @@ import type { CuisineType } from '@/types/db';
 
 interface Props {
   origin: { lat: number; lng: number };
-  restaurants: Restaurant[];
+  restaurants: RestaurantListItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   includeClosed: boolean;

@@ -9,7 +9,7 @@ import type {
   KakaoMarker,
   KakaoPolyline,
 } from '@/types/kakao-maps';
-import type { Restaurant } from '@/types/db';
+import type { RestaurantListItem } from '@/types/db';
 import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
 import { emojiForCuisine } from '@/lib/cuisine';
 
@@ -23,7 +23,7 @@ export interface MapMarkerData {
 
 interface Props {
   origin: { lat: number; lng: number };
-  restaurants: Restaurant[];
+  restaurants: RestaurantListItem[];
   selectedId: string | null;
   onSelect: (id: string) => void;
   onDeselect: () => void;

@@ -9,11 +9,16 @@ import { toggleFavorite } from '@/lib/favorites/actions';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { ReviewLog } from './ReviewLog';
 import { ReviewComposer, type ReplyTarget } from './ReviewComposer';
-import type { Restaurant } from '@/types/db';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
+import {
+  fetchRestaurantDetail,
+  type RestaurantDetailExtra,
+} from '@/lib/restaurants/detail';
+import type { RestaurantListItem } from '@/types/db';
 
 interface Props {
   origin: { lat: number; lng: number };
-  restaurant: Restaurant | null;
+  restaurant: RestaurantListItem | null;
   currentUserId: string;
   isAdmin: boolean;
   onClose: () => void;
@@ -36,10 +41,31 @@ export function RestaurantDetailPanel({
   const [pending, startTransition] = useTransition();
   // 답글 모드 (D40). 답글 대상 commit 정보를 ReviewComposer 에 전달.
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
+  // D55: 디테일 전용 컬럼 — 패널 열릴 때 단건 fetch
+  const [detail, setDetail] = useState<RestaurantDetailExtra | null>(null);
+
   // 다른 식당으로 전환되면 답글 상태 초기화 (잘못된 식당의 commit 에 답글 가는 것 방지)
   useEffect(() => {
     setReplyTo(null);
   }, [restaurant?.id]);
+
+  // D55: 식당 선택 시 디테일 fetch. 식당 바뀌면 즉시 stale 표시 (null) → 새로 받음
+  useEffect(() => {
+    if (!restaurant?.id) {
+      setDetail(null);
+      return;
+    }
+    let cancelled = false;
+    setDetail(null);
+    const supabase = createSupabaseBrowserClient();
+    fetchRestaurantDetail(supabase, restaurant.id).then((d) => {
+      if (cancelled) return;
+      setDetail(d);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [restaurant?.id, refreshKey]);
   // ReviewLog 내부 목록 + 부모 페이지의 restaurants(commit_count, last_commit_at) 둘 다 갱신
   const triggerRefresh = () => {
     setRefreshKey((k) => k + 1);
@@ -79,10 +105,10 @@ export function RestaurantDetailPanel({
   const travel = travelInfo(meters);
 
   const sizeRange =
-    restaurant.recommended_min_size && restaurant.recommended_max_size
-      ? restaurant.recommended_min_size === restaurant.recommended_max_size
-        ? `${restaurant.recommended_min_size}인`
-        : `${restaurant.recommended_min_size}~${restaurant.recommended_max_size}인`
+    detail?.recommended_min_size && detail.recommended_max_size
+      ? detail.recommended_min_size === detail.recommended_max_size
+        ? `${detail.recommended_min_size}인`
+        : `${detail.recommended_min_size}~${detail.recommended_max_size}인`
       : null;
 
   return (
@@ -142,7 +168,7 @@ export function RestaurantDetailPanel({
           )}
         </h2>
         <div className="flex items-center gap-2">
-          {(restaurant.created_by === currentUserId || isAdmin) && (
+          {(detail?.created_by === currentUserId || isAdmin) && (
             <Link
               href={`/restaurants/${restaurant.id}/edit`}
               className="rounded border border-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-fg-muted transition hover:border-fg/40 hover:text-fg"
@@ -202,31 +228,31 @@ export function RestaurantDetailPanel({
         ))}
       </div>
 
-      {restaurant.note && (
-        <p className="mt-2 px-5 text-[12px] italic text-fg-muted">{restaurant.note}</p>
+      {detail?.note && (
+        <p className="mt-2 px-5 text-[12px] italic text-fg-muted">{detail.note}</p>
       )}
 
       {/* 등록자 (모바일 hidden) */}
-      {restaurant.creator && (
+      {detail?.creator && (
         <p className="mt-2 hidden items-center gap-1.5 px-5 text-[11px] text-fg-muted lg:flex">
           <span
             className="inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px]"
-            style={{ backgroundColor: restaurant.creator.avatar_color }}
+            style={{ backgroundColor: detail.creator.avatar_color }}
             aria-hidden
           >
             {resolveAvatarEmoji(
-              restaurant.creator.avatar_emoji,
-              restaurant.creator.name + (restaurant.created_by ?? ''),
+              detail.creator.avatar_emoji,
+              detail.creator.name + (detail.created_by ?? ''),
             )}
           </span>
-          등록: <span className="font-medium text-fg">{restaurant.creator.name}</span>
+          등록: <span className="font-medium text-fg">{detail.creator.name}</span>
         </p>
       )}
 
       {/* 카카오맵 외부 링크 — place_url 있으면 식당 상세 페이지로, 없으면 좌표 fallback */}
       <a
         href={
-          restaurant.kakao_place_url ??
+          detail?.kakao_place_url ??
           `https://map.kakao.com/link/map/${encodeURIComponent(restaurant.name)},${restaurant.latitude},${restaurant.longitude}`
         }
         target="_blank"
@@ -234,7 +260,7 @@ export function RestaurantDetailPanel({
         className="mt-2 inline-flex items-center gap-1 self-start px-5 text-[11px] text-fg-muted underline-offset-2 hover:text-fg hover:underline"
       >
         <span aria-hidden>🗺️</span>
-        {restaurant.kakao_place_url ? '카카오맵에서 보기 (리뷰/메뉴 포함)' : '카카오맵 위치 보기'}
+        {detail?.kakao_place_url ? '카카오맵에서 보기 (리뷰/메뉴 포함)' : '카카오맵 위치 보기'}
         ↗
       </a>
 

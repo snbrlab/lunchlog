@@ -5,11 +5,11 @@ import { useEffect, useMemo, useState } from 'react';
 import { KakaoMap } from '@/components/map/KakaoMap';
 import { RestaurantSidebar } from '@/components/map/RestaurantSidebar';
 import { RestaurantDetailPanel } from '@/components/map/RestaurantDetailPanel';
-import type { Restaurant } from '@/types/db';
+import type { RestaurantListItem } from '@/types/db';
 
 interface Props {
   origin: { lat: number; lng: number };
-  restaurants: Restaurant[];
+  restaurants: RestaurantListItem[];
   currentUserId: string;
   isAdmin: boolean;
   favoriteIds: string[];
