@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import {
   setUserRole,
   resetUserPassword,
@@ -32,6 +32,35 @@ export default function UsersTable({
   );
   const [deleteTarget, setDeleteTarget] = useState<Row | null>(null);
   const [, startTransition] = useTransition();
+  // D58: 이메일/이름 substring + 도메인 chip 으로 필터링
+  const [query, setQuery] = useState('');
+  const [domain, setDomain] = useState<string>('');
+
+  // 도메인 chips — 빈도순 정렬, 1명 이상이면 표시
+  const domains = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const r of rows) {
+      const d = r.email.split('@')[1]?.toLowerCase();
+      if (!d) continue;
+      counts.set(d, (counts.get(d) ?? 0) + 1);
+    }
+    return Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  }, [rows]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return rows.filter((r) => {
+      if (domain && r.email.split('@')[1]?.toLowerCase() !== domain) return false;
+      if (q) {
+        if (
+          !r.email.toLowerCase().includes(q) &&
+          !r.name.toLowerCase().includes(q)
+        )
+          return false;
+      }
+      return true;
+    });
+  }, [rows, query, domain]);
 
   function toggleRole(row: Row) {
     const next = row.role === 'admin' ? 'member' : 'admin';
@@ -79,6 +108,64 @@ export default function UsersTable({
     <div className="space-y-4">
       <NewUserForm onCreated={(name, email, pw) => setTempPwModal({ name, email, pw })} />
 
+      {/* D58: 필터 — 이메일/이름 substring + 도메인 chip */}
+      <div className="rounded-lg border border-border bg-surface p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="이메일 또는 이름 검색"
+            className="min-w-0 flex-1 rounded border border-border bg-bg px-2 py-1.5 text-xs outline-none focus:border-fg"
+          />
+          {(query || domain) && (
+            <button
+              type="button"
+              onClick={() => {
+                setQuery('');
+                setDomain('');
+              }}
+              className="rounded border border-border px-2 py-1 text-[11px] text-fg-muted transition hover:border-fg/40 hover:text-fg"
+            >
+              초기화
+            </button>
+          )}
+        </div>
+        {domains.length > 1 && (
+          <div className="mt-2 flex flex-wrap items-center gap-1.5">
+            <span className="text-[11px] text-fg-muted">도메인:</span>
+            <button
+              type="button"
+              onClick={() => setDomain('')}
+              className={`rounded-full px-2 py-0.5 text-[11px] transition ${
+                domain === ''
+                  ? 'bg-fg text-bg'
+                  : 'border border-border text-fg-muted hover:border-fg/40 hover:text-fg'
+              }`}
+            >
+              전체 ({rows.length})
+            </button>
+            {domains.map(([d, n]) => (
+              <button
+                key={d}
+                type="button"
+                onClick={() => setDomain(d === domain ? '' : d)}
+                className={`rounded-full px-2 py-0.5 text-[11px] transition ${
+                  domain === d
+                    ? 'bg-fg text-bg'
+                    : 'border border-border text-fg-muted hover:border-fg/40 hover:text-fg'
+                }`}
+              >
+                @{d} ({n})
+              </button>
+            ))}
+          </div>
+        )}
+        <p className="mt-2 text-[10px] text-fg-muted/70">
+          {filtered.length}/{rows.length}명 표시
+        </p>
+      </div>
+
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
         <thead className="bg-surface text-[11px] uppercase tracking-wider text-fg-muted">
@@ -91,7 +178,14 @@ export default function UsersTable({
           </tr>
         </thead>
         <tbody>
-          {rows.map((r) => (
+          {filtered.length === 0 && (
+            <tr>
+              <td colSpan={5} className="px-3 py-6 text-center text-xs text-fg-muted">
+                일치하는 사용자가 없어요
+              </td>
+            </tr>
+          )}
+          {filtered.map((r) => (
             <tr key={r.id} className="border-t border-border">
               <td className="px-3 py-2 font-medium text-fg">
                 {r.name}
