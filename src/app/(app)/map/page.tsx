@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCachedBuildings } from '@/lib/cache/offices';
 import { getCachedRestaurants } from '@/lib/cache/restaurants';
+import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { getCurrentUserOrNull } from '@/lib/auth/current-user';
 import MapShell from './MapShell';
 
@@ -13,10 +14,11 @@ export default async function MapPage() {
 
   const supabase = await createSupabaseServerClient();
 
-  // D54: restaurants/buildings 는 글로벌 캐시. favorites 는 사용자별.
-  const [buildings, restaurants, { data: favorites }] = await Promise.all([
+  // D54: restaurants/buildings/cuisine_items 는 글로벌 캐시. favorites 는 사용자별.
+  const [buildings, restaurants, cuisineItems, { data: favorites }] = await Promise.all([
     getCachedBuildings(),
     getCachedRestaurants(),
+    getCachedCuisineItems(),
     supabase.from('favorites').select('restaurant_id').eq('user_id', user.id),
   ]);
 
@@ -36,6 +38,7 @@ export default async function MapPage() {
       currentUserId={user.id}
       isAdmin={profile?.role === 'admin'}
       favoriteIds={favoriteIds}
+      cuisineItems={cuisineItems}
     />
   );
 }

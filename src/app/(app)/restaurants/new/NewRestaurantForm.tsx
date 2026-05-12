@@ -4,16 +4,18 @@ import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
 import { KakaoPlacesSearch } from '@/components/map/KakaoPlacesSearch';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
-import { CUISINE_GROUPS, cuisineLabelFor } from '@/lib/cuisine';
+import { cuisineLabelFor, groupCuisineItems, type CuisineItem } from '@/lib/cuisine';
 import { createRestaurant, type CreateRestaurantResult } from './actions';
 import type { CuisineType, MealMode } from '@/types/db';
 import type { KakaoPlaceItem } from '@/types/kakao-maps';
 
 interface Props {
   origin: { lat: number; lng: number };
+  cuisineItems: CuisineItem[];
 }
 
-export default function NewRestaurantForm({ origin }: Props) {
+export default function NewRestaurantForm({ origin, cuisineItems }: Props) {
+  const cuisineGroups = groupCuisineItems(cuisineItems);
   const router = useRouter();
   const { mode } = useMealMode();
   const [pending, startTransition] = useTransition();
@@ -183,7 +185,7 @@ export default function NewRestaurantForm({ origin }: Props) {
             음식 종류 (1개 이상 선택) — 한일퓨전 등 여러 그룹 걸치는 곳은 다중 선택
           </span>
           <div className="space-y-2 rounded-md border border-border bg-surface p-3">
-            {CUISINE_GROUPS.map((group) => (
+            {cuisineGroups.map((group) => (
               <div key={group.label} className="flex items-start gap-2">
                 <span className="w-16 shrink-0 pt-1 text-[10px] font-semibold uppercase tracking-wider text-fg-muted">
                   {group.label}

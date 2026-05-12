@@ -2,7 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { CUISINE_GROUPS, cuisineLabelFor } from '@/lib/cuisine';
+import { cuisineLabelFor, groupCuisineItems, type CuisineItem } from '@/lib/cuisine';
 import { updateRestaurant } from '@/lib/restaurants/actions';
 import { KakaoPlacesSearch } from '@/components/map/KakaoPlacesSearch';
 import type { CuisineType, MealMode, Restaurant } from '@/types/db';
@@ -10,9 +10,11 @@ import type { KakaoPlaceItem } from '@/types/kakao-maps';
 
 interface Props {
   restaurant: Restaurant;
+  cuisineItems: CuisineItem[];
 }
 
-export default function EditRestaurantForm({ restaurant }: Props) {
+export default function EditRestaurantForm({ restaurant, cuisineItems }: Props) {
+  const cuisineGroups = groupCuisineItems(cuisineItems);
   const router = useRouter();
   const [pending, startTransition] = useTransition();
 
@@ -177,7 +179,7 @@ export default function EditRestaurantForm({ restaurant }: Props) {
             음식 종류 (1개 이상)
           </span>
           <div className="space-y-2 rounded-md border border-border bg-surface p-3">
-            {CUISINE_GROUPS.map((group) => (
+            {cuisineGroups.map((group) => (
               <div key={group.label} className="flex items-start gap-2">
                 <span className="w-16 shrink-0 pt-1 text-[10px] font-semibold uppercase tracking-wider text-fg-muted">
                   {group.label}

@@ -1,5 +1,6 @@
 import { notFound, redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import EditRestaurantForm from './EditRestaurantForm';
 import type { Restaurant } from '@/types/db';
 
@@ -46,7 +47,10 @@ export default async function EditRestaurantPage({
       <h1 className="mb-6 text-xl font-semibold tracking-tight text-fg">
         식당 수정 — {restaurant.name}
       </h1>
-      <EditRestaurantForm restaurant={restaurant as Restaurant} />
+      <EditRestaurantForm
+        restaurant={restaurant as Restaurant}
+        cuisineItems={await getCachedCuisineItems()}
+      />
     </main>
   );
 }

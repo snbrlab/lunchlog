@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import NewRestaurantForm from './NewRestaurantForm';
 
 export default async function NewRestaurantPage() {
@@ -28,10 +29,12 @@ export default async function NewRestaurantPage() {
     ? { lat: building.latitude, lng: building.longitude }
     : { lat: 37.5604, lng: 126.8255 };
 
+  const cuisineItems = await getCachedCuisineItems();
+
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-8">
       <h1 className="mb-6 text-xl font-semibold tracking-tight text-fg">+ 새 맛집 등록</h1>
-      <NewRestaurantForm origin={origin} />
+      <NewRestaurantForm origin={origin} cuisineItems={cuisineItems} />
     </main>
   );
 }

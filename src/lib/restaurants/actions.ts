@@ -2,7 +2,8 @@
 
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { ALL_CUISINES } from '@/lib/cuisine';
+import { allCuisineValues } from '@/lib/cuisine';
+import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
 import type { CuisineType, MealMode } from '@/types/db';
 
@@ -87,8 +88,9 @@ export async function updateRestaurant(
   if (input.cuisineTypes.length === 0) {
     return { ok: false, reason: 'invalid', message: '음식 종류를 최소 1개 선택해주세요' };
   }
+  const validCuisines = new Set(allCuisineValues(await getCachedCuisineItems()));
   for (const c of input.cuisineTypes) {
-    if (!(ALL_CUISINES as readonly string[]).includes(c)) {
+    if (!validCuisines.has(c)) {
       return { ok: false, reason: 'invalid', message: '잘못된 음식 종류예요' };
     }
   }

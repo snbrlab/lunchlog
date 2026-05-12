@@ -5,8 +5,7 @@ import { useMemo, useState } from 'react';
 import type { RestaurantListItem } from '@/types/db';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
 import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
-import { CUISINE_GROUPS, findCuisineGroup } from '@/lib/cuisine';
-import type { CuisineType } from '@/types/db';
+import { CUISINE_GROUP_META, findCuisineGroup, groupCuisineItems, type CuisineItem } from '@/lib/cuisine';
 
 interface Props {
   origin: { lat: number; lng: number };
@@ -16,19 +15,10 @@ interface Props {
   includeClosed: boolean;
   onIncludeClosedChange: (next: boolean) => void;
   favoriteSet: Set<string>;
+  cuisineItems: CuisineItem[];
 }
 
-type GroupFilter = '전체' | (typeof CUISINE_GROUPS)[number]['label'];
-
-const FILTER_LABELS: GroupFilter[] = [
-  '전체',
-  ...CUISINE_GROUPS.map((g) => g.label),
-];
-
-// 그룹 라벨 → 그 그룹의 모든 cuisine_type value 들
-const GROUP_TO_VALUES: Record<string, readonly string[]> = Object.fromEntries(
-  CUISINE_GROUPS.map((g) => [g.label, g.items.map((i) => i.value)]),
-);
+type GroupFilter = string; // '전체' | group label
 
 export function RestaurantSidebar({
   origin,
@@ -38,7 +28,23 @@ export function RestaurantSidebar({
   includeClosed,
   onIncludeClosedChange,
   favoriteSet,
+  cuisineItems,
 }: Props) {
+  // 표시할 그룹 — 항목이 있는 그룹만 (group 메타 순서 유지)
+  const filterLabels: GroupFilter[] = useMemo(
+    () => ['전체', ...groupCuisineItems(cuisineItems).map((g) => g.label)],
+    [cuisineItems],
+  );
+  // 그룹 라벨 → 그 그룹의 모든 cuisine_type value 들
+  const groupToValues = useMemo(() => {
+    const m = new Map<string, string[]>();
+    for (const meta of CUISINE_GROUP_META) m.set(meta.label, []);
+    for (const it of cuisineItems) {
+      const arr = m.get(it.group_label);
+      if (arr) arr.push(it.value);
+    }
+    return m;
+  }, [cuisineItems]);
   const { mode } = useMealMode();
   const [cuisine, setCuisine] = useState<GroupFilter>('전체');
   const [onlyAlcohol, setOnlyAlcohol] = useState(false);
@@ -52,7 +58,7 @@ export function RestaurantSidebar({
       .filter((r) => (onlyAlcohol ? r.has_alcohol : true))
       .filter((r) => {
         if (cuisine === '전체') return true;
-        const values = GROUP_TO_VALUES[cuisine];
+        const values = groupToValues.get(cuisine);
         if (!values) return false;
         // r.cuisine_types 의 어떤 항목이라도 그룹에 속하면 매치
         return r.cuisine_types.some((c) => values.includes(c));
@@ -66,7 +72,7 @@ export function RestaurantSidebar({
         // cuisine 그룹 라벨 매치 (예: "한식" → 한식 그룹의 모든 sub-cuisine 식당)
         if (
           r.cuisine_types.some((c) => {
-            const group = findCuisineGroup(c as CuisineType);
+            const group = findCuisineGroup(c, cuisineItems);
             return group ? group.toLowerCase().includes(q) : false;
           })
         ) {
@@ -122,7 +128,7 @@ export function RestaurantSidebar({
 
       <div className="border-b border-border px-2 py-2">
         <div className="flex flex-wrap gap-1">
-          {FILTER_LABELS.map((c) => (
+          {filterLabels.map((c) => (
             <button
               key={c}
               type="button"

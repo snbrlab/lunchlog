@@ -12,7 +12,7 @@ import type {
 } from '@/types/kakao-maps';
 import type { RestaurantListItem } from '@/types/db';
 import { haversineDistanceMeters, travelInfo } from '@/lib/distance';
-import { emojiForCuisine } from '@/lib/cuisine';
+import { emojiForCuisine, type CuisineItem } from '@/lib/cuisine';
 
 export interface MapMarkerData {
   id: string;
@@ -29,6 +29,7 @@ interface Props {
   onSelect: (id: string) => void;
   onDeselect: () => void;
   includeClosed: boolean;
+  cuisineItems: CuisineItem[];
 }
 
 // CSS 변수 (theme 토큰) 를 런타임에 읽어 카카오 오버레이 색에 주입.
@@ -45,6 +46,7 @@ export function KakaoMap({
   onSelect,
   onDeselect,
   includeClosed,
+  cuisineItems,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // map 인스턴스를 state 로 관리 — 비동기 init 완료 시 dependent effect 들이 자동 재실행.
@@ -272,7 +274,7 @@ export function KakaoMap({
       const isCluster = groupSize > 1;
       const color = isStale ? staleColor : isSelected ? activeColor : inactiveColor;
       const dotSize = isSelected ? 36 : 30;
-      const emoji = emojiForCuisine((primary.cuisine_types[0] ?? '한식') as never);
+      const emoji = emojiForCuisine(primary.cuisine_types[0] ?? '한식', cuisineItems);
 
       const el = document.createElement('div');
       el.style.cssText =
@@ -408,7 +410,7 @@ export function KakaoMap({
         pop.appendChild(header);
 
         for (const it of items) {
-          const itemEmoji = emojiForCuisine((it.cuisine_types[0] ?? '한식') as never);
+          const itemEmoji = emojiForCuisine(it.cuisine_types[0] ?? '한식', cuisineItems);
           const row = document.createElement('button');
           row.type = 'button';
           row.style.cssText =
@@ -454,7 +456,7 @@ export function KakaoMap({
       pinRefs.current.clear();
     };
     // D57: mapVersion 도 deps 에 — 줌/팬 후 픽셀 좌표 재계산
-  }, [map, restaurants, selectedId, mode, includeClosed, onSelect, openClusterKey, mapVersion]);
+  }, [map, restaurants, selectedId, mode, includeClosed, onSelect, openClusterKey, mapVersion, cuisineItems]);
 
   // 선택된 식당이 있으면 경로 라인. 없으면 지움.
   useEffect(() => {

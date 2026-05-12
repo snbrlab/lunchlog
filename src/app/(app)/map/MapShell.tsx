@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { KakaoMap } from '@/components/map/KakaoMap';
 import { RestaurantSidebar } from '@/components/map/RestaurantSidebar';
 import { RestaurantDetailPanel } from '@/components/map/RestaurantDetailPanel';
+import type { CuisineItem } from '@/lib/cuisine';
 import type { RestaurantListItem } from '@/types/db';
 
 interface Props {
@@ -13,6 +14,7 @@ interface Props {
   currentUserId: string;
   isAdmin: boolean;
   favoriteIds: string[];
+  cuisineItems: CuisineItem[];
 }
 
 export default function MapShell({
@@ -21,6 +23,7 @@ export default function MapShell({
   currentUserId,
   isAdmin,
   favoriteIds,
+  cuisineItems,
 }: Props) {
   // 찜 목록은 client state 로 관리 — toggle 시 즉시 반영, server 는 router.refresh 로 동기
   const [favoriteSet, setFavoriteSet] = useState(() => new Set(favoriteIds));
@@ -66,6 +69,7 @@ export default function MapShell({
           includeClosed={includeClosed}
           onIncludeClosedChange={setIncludeClosed}
           favoriteSet={favoriteSet}
+          cuisineItems={cuisineItems}
         />
       </div>
 
@@ -98,6 +102,7 @@ export default function MapShell({
             onSelect={setSelectedId}
             onDeselect={() => setSelectedId(null)}
             includeClosed={includeClosed}
+            cuisineItems={cuisineItems}
           />
         </div>
         <RestaurantDetailPanel

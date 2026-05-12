@@ -33,6 +33,7 @@ export default async function AdminDashboard() {
         <ul className="list-inside list-disc space-y-1 text-xs">
           <li>건물 좌표 자동 보정 / 수동 편집 → /admin/buildings</li>
           <li>식당 일괄 관리 (폐업·삭제) → /admin/restaurants</li>
+          <li>음식 카테고리 추가/수정 → /admin/cuisines</li>
           <li>사용자 권한 (admin 부여/회수) → /admin/users</li>
         </ul>
       </section>

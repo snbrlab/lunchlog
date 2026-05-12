@@ -1,8 +1,9 @@
 import Link from 'next/link';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { CUISINE_GROUPS, findCuisineGroup } from '@/lib/cuisine';
+import { CUISINE_GROUP_META, findCuisineGroup } from '@/lib/cuisine';
+import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
-import type { CuisineType, Restaurant, Review } from '@/types/db';
+import type { Restaurant, Review } from '@/types/db';
 
 export default async function RankingPage() {
   const supabase = await createSupabaseServerClient();
@@ -137,14 +138,15 @@ export default async function RankingPage() {
     .eq('is_closed', false);
 
   // 다중 cuisine 인 식당은 첫 cuisine 의 그룹으로 카운트 (중복 합산 방지 — 총합이 식당 수와 일치)
+  const cuisineItems = await getCachedCuisineItems();
   const groupCount = new Map<string, number>();
   for (const r of (allRestaurants ?? []) as { cuisine_types: string[] }[]) {
     const first = r.cuisine_types[0];
     if (!first) continue;
-    const g = findCuisineGroup(first as CuisineType) ?? '기타';
+    const g = findCuisineGroup(first, cuisineItems) ?? '기타';
     groupCount.set(g, (groupCount.get(g) ?? 0) + 1);
   }
-  const groupDistribution = CUISINE_GROUPS.map((g) => ({
+  const groupDistribution = CUISINE_GROUP_META.map((g) => ({
     label: g.label,
     emoji: g.emoji,
     count: groupCount.get(g.label) ?? 0,
