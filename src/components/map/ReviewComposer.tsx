@@ -79,7 +79,7 @@ export function ReviewComposer({ restaurantId, onCreated, replyTo, onCancelReply
   }
 
   return (
-    <div className="shrink-0 border-t border-border bg-bg max-lg:pb-[max(env(safe-area-inset-bottom),0.625rem)]">
+    <div className="relative z-10 shrink-0 border-t border-border bg-bg max-lg:pb-[max(env(safe-area-inset-bottom),0.625rem)]">
       {replyTo && (
         <div className="flex items-center gap-1.5 border-b border-border bg-fg/5 px-5 py-1.5 text-[11px] text-fg-muted">
           <span>↪ 답글 to</span>
