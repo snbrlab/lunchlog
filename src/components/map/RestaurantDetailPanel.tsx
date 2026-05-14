@@ -264,8 +264,9 @@ export function RestaurantDetailPanel({
         ↗
       </a>
 
-      {/* 4) REVIEW LOG */}
-      <div className="mt-2 min-h-0 flex-1">
+      {/* 4) REVIEW LOG — wrapper 가 flex container 여야 ReviewLog 의 h-full 이 안정적으로 동작.
+              (없으면 모바일에서 max-h-[75dvh] 와 안 맞아서 ol 의 overflow-y-auto 가 발동 안 함) */}
+      <div className="mt-2 flex min-h-0 flex-1 flex-col">
         <ReviewLog
           restaurantId={restaurant.id}
           currentUserId={currentUserId}
