@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { deleteReview, setReviewMealTime } from '@/lib/reviews/actions';
@@ -7,7 +8,15 @@ import type { AdminReviewRow } from './page';
 
 type DateRange = 'all' | '7d' | '30d';
 
-export default function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
+interface Props {
+  rows: AdminReviewRow[];
+  currentPage: number;
+  totalPages: number;
+  pageSize: number;
+  totalCount: number;
+}
+
+export default function ReviewsTable({ rows, currentPage, totalPages, pageSize, totalCount }: Props) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
@@ -110,7 +119,9 @@ export default function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
       </div>
 
       <div className="mb-2 text-xs text-fg-muted">
-        {filtered.length} / {rows.length} 건
+        이 페이지: {filtered.length} / {rows.length} 건
+        <span className="mx-2">·</span>
+        페이지 {currentPage} / {totalPages} (총 {totalCount.toLocaleString('ko-KR')}건, {pageSize}건/page)
       </div>
 
       <div className="overflow-hidden rounded-lg border border-border">
@@ -212,6 +223,8 @@ export default function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
         </table>
       </div>
 
+      <Pagination currentPage={currentPage} totalPages={totalPages} />
+
       {confirm && (
         <ConfirmDeleteModal
           row={confirm}
@@ -221,6 +234,71 @@ export default function ReviewsTable({ rows }: { rows: AdminReviewRow[] }) {
         />
       )}
     </>
+  );
+}
+
+function Pagination({ currentPage, totalPages }: { currentPage: number; totalPages: number }) {
+  if (totalPages <= 1) return null;
+
+  // 현재 페이지 주변 ±2 + 첫/끝 페이지 (생략 표시는 ...)
+  const pages: (number | '…')[] = [];
+  const push = (n: number) => {
+    if (n >= 1 && n <= totalPages && pages.at(-1) !== n) pages.push(n);
+  };
+  push(1);
+  if (currentPage - 3 > 1) pages.push('…');
+  for (let p = currentPage - 2; p <= currentPage + 2; p++) push(p);
+  if (currentPage + 3 < totalPages) pages.push('…');
+  push(totalPages);
+
+  return (
+    <nav className="mt-4 flex items-center justify-center gap-1 text-sm" aria-label="pagination">
+      <PageLink page={Math.max(1, currentPage - 1)} disabled={currentPage === 1}>
+        ← 이전
+      </PageLink>
+      {pages.map((p, i) =>
+        p === '…' ? (
+          <span key={`gap-${i}`} className="px-1.5 text-fg-muted">
+            …
+          </span>
+        ) : (
+          <PageLink key={p} page={p} active={p === currentPage}>
+            {p}
+          </PageLink>
+        ),
+      )}
+      <PageLink page={Math.min(totalPages, currentPage + 1)} disabled={currentPage === totalPages}>
+        다음 →
+      </PageLink>
+    </nav>
+  );
+}
+
+function PageLink({
+  page,
+  active,
+  disabled,
+  children,
+}: {
+  page: number;
+  active?: boolean;
+  disabled?: boolean;
+  children: React.ReactNode;
+}) {
+  const cls = `rounded-md border px-2.5 py-1 text-xs transition ${
+    active
+      ? 'border-fg bg-fg text-bg'
+      : disabled
+        ? 'pointer-events-none border-border text-fg-muted/40'
+        : 'border-border bg-surface text-fg hover:border-fg/40'
+  }`;
+  if (disabled) {
+    return <span className={cls}>{children}</span>;
+  }
+  return (
+    <Link href={`/admin/reviews?page=${page}`} className={cls}>
+      {children}
+    </Link>
   );
 }
 
