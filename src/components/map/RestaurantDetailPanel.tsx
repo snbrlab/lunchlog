@@ -119,6 +119,10 @@ export function RestaurantDetailPanel({
         </div>
       )}
 
+      {/* composer 위 영역을 단일 스크롤 컨테이너로 — flex-1 + min-h-0 + overflow-y-auto.
+          이전엔 ReviewLog 내부에서만 스크롤하려 했는데 모바일에서 height 전파 불안정해서 안 됐음. */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain">
+
       {/* 1) 경로 정보 바 */}
       <div className="flex items-center justify-between border-b border-border bg-bg px-5 py-2.5 text-[13px]">
         <p className="flex min-w-0 items-center gap-2 truncate text-fg">
@@ -264,9 +268,8 @@ export function RestaurantDetailPanel({
         ↗
       </a>
 
-      {/* 4) REVIEW LOG — wrapper 가 flex container 여야 ReviewLog 의 h-full 이 안정적으로 동작.
-              (없으면 모바일에서 max-h-[75dvh] 와 안 맞아서 ol 의 overflow-y-auto 가 발동 안 함) */}
-      <div className="mt-2 flex min-h-0 flex-1 flex-col">
+      {/* 4) REVIEW LOG — 자체 스크롤 없음. 부모 스크롤 컨테이너가 처리. */}
+      <div className="mt-2">
         <ReviewLog
           restaurantId={restaurant.id}
           currentUserId={currentUserId}
@@ -276,6 +279,8 @@ export function RestaurantDetailPanel({
           onReply={setReplyTo}
         />
       </div>
+
+      </div>{/* 단일 스크롤 컨테이너 종료 */}
 
       {/* 5) Composer */}
       <ReviewComposer

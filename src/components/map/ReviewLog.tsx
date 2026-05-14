@@ -189,9 +189,9 @@ export function ReviewLog({
   }
 
   return (
-    <div className="flex h-full flex-col">
-      {/* 헤더 + 필터 토글 */}
-      <div className="flex items-center justify-between border-t border-border px-5 py-2.5 text-[11px]">
+    <div className="flex flex-col">
+      {/* 헤더 + 필터 토글 — 부모 스크롤 영역 안에서 sticky 로 상단 고정. */}
+      <div className="sticky top-0 z-10 flex items-center justify-between border-t border-border bg-surface px-5 py-2.5 text-[11px]">
         <p className="font-semibold uppercase tracking-wider text-fg-muted">REVIEW LOG</p>
         <div role="tablist" className="flex items-center gap-1">
           {(['lunch', 'dinner', 'all'] as const).map((f) => {
@@ -220,8 +220,8 @@ export function ReviewLog({
         </div>
       </div>
 
-      {/* 목록 — overscroll-contain 으로 스크롤 chaining 차단 (모바일에서 composer 가리는 거 방지) */}
-      <ol className="flex-1 overflow-y-auto overscroll-contain px-5 pb-2">
+      {/* 목록 — 자체 스크롤 없음. 부모 스크롤 영역에서 처리. */}
+      <ol className="px-5 pb-2">
         {loading && (
           <li className="py-6 text-center text-xs text-fg-muted/70">불러오는 중…</li>
         )}
