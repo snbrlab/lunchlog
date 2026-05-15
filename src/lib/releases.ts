@@ -12,6 +12,13 @@ export interface ReleaseItem {
 
 export const RELEASES: ReleaseItem[] = [
   {
+    version: 'D63',
+    hash: '11b3d0f',
+    date: '2026-05-15',
+    title: '카테고리 필터 지도 연동',
+    bullets: ['사이드바에서 카테고리 / 술 가능 필터 걸면 지도 핀도 같이 줄어들어요'],
+  },
+  {
     version: 'D59',
     hash: 'c925248',
     date: '2026-05-12',
