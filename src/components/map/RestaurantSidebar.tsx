@@ -16,6 +16,11 @@ interface Props {
   onIncludeClosedChange: (next: boolean) => void;
   favoriteSet: Set<string>;
   cuisineItems: CuisineItem[];
+  // D63: 카테고리/술 필터는 MapShell 로 lift-up (지도 마커에도 반영)
+  cuisineGroup: string;
+  onCuisineGroupChange: (next: string) => void;
+  onlyAlcohol: boolean;
+  onOnlyAlcoholChange: (next: boolean) => void;
 }
 
 type GroupFilter = string; // '전체' | group label
@@ -29,6 +34,10 @@ export function RestaurantSidebar({
   onIncludeClosedChange,
   favoriteSet,
   cuisineItems,
+  cuisineGroup,
+  onCuisineGroupChange,
+  onlyAlcohol,
+  onOnlyAlcoholChange,
 }: Props) {
   // 표시할 그룹 — 항목이 있는 그룹만 (group 메타 순서 유지)
   const filterLabels: GroupFilter[] = useMemo(
@@ -46,8 +55,8 @@ export function RestaurantSidebar({
     return m;
   }, [cuisineItems]);
   const { mode } = useMealMode();
-  const [cuisine, setCuisine] = useState<GroupFilter>('전체');
-  const [onlyAlcohol, setOnlyAlcohol] = useState(false);
+  // D63: cuisine / onlyAlcohol 은 부모(MapShell) 상태로 controlled — 지도와 동기.
+  //      검색어(query) 는 사이드바 전용 — 지도 마커까지 사라지면 혼란
   const [query, setQuery] = useState('');
 
   const items = useMemo(() => {
@@ -57,8 +66,8 @@ export function RestaurantSidebar({
       .filter((r) => (includeClosed ? true : !r.is_closed))
       .filter((r) => (onlyAlcohol ? r.has_alcohol : true))
       .filter((r) => {
-        if (cuisine === '전체') return true;
-        const values = groupToValues.get(cuisine);
+        if (cuisineGroup === '전체') return true;
+        const values = groupToValues.get(cuisineGroup);
         if (!values) return false;
         // r.cuisine_types 의 어떤 항목이라도 그룹에 속하면 매치
         return r.cuisine_types.some((c) => values.includes(c));
@@ -85,7 +94,7 @@ export function RestaurantSidebar({
         return { r, meters, travel: travelInfo(meters) };
       })
       .sort((a, b) => a.meters - b.meters);
-  }, [restaurants, mode, cuisine, includeClosed, onlyAlcohol, origin, query]);
+  }, [restaurants, mode, cuisineGroup, groupToValues, cuisineItems, includeClosed, onlyAlcohol, origin, query]);
 
   return (
     <aside className="flex h-full w-[85vw] max-w-[320px] shrink-0 flex-col border-r border-border bg-surface lg:w-[280px]">
@@ -132,9 +141,9 @@ export function RestaurantSidebar({
             <button
               key={c}
               type="button"
-              onClick={() => setCuisine(c)}
+              onClick={() => onCuisineGroupChange(c)}
               className={`rounded-full px-2 py-0.5 text-[11px] transition ${
-                c === cuisine
+                c === cuisineGroup
                   ? 'bg-fg text-bg'
                   : 'bg-bg text-fg-muted hover:bg-fg/5'
               }`}
@@ -148,7 +157,7 @@ export function RestaurantSidebar({
             <input
               type="checkbox"
               checked={onlyAlcohol}
-              onChange={(e) => setOnlyAlcohol(e.target.checked)}
+              onChange={(e) => onOnlyAlcoholChange(e.target.checked)}
               className="h-3 w-3"
             />
             <span aria-hidden>🍺</span>

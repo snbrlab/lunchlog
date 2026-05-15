@@ -37,6 +37,10 @@ export default function MapShell({
   const [selectedId, setSelectedId] = useState<string | null>(focusParam);
   const [sidebarOpen, setSidebarOpen] = useState(false); // 모바일에서만 의미
   const [includeClosed, setIncludeClosed] = useState(false);
+  // D63: 사이드바 카테고리/술 필터를 지도 핀에도 반영. MapShell 로 lift-up.
+  // 사이드바 안의 검색어(query) 는 사이드바 전용으로 유지 — 지도까지 마커 사라지면 혼란
+  const [cuisineGroup, setCuisineGroup] = useState<string>('전체');
+  const [onlyAlcohol, setOnlyAlcohol] = useState(false);
 
   // /log 등에서 ?focus=<id> 로 진입 시 자동 선택
   useEffect(() => {
@@ -70,6 +74,10 @@ export default function MapShell({
           onIncludeClosedChange={setIncludeClosed}
           favoriteSet={favoriteSet}
           cuisineItems={cuisineItems}
+          cuisineGroup={cuisineGroup}
+          onCuisineGroupChange={setCuisineGroup}
+          onlyAlcohol={onlyAlcohol}
+          onOnlyAlcoholChange={setOnlyAlcohol}
         />
       </div>
 
@@ -103,6 +111,8 @@ export default function MapShell({
             onDeselect={() => setSelectedId(null)}
             includeClosed={includeClosed}
             cuisineItems={cuisineItems}
+            cuisineGroup={cuisineGroup}
+            onlyAlcohol={onlyAlcohol}
           />
         </div>
         <RestaurantDetailPanel

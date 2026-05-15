@@ -30,6 +30,9 @@ interface Props {
   onDeselect: () => void;
   includeClosed: boolean;
   cuisineItems: CuisineItem[];
+  // D63: 사이드바 카테고리/술 필터를 지도 마커에도 반영
+  cuisineGroup: string; // '전체' | group label
+  onlyAlcohol: boolean;
 }
 
 // CSS 변수 (theme 토큰) 를 런타임에 읽어 카카오 오버레이 색에 주입.
@@ -47,6 +50,8 @@ export function KakaoMap({
   onDeselect,
   includeClosed,
   cuisineItems,
+  cuisineGroup,
+  onlyAlcohol,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // map 인스턴스를 state 로 관리 — 비동기 init 완료 시 dependent effect 들이 자동 재실행.
@@ -209,9 +214,24 @@ export function KakaoMap({
       sumLat: number;
       sumLng: number;
     };
+    // D63: 사이드바의 카테고리/술 필터를 지도 핀에도 그대로 적용.
+    //      cuisineGroup 이 '전체' 가 아니면 해당 그룹의 cuisine value 집합과 교집합 검사.
+    const cuisineGroupValues = (() => {
+      if (cuisineGroup === '전체') return null;
+      const set = new Set<string>();
+      for (const it of cuisineItems) {
+        if (it.group_label === cuisineGroup) set.add(it.value);
+      }
+      return set;
+    })();
+
     const eligible = restaurants.filter((r) => {
       if (!r.categories.includes(mode)) return false;
       if (r.is_closed && !includeClosed && r.id !== selectedId) return false;
+      if (onlyAlcohol && !r.has_alcohol) return false;
+      if (cuisineGroupValues && !r.cuisine_types.some((c) => cuisineGroupValues.has(c))) {
+        return false;
+      }
       return true;
     });
 
@@ -456,7 +476,7 @@ export function KakaoMap({
       pinRefs.current.clear();
     };
     // D57: mapVersion 도 deps 에 — 줌/팬 후 픽셀 좌표 재계산
-  }, [map, restaurants, selectedId, mode, includeClosed, onSelect, openClusterKey, mapVersion, cuisineItems]);
+  }, [map, restaurants, selectedId, mode, includeClosed, onSelect, openClusterKey, mapVersion, cuisineItems, cuisineGroup, onlyAlcohol]);
 
   // 선택된 식당이 있으면 경로 라인. 없으면 지움.
   useEffect(() => {
