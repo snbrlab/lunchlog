@@ -140,36 +140,72 @@ export async function createRestaurant(
     return { ok: false, reason: 'invalid', message: '온보딩이 먼저 필요해요' };
   }
 
-  // ----- 50m 동일 cuisine 중복 검사 -----
+  // ----- 50m 중복 검사 -----
+  // D62: 이전엔 `.overlaps(cuisine_types)` 로 같은 cuisine 만 후보로 잡았는데,
+  //      "발산한우곱해장 한식" / "발산한우곱해장 해장국" 처럼 cuisine 만 다르면
+  //      검사 자체에서 빠져나가 중복 등록되는 사고. → 이름 매칭 우선으로 변경.
+  //
+  // 우선순위:
+  //   1) 50m 내 + 정규화한 이름이 동일 → 무조건 중복 (cuisine 무관)
+  //   2) 50m 내 + cuisine_types 교집합 존재 → 중복 (기존 규칙)
+  //   3) 둘 다 아니면 등록 허용 (같은 건물의 다른 종류 식당은 정상)
   if (!input.forceCreate) {
-    // 위경도 박스 후보 가져온 뒤 정확한 Haversine 으로 재검사
     const latDelta = NEAR_RADIUS_M / 111_000;
     const lngDelta = NEAR_RADIUS_M / (111_000 * Math.cos((input.latitude * Math.PI) / 180));
 
-    // overlaps: cuisine_types 배열에 입력 cuisine 중 하나라도 겹치면 매치.
-    // office_id 필터 없음 (D43): 다른 사무실 사람이 이미 등록한 식당이라도 중복 잡아줌.
+    // cuisine 필터 제거 — 50m 내 모든 후보 가져와서 클라이언트에서 분기
+    // office_id 필터도 없음 (D43): 다른 사무실 사람이 등록한 식당도 중복 잡아줌.
     const { data: candidates } = await supabase
       .from('restaurants')
       .select('id, name, latitude, longitude, cuisine_types, is_closed')
-      .overlaps('cuisine_types', dedupCuisines)
       .eq('is_closed', false)
       .gte('latitude', input.latitude - latDelta)
       .lte('latitude', input.latitude + latDelta)
       .gte('longitude', input.longitude - lngDelta)
       .lte('longitude', input.longitude + lngDelta);
 
-    for (const c of candidates ?? []) {
+    type Candidate = {
+      id: string;
+      name: string;
+      latitude: number;
+      longitude: number;
+      cuisine_types: string[];
+    };
+
+    const normalize = (s: string) => s.replace(/\s+/g, '').toLowerCase();
+    const inputNameNorm = normalize(name);
+    const inputCuisineSet = new Set<string>(dedupCuisines);
+
+    let nameMatch: Candidate | null = null;
+    let cuisineMatch: Candidate | null = null;
+
+    for (const c of (candidates ?? []) as Candidate[]) {
       const meters = haversineDistanceMeters(
         { lat: input.latitude, lng: input.longitude },
         { lat: c.latitude, lng: c.longitude },
       );
-      if (meters <= NEAR_RADIUS_M) {
-        return {
-          ok: false,
-          reason: 'duplicate',
-          candidate: { id: c.id, name: c.name, meters: Math.round(meters) },
-        };
+      if (meters > NEAR_RADIUS_M) continue;
+
+      if (!nameMatch && normalize(c.name) === inputNameNorm) {
+        nameMatch = c;
+        break; // 이름 일치는 가장 강한 신호 — 즉시 종료
       }
+      if (!cuisineMatch && c.cuisine_types.some((ct) => inputCuisineSet.has(ct))) {
+        cuisineMatch = c;
+      }
+    }
+
+    const hit = nameMatch ?? cuisineMatch;
+    if (hit) {
+      const meters = haversineDistanceMeters(
+        { lat: input.latitude, lng: input.longitude },
+        { lat: hit.latitude, lng: hit.longitude },
+      );
+      return {
+        ok: false,
+        reason: 'duplicate',
+        candidate: { id: hit.id, name: hit.name, meters: Math.round(meters) },
+      };
     }
   }
 
