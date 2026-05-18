@@ -7,6 +7,7 @@ import { haversineDistanceMeters } from '@/lib/distance';
 import { allCuisineValues } from '@/lib/cuisine';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
+import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
 import type { CuisineType, MealMode } from '@/types/db';
 
 interface CreateRestaurantInput {
@@ -253,6 +254,7 @@ export async function createRestaurant(
   }
 
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache(); // 첫 리뷰가 /log 에 떠야 함
   // /map 으로 이동. redirect() 는 NEXT_REDIRECT throw — client 의 useTransition 이 자연스럽게 종료됨.
   redirect('/map');
 }

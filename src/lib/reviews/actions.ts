@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
+import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
 import type { MealMode } from '@/types/db';
 
 export type CreateReviewResult =
@@ -84,6 +85,7 @@ export async function createReview(input: CreateReviewInput): Promise<CreateRevi
   if (error) return { ok: false, message: error.message };
   // commit_count / last_commit_at 트리거가 갱신 → 식당 캐시 무효화
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache(); // /log 첫 페이지 새로고침
   return { ok: true, id: data.id };
 }
 
@@ -93,6 +95,7 @@ export async function deleteReview(id: string): Promise<DeleteReviewResult> {
   const { error } = await supabase.from('reviews').delete().eq('id', id);
   if (error) return { ok: false, message: error.message };
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache();
   return { ok: true };
 }
 
@@ -109,6 +112,7 @@ export async function revertReview(id: string): Promise<RevertReviewResult> {
     .eq('id', id);
   if (error) return { ok: false, message: error.message };
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache();
   return { ok: true };
 }
 
@@ -130,5 +134,6 @@ export async function setReviewMealTime(
     .update({ meal_time: mealTime })
     .eq('id', id);
   if (error) return { ok: false, message: error.message };
+  invalidateReviewsLogCache(); // /log 의 점심/저녁 표시 갱신
   return { ok: true };
 }

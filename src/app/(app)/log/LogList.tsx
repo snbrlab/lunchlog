@@ -1,20 +1,21 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
-import type { LogReviewRow } from './page';
+import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
+import { loadMoreReviewLog } from './actions';
 import type { Office } from '@/types/db';
 
 type MealFilter = 'all' | 'lunch' | 'dinner';
 type DateRange = 'all' | '7d' | '30d';
 
 export default function LogList({
-  rows,
+  initialRows,
   offices,
 }: {
-  rows: LogReviewRow[];
+  initialRows: LogReviewRow[];
   offices: Office[];
 }) {
   const [meal, setMeal] = useState<MealFilter>('all');
@@ -23,6 +24,25 @@ export default function LogList({
   const [query, setQuery] = useState('');
   // 작성자 근무지 필터 — 'all' 또는 office.id (D46)
   const [officeFilter, setOfficeFilter] = useState<string>('all');
+
+  // D64: keyset 페이지네이션 — 누적 rows + "더 보기"
+  const [rows, setRows] = useState<LogReviewRow[]>(initialRows);
+  const [hasMore, setHasMore] = useState(initialRows.length === LOG_PAGE_SIZE);
+  const [loadingMore, startLoadMore] = useTransition();
+
+  function loadMore() {
+    const last = rows[rows.length - 1];
+    if (!last) return;
+    startLoadMore(async () => {
+      const res = await loadMoreReviewLog(last.created_at);
+      setRows((prev) => {
+        // 중복 방지 (created_at 동률 경계 안전)
+        const seen = new Set(prev.map((r) => r.id));
+        return [...prev, ...res.rows.filter((r) => !seen.has(r.id))];
+      });
+      setHasMore(res.hasMore);
+    });
+  }
 
   const filtered = useMemo(() => {
     const now = Date.now();
@@ -136,7 +156,10 @@ export default function LogList({
         ))}
       </div>
 
-      <div className="text-xs text-fg-muted">{filtered.length} 건</div>
+      <div className="text-xs text-fg-muted">
+        {filtered.length} 건{' '}
+        <span className="text-fg-muted/60">/ 불러온 {rows.length}건 중</span>
+      </div>
 
       <ol className="rounded-lg border border-border bg-surface">
         {filtered.length === 0 && (
@@ -146,6 +169,25 @@ export default function LogList({
           <LogItem key={r.id} row={r} />
         ))}
       </ol>
+
+      {/* D64: 더 보기 — keyset 페이지네이션. 검색은 불러온 범위 안에서만 동작 */}
+      <div className="flex flex-col items-center gap-2 pt-1">
+        {hasMore ? (
+          <button
+            type="button"
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="rounded-md border border-border bg-surface px-4 py-2 text-xs text-fg transition hover:border-fg/40 disabled:opacity-50"
+          >
+            {loadingMore ? '불러오는 중…' : `더 보기 (+${LOG_PAGE_SIZE})`}
+          </button>
+        ) : (
+          <span className="text-[11px] text-fg-muted/60">마지막까지 다 봤어요</span>
+        )}
+        <p className="text-[10px] text-fg-muted/60">
+          🔍 검색·필터는 불러온 {rows.length}건 안에서 동작해요. 더 찾으려면 “더 보기”로 불러오세요
+        </p>
+      </div>
     </div>
   );
 }
