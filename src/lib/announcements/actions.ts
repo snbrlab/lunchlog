@@ -1,6 +1,7 @@
 'use server';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { invalidateAnnouncementsCache } from '@/lib/cache/announcements';
 
 async function requireAdmin() {
   const supabase = await createSupabaseServerClient();
@@ -40,6 +41,7 @@ export async function createAnnouncement(body: string): Promise<CreateAnnounceme
     .select('id')
     .single();
   if (error) return { ok: false, message: error.message };
+  invalidateAnnouncementsCache();
   return { ok: true, id: data.id };
 }
 
@@ -60,6 +62,7 @@ export async function setAnnouncementActive(
     .update({ active })
     .eq('id', id);
   if (error) return { ok: false, message: error.message };
+  invalidateAnnouncementsCache();
   return { ok: true };
 }
 
@@ -72,5 +75,6 @@ export async function deleteAnnouncement(id: string): Promise<ToggleAnnouncement
   }
   const { error } = await admin.supabase.from('announcements').delete().eq('id', id);
   if (error) return { ok: false, message: error.message };
+  invalidateAnnouncementsCache();
   return { ok: true };
 }

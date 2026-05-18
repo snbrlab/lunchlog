@@ -44,6 +44,10 @@ export default function RootLayout({
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
       <head>
+        {/* D65: Kakao 지도 SDK 도메인 미리 연결 — HTML 파싱과 병렬로 DNS/TCP/TLS
+            수립해서 /map 첫 지도 표시 100~300ms 단축 */}
+        <link rel="preconnect" href="https://dapi.kakao.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://dapi.kakao.com" />
         {/* 부트 스크립트가 paint 전에 dataset.mode 박음. jsx 에 박지 않는 이유: hydration mismatch 회피 (next-themes 패턴) */}
         <script dangerouslySetInnerHTML={{ __html: MODE_BOOT_SCRIPT }} />
       </head>
