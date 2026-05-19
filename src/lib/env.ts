@@ -12,6 +12,12 @@ export const publicEnv = {
   supabaseUrl: required('NEXT_PUBLIC_SUPABASE_URL', process.env.NEXT_PUBLIC_SUPABASE_URL),
   supabaseAnonKey: required('NEXT_PUBLIC_SUPABASE_ANON_KEY', process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY),
   kakaoMapKey: required('NEXT_PUBLIC_KAKAO_MAP_KEY', process.env.NEXT_PUBLIC_KAKAO_MAP_KEY),
+  // D66: 메일 CTA 등 절대 URL 용 사이트 베이스. 도메인/배포처 바뀌면 이 환경변수만 수정.
+  // 미설정 시 현재 Vercel 도메인 fallback (배포처 옮기면 꼭 환경변수로 덮어쓰기).
+  siteUrl: (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://lunchlog-rho.vercel.app').replace(
+    /\/$/,
+    '',
+  ),
 };
 
 export function getServerEnv() {

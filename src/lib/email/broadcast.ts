@@ -6,7 +6,7 @@
 // 회사 메일 Outlook Safe Links 가 링크를 미리 클릭하는 사고(D30) 이력 →
 // 링크는 CTA 하나로 최소화.
 
-import { getServerEnv } from '@/lib/env';
+import { getServerEnv, publicEnv } from '@/lib/env';
 
 const KST = 'Asia/Seoul';
 const DATE_FMT = new Intl.DateTimeFormat('ko-KR', {
@@ -44,7 +44,8 @@ export interface PickedCommit {
   createdAt: string;
 }
 
-const SITE_URL = 'https://lunchlog-rho.vercel.app';
+// 배포처/도메인 바뀌면 NEXT_PUBLIC_SITE_URL 환경변수만 수정 (코드 변경 X)
+const SITE_URL = publicEnv.siteUrl;
 
 function esc(s: string): string {
   return s
