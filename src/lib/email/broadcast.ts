@@ -115,7 +115,7 @@ export function renderDigestHtml(
           LUNCH<span style="color:${amber};">LOG</span>
         </div>
         <div style="margin-top:7px;font:400 12px/1 ${mono};color:${muted};">
-          맛집을 commit 합니다
+          오늘 먹은 한 끼를 커밋합니다
         </div>
       </div>
 
@@ -152,7 +152,7 @@ export function renderDigestHtml(
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;font:400 11px/1.6 ${mono};color:#9b9b9b;">
-      LUNCHLOG · 맛집을 commit 합니다
+      LUNCHLOG · 오늘 먹은 한 끼를 커밋합니다
     </div>
   </div>
 </body></html>`;
