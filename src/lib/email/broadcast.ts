@@ -44,7 +44,7 @@ export interface PickedCommit {
   createdAt: string;
 }
 
-const SITE_URL = 'https://lunchlog.vercel.app';
+const SITE_URL = 'https://lunchlog-rho.vercel.app';
 
 function esc(s: string): string {
   return s
