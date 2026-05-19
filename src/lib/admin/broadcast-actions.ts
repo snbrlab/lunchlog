@@ -97,7 +97,7 @@ export type SendBroadcastResult =
   | { ok: true; sent: number; failed: number; failures: string[] }
   | { ok: false; message: string };
 
-const SUBJECT = '🍱 런치로그 현황 — 동료들 어디서 먹고 있나요?';
+const SUBJECT = '🍱 런치로그 - 오늘 점심 커밋 완료?';
 
 // testOnly=true → 요청한 admin 본인에게만 1통 (전체 발송 전 미리보기)
 export async function sendBroadcastDigest(

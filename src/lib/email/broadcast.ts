@@ -55,67 +55,104 @@ export function renderDigestHtml(
   const muted = '#6b6b6b';
   const line = '#ececec';
 
+  const mono = 'ui-monospace,SFMono-Regular,Menlo,Consolas,monospace';
+  const sans = "-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif";
+
+  // KST 날짜 기준 "며칠 전" 계산 (1일1커밋 streak 메시지용)
+  const ymd = (d: Date) =>
+    new Intl.DateTimeFormat('en-CA', { timeZone: KST }).format(d);
   const lc = recipient.lastCommit;
-  const lastCommitBlock = lc
+  let daysSince: number | null = null;
+  if (lc) {
+    const a = new Date(`${ymd(new Date(lc.createdAt))}T00:00:00+09:00`).getTime();
+    const b = new Date(`${ymd(new Date())}T00:00:00+09:00`).getTime();
+    daysSince = Math.max(0, Math.round((b - a) / 86_400_000));
+  }
+
+  // 1일1커밋 잔디 — 최근 7칸. 마지막 커밋이 N일 전이면 그날 칸만 채워진 모습
+  const grass = Array.from({ length: 7 }, (_, i) => {
+    const fromRight = 6 - i; // 0 = 오늘
+    const filled = daysSince !== null && daysSince === fromRight;
+    const bg = filled ? amber : '#ebedf0';
+    return `<td style="padding:2px;"><div style="width:16px;height:16px;border-radius:3px;background:${bg};"></div></td>`;
+  }).join('');
+
+  const streakLine =
+    daysSince === null
+      ? '아직 한 끼도 커밋 안 했어요 — 오늘 먹은 한 끼부터 남겨볼까요? 🌱'
+      : daysSince === 0
+        ? '오늘 한 끼 커밋 완료 ✅ 잔디 한 칸 채웠어요!'
+        : daysSince === 1
+          ? '어제 한 끼가 마지막이에요. 오늘 먹은 한 끼, 커밋했어요?'
+          : `마지막 커밋이 <b style="color:${ink}">${daysSince}일 전</b>이에요. 그동안 먹은 한 끼들, 잔디가 비어 있어요 🥲`;
+
+  const lastCommitCard = lc
     ? `
-      <div style="margin-top:8px;border:1px solid ${line};border-radius:10px;padding:14px 16px;background:#fffdf7;">
-        <div style="font:600 11px/1 ui-monospace,Menlo,monospace;color:${amber};">
+      <div style="margin-top:12px;border:1px solid ${line};border-radius:10px;padding:14px 16px;background:#fffdf7;">
+        <div style="font:600 11px/1 ${mono};color:${amber};">
           ${esc(lc.hash)} · ${esc(DATE_FMT.format(new Date(lc.createdAt)))}
         </div>
-        <div style="margin-top:8px;font:600 14px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:${ink};">
+        <div style="margin-top:8px;font:600 14px/1.5 ${sans};color:${ink};">
           ${esc(lc.restaurantName ?? '(삭제된 식당)')}
         </div>
-        <div style="margin-top:4px;font:400 14px/1.6 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:${ink};">
+        <div style="margin-top:4px;font:400 14px/1.6 ${sans};color:${ink};">
           “${esc(lc.message)}”
         </div>
       </div>`
-    : `
-      <div style="margin-top:8px;border:1px dashed ${line};border-radius:10px;padding:18px 16px;background:#fafafa;text-align:center;color:${muted};font:400 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
-        아직 남긴 commit 이 없어요.<br/>오늘 점심 한 줄, 첫 commit 어때요? 🍱
-      </div>`;
+    : '';
 
   return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>런치로그</title></head>
+<title>LUNCHLOG</title></head>
 <body style="margin:0;padding:0;background:#f4f4f1;">
   <div style="max-width:520px;margin:0 auto;padding:28px 18px;">
-    <div style="background:#ffffff;border:1px solid ${line};border-radius:16px;overflow:hidden;">
-      <div style="padding:22px 24px 16px;border-bottom:1px solid ${line};">
-        <div style="font:800 20px/1 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:${ink};">
-          🍱 런치로그 <span style="color:${amber};">현황</span>
+    <div style="background:#ffffff;border:1px solid ${line};border-radius:14px;overflow:hidden;">
+
+      <!-- masthead -->
+      <div style="padding:22px 24px 18px;border-bottom:2px solid ${ink};">
+        <div style="font:800 22px/1 ${mono};letter-spacing:1px;color:${ink};">
+          LUNCH<span style="color:${amber};">LOG</span>
         </div>
-        <div style="margin-top:6px;font:400 13px/1.5 -apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;color:${muted};">
-          ${esc(recipient.name)} 님, 동료들이 이렇게 모이고 있어요
+        <div style="margin-top:7px;font:400 12px/1 ${mono};color:${muted};">
+          맛집을 commit 합니다
         </div>
       </div>
 
-      <div style="display:flex;padding:18px 12px;text-align:center;">
-        <div style="flex:1;padding:0 6px;">
-          <div style="font:800 24px/1 -apple-system,sans-serif;color:${ink};">${stats.userCount}</div>
-          <div style="margin-top:5px;font:500 11px/1 -apple-system,sans-serif;color:${muted};">사용자</div>
+      <!-- 1일 1커밋 후크 -->
+      <div style="padding:22px 24px 20px;">
+        <div style="font:800 17px/1.4 ${sans};color:${ink};">
+          ${esc(recipient.name)} 님,<br/>오늘 점심 커밋 완료? 🍱
         </div>
-        <div style="flex:1;padding:0 6px;border-left:1px solid ${line};">
-          <div style="font:800 24px/1 -apple-system,sans-serif;color:${ink};">${stats.restaurantCount}</div>
-          <div style="margin-top:5px;font:500 11px/1 -apple-system,sans-serif;color:${muted};">등록 식당</div>
+        <div style="margin-top:14px;">
+          <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
+            <tr>${grass}</tr>
+          </table>
         </div>
-        <div style="flex:1;padding:0 6px;border-left:1px solid ${line};">
-          <div style="font:800 24px/1 -apple-system,sans-serif;color:${amber};">${stats.commitCount}</div>
-          <div style="margin-top:5px;font:500 11px/1 -apple-system,sans-serif;color:${muted};">commit</div>
+        <div style="margin-top:12px;font:400 13px/1.6 ${sans};color:${muted};">
+          ${streakLine}
         </div>
-      </div>
-
-      <div style="padding:4px 24px 22px;">
-        <div style="font:700 13px/1 -apple-system,sans-serif;color:${ink};">나의 마지막 commit</div>
-        ${lastCommitBlock}
+        ${lastCommitCard}
         <a href="${SITE_URL}/map"
-           style="display:block;margin-top:20px;background:${ink};color:#fff;text-decoration:none;text-align:center;padding:13px 0;border-radius:10px;font:700 14px/1 -apple-system,sans-serif;">
-          오늘 점심 한 줄 남기러 가기 →
+           style="display:block;margin-top:20px;background:${ink};color:#fff;text-decoration:none;text-align:center;padding:14px 0;border-radius:10px;font:700 14px/1 ${mono};letter-spacing:0.3px;">
+          git commit -m "오늘 점심 …" →
         </a>
       </div>
+
+      <!-- 커뮤니티 현황 (보조) -->
+      <div style="padding:0 24px 24px;">
+        <div style="border-top:1px solid ${line};padding-top:16px;font:600 11px/1 ${mono};color:${muted};text-transform:uppercase;letter-spacing:1px;">
+          repo status
+        </div>
+        <div style="margin-top:10px;font:500 13px/1.9 ${mono};color:${ink};">
+          contributors <b>${stats.userCount}</b>&nbsp;·&nbsp;
+          식당 <b>${stats.restaurantCount}</b>&nbsp;·&nbsp;
+          commits <b style="color:${amber}">${stats.commitCount}</b>
+        </div>
+      </div>
     </div>
-    <div style="text-align:center;margin-top:14px;font:400 11px/1.6 -apple-system,sans-serif;color:#9b9b9b;">
-      사내 동료들끼리 맛집을 git commit 처럼 공유하는 런치로그
+    <div style="text-align:center;margin-top:16px;font:400 11px/1.6 ${mono};color:#9b9b9b;">
+      LUNCHLOG · 맛집을 commit 합니다
     </div>
   </div>
 </body></html>`;
