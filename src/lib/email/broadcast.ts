@@ -145,19 +145,9 @@ export function renderDigestHtml(
   <div style="max-width:520px;margin:0 auto;padding:28px 18px;">
     <div style="background:#ffffff;border:1px solid ${line};border-radius:14px;overflow:hidden;">
 
-      <!-- masthead -->
-      <div style="padding:22px 24px 18px;border-bottom:2px solid ${ink};">
-        <div style="font:800 22px/1 ${mono};letter-spacing:1px;color:${ink};">
-          LUNCH<span style="color:${amber};">LOG</span>
-        </div>
-        <div style="margin-top:7px;font:400 12px/1 ${mono};color:${muted};">
-          오늘 먹은 한 끼를 커밋합니다
-        </div>
-      </div>
-
-      <!-- 후크 -->
-      <div style="padding:22px 24px 16px;">
-        <div style="font:800 17px/1.4 ${sans};color:${ink};">
+      <!-- 후크 (메일 최상단) -->
+      <div style="padding:26px 24px 16px;">
+        <div style="font:800 18px/1.4 ${sans};color:${ink};">
           ${esc(recipient.name)} 님,<br/>오늘 점심 드셨어요? 🍱
         </div>
         <div style="margin-top:10px;font:400 13px/1.6 ${sans};color:${muted};">
@@ -211,9 +201,16 @@ export function renderDigestHtml(
           git commit -m "오늘 점심 …" →
         </a>
       </div>
-    </div>
-    <div style="text-align:center;margin-top:16px;font:400 11px/1.6 ${mono};color:#9b9b9b;">
-      LUNCHLOG · 오늘 먹은 한 끼를 커밋합니다
+
+      <!-- masthead (메일 최하단 브랜드 사인오프) -->
+      <div style="border-top:2px solid ${ink};padding:22px 24px 24px;text-align:center;">
+        <div style="font:800 22px/1 ${mono};letter-spacing:1px;color:${ink};">
+          LUNCH<span style="color:${amber};">LOG</span>
+        </div>
+        <div style="margin-top:7px;font:400 12px/1 ${mono};color:${muted};">
+          오늘 먹은 한 끼를 커밋합니다
+        </div>
+      </div>
     </div>
   </div>
 </body></html>`;
