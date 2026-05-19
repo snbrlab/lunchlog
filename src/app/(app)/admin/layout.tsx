@@ -31,6 +31,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
             url 직접 진입은 가능 — 과거 pending 처리 등 롤백용으로 보존 */}
         <AdminNavLink href="/admin/reports">제보</AdminNavLink>
         <AdminNavLink href="/admin/announcements">공지</AdminNavLink>
+        <AdminNavLink href="/admin/broadcast">전체메일</AdminNavLink>
         <Link
           href="/map"
           className="ml-auto rounded px-2 py-1 text-fg-muted hover:bg-fg/5 hover:text-fg"
