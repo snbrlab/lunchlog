@@ -1,9 +1,12 @@
-import { getBroadcastStats } from '@/lib/admin/broadcast-actions';
+import { getBroadcastStats, listRecentCommits } from '@/lib/admin/broadcast-actions';
 import BroadcastPanel from './BroadcastPanel';
 
 // D66: 전체메일 다이제스트 — admin 이 통계 + 개인화 "나의 마지막 commit" 매거진 발송
 export default async function AdminBroadcastPage() {
-  const res = await getBroadcastStats();
+  const [res, commitsRes] = await Promise.all([
+    getBroadcastStats(),
+    listRecentCommits(),
+  ]);
 
   if (!res.ok) {
     return (
@@ -25,6 +28,7 @@ export default async function AdminBroadcastPage() {
         stats={res.stats}
         recipientCount={res.recipientCount}
         configured={res.configured}
+        recentCommits={commitsRes.ok ? commitsRes.commits : []}
       />
     </main>
   );

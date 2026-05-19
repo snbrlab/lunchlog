@@ -35,6 +35,15 @@ export interface DigestRecipient {
   lastCommit: LastCommit | null;
 }
 
+// D66: admin 이 골라 첨부하는 "흥미로운 commit"
+export interface PickedCommit {
+  hash: string;
+  message: string;
+  authorName: string;
+  restaurantName: string | null;
+  createdAt: string;
+}
+
 const SITE_URL = 'https://lunchlog.vercel.app';
 
 function esc(s: string): string {
@@ -49,6 +58,7 @@ function esc(s: string): string {
 export function renderDigestHtml(
   stats: BroadcastStats,
   recipient: DigestRecipient,
+  picks: PickedCommit[] = [],
 ): string {
   const amber = '#d97706';
   const ink = '#1a1a1a';
@@ -101,6 +111,32 @@ export function renderDigestHtml(
       </div>`
     : '';
 
+  const picksSection =
+    picks.length === 0
+      ? ''
+      : `
+      <div style="padding:0 24px 22px;">
+        <div style="border-top:1px solid ${line};padding-top:18px;font:700 13px/1 ${sans};color:${ink};">
+          👀 이런 한 줄도 있어요
+        </div>
+        ${picks
+          .map(
+            (p) => `
+        <div style="margin-top:12px;border:1px solid ${line};border-radius:10px;padding:13px 15px;background:#fcfcfb;">
+          <div style="font:600 11px/1 ${mono};color:${amber};">
+            ${esc(p.hash)} · ${esc(p.authorName)} · ${esc(DATE_FMT.format(new Date(p.createdAt)))}
+          </div>
+          <div style="margin-top:7px;font:600 13px/1.5 ${sans};color:${ink};">
+            ${esc(p.restaurantName ?? '(삭제된 식당)')}
+          </div>
+          <div style="margin-top:3px;font:400 13px/1.6 ${sans};color:${ink};">
+            “${esc(p.message)}”
+          </div>
+        </div>`,
+          )
+          .join('')}
+      </div>`;
+
   return `<!doctype html>
 <html lang="ko"><head><meta charset="utf-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
@@ -152,6 +188,9 @@ export function renderDigestHtml(
           동료들 한 줄 평 구경하러 가기 →
         </a>
       </div>
+
+      <!-- 에디터 픽: admin 이 고른 흥미로운 commit -->
+      ${picksSection}
 
       <!-- 개인화: 나의 1일1커밋 -->
       <div style="padding:0 24px 24px;">

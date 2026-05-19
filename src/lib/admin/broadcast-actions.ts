@@ -8,7 +8,87 @@ import {
   type BroadcastStats,
   type DigestRecipient,
   type LastCommit,
+  type PickedCommit,
 } from '@/lib/email/broadcast';
+
+export interface PickableCommit extends PickedCommit {
+  id: string;
+}
+
+// 픽 후보 — 최근 commit (reverted 제외). admin 이 흥미로운 거 골라 첨부.
+export async function listRecentCommits(): Promise<
+  { ok: true; commits: PickableCommit[] } | { ok: false; message: string }
+> {
+  try {
+    await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+  const sa = getSupabaseAdminClient();
+  const { data } = await sa
+    .from('reviews')
+    .select(
+      'id, hash, message, created_at, ' +
+        'author:users!reviews_author_id_fkey ( name ), ' +
+        'restaurant:restaurants ( name )',
+    )
+    .eq('reverted', false)
+    .order('created_at', { ascending: false })
+    .limit(60);
+  const rows = (data ?? []) as unknown as Array<{
+    id: string;
+    hash: string;
+    message: string;
+    created_at: string;
+    author: { name: string } | null;
+    restaurant: { name: string } | null;
+  }>;
+  return {
+    ok: true,
+    commits: rows.map((r) => ({
+      id: r.id,
+      hash: r.hash,
+      message: r.message,
+      authorName: r.author?.name ?? '(알수없음)',
+      restaurantName: r.restaurant?.name ?? null,
+      createdAt: r.created_at,
+    })),
+  };
+}
+
+async function fetchPickedCommits(
+  sa: ReturnType<typeof getSupabaseAdminClient>,
+  ids: string[],
+): Promise<PickedCommit[]> {
+  if (ids.length === 0) return [];
+  const { data } = await sa
+    .from('reviews')
+    .select(
+      'id, hash, message, created_at, ' +
+        'author:users!reviews_author_id_fkey ( name ), ' +
+        'restaurant:restaurants ( name )',
+    )
+    .in('id', ids.slice(0, 5)); // 최대 5개
+  const byId = new Map<string, PickedCommit>();
+  for (const r of (data ?? []) as unknown as Array<{
+    id: string;
+    hash: string;
+    message: string;
+    created_at: string;
+    author: { name: string } | null;
+    restaurant: { name: string } | null;
+  }>) {
+    byId.set(r.id, {
+      hash: r.hash,
+      message: r.message,
+      authorName: r.author?.name ?? '(알수없음)',
+      restaurantName: r.restaurant?.name ?? null,
+      createdAt: r.created_at,
+    });
+  }
+  // 선택 순서 유지
+  return ids.map((id) => byId.get(id)).filter((x): x is PickedCommit => !!x);
+}
 
 async function requireAdmin() {
   const supabase = await createSupabaseServerClient();
@@ -93,6 +173,40 @@ async function lastCommitFor(
   };
 }
 
+export type PreviewResult =
+  | { ok: true; html: string }
+  | { ok: false; message: string };
+
+// D66: 발송 없이 본인 데이터로 렌더한 HTML 만 반환 (관리자 페이지 iframe 미리보기)
+export async function getBroadcastPreviewHtml(
+  pickedIds: string[] = [],
+): Promise<PreviewResult> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+  const sa = getSupabaseAdminClient();
+  const [stats, { data: me }, picks] = await Promise.all([
+    gatherStats(),
+    sa.from('users').select('id, name').eq('id', admin.userId).maybeSingle(),
+    fetchPickedCommits(sa, pickedIds),
+  ]);
+  const meRow = me as { id: string; name: string } | null;
+  const lastCommit = meRow ? await lastCommitFor(sa, meRow.id) : null;
+  const html = renderDigestHtml(
+    stats,
+    {
+      email: admin.email,
+      name: meRow?.name || admin.email,
+      lastCommit,
+    },
+    picks,
+  );
+  return { ok: true, html };
+}
+
 export type SendBroadcastResult =
   | { ok: true; sent: number; failed: number; failures: string[] }
   | { ok: false; message: string };
@@ -102,6 +216,7 @@ const SUBJECT = '🍱 런치로그 - 오늘 점심 드셨어요?';
 // testOnly=true → 요청한 admin 본인에게만 1통 (전체 발송 전 미리보기)
 export async function sendBroadcastDigest(
   testOnly: boolean,
+  pickedIds: string[] = [],
 ): Promise<SendBroadcastResult> {
   let admin;
   try {
@@ -111,7 +226,10 @@ export async function sendBroadcastDigest(
   }
 
   const sa = getSupabaseAdminClient();
-  const stats = await gatherStats();
+  const [stats, picks] = await Promise.all([
+    gatherStats(),
+    fetchPickedCommits(sa, pickedIds),
+  ]);
 
   let targets: { id: string; email: string; name: string }[];
   if (testOnly) {
@@ -141,7 +259,7 @@ export async function sendBroadcastDigest(
       name: t.name || t.email,
       lastCommit,
     };
-    const html = renderDigestHtml(stats, recipient);
+    const html = renderDigestHtml(stats, recipient, picks);
     const r = await sendDigestEmail(
       { email: t.email, name: recipient.name },
       SUBJECT,
