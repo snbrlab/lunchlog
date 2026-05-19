@@ -15,9 +15,15 @@ export interface PickableCommit extends PickedCommit {
   id: string;
 }
 
-// 픽 후보 — 최근 commit (reverted 제외). admin 이 흥미로운 거 골라 첨부.
-export async function listRecentCommits(): Promise<
-  { ok: true; commits: PickableCommit[] } | { ok: false; message: string }
+const PICK_PAGE = 40;
+
+// 픽 후보 — commit (reverted 제외). keyset 페이지네이션 (created_at < before).
+// before 없으면 최신부터. 무한스크롤로 옛날 commit 까지 로드.
+export async function listRecentCommits(
+  before?: string,
+): Promise<
+  | { ok: true; commits: PickableCommit[]; hasMore: boolean }
+  | { ok: false; message: string }
 > {
   try {
     await requireAdmin();
@@ -25,7 +31,7 @@ export async function listRecentCommits(): Promise<
     return { ok: false, message: (e as Error).message };
   }
   const sa = getSupabaseAdminClient();
-  const { data } = await sa
+  let q = sa
     .from('reviews')
     .select(
       'id, hash, message, created_at, ' +
@@ -34,7 +40,10 @@ export async function listRecentCommits(): Promise<
     )
     .eq('reverted', false)
     .order('created_at', { ascending: false })
-    .limit(60);
+    .limit(PICK_PAGE);
+  if (before) q = q.lt('created_at', before);
+
+  const { data } = await q;
   const rows = (data ?? []) as unknown as Array<{
     id: string;
     hash: string;
@@ -45,6 +54,7 @@ export async function listRecentCommits(): Promise<
   }>;
   return {
     ok: true,
+    hasMore: rows.length === PICK_PAGE,
     commits: rows.map((r) => ({
       id: r.id,
       hash: r.hash,

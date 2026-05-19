@@ -29,6 +29,7 @@ export default async function AdminBroadcastPage() {
         recipientCount={res.recipientCount}
         configured={res.configured}
         recentCommits={commitsRes.ok ? commitsRes.commits : []}
+        initialHasMore={commitsRes.ok ? commitsRes.hasMore : false}
       />
     </main>
   );

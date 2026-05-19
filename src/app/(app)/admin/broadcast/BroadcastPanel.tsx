@@ -1,9 +1,10 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useCallback, useEffect, useRef, useState, useTransition } from 'react';
 import {
   sendBroadcastDigest,
   getBroadcastPreviewHtml,
+  listRecentCommits,
   type PickableCommit,
 } from '@/lib/admin/broadcast-actions';
 import type { BroadcastStats } from '@/lib/email/broadcast';
@@ -15,11 +16,13 @@ export default function BroadcastPanel({
   recipientCount,
   configured,
   recentCommits,
+  initialHasMore,
 }: {
   stats: BroadcastStats;
   recipientCount: number;
   configured: boolean;
   recentCommits: PickableCommit[];
+  initialHasMore: boolean;
 }) {
   const [pending, startTransition] = useTransition();
   const [msg, setMsg] = useState<string | null>(null);
@@ -27,6 +30,46 @@ export default function BroadcastPanel({
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
   // D66: admin 이 고른 흥미로운 commit (선택 순서 유지)
   const [picked, setPicked] = useState<string[]>([]);
+
+  // D66: 무한스크롤 — 옛날 commit 까지 keyset 페이지네이션
+  const [commits, setCommits] = useState<PickableCommit[]>(recentCommits);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement | null>(null);
+
+  const loadMore = useCallback(() => {
+    if (loadingMore || !hasMore) return;
+    const last = commits[commits.length - 1];
+    if (!last) return;
+    setLoadingMore(true);
+    (async () => {
+      const r = await listRecentCommits(last.createdAt);
+      if (r.ok) {
+        setCommits((prev) => {
+          const seen = new Set(prev.map((c) => c.id));
+          return [...prev, ...r.commits.filter((c) => !seen.has(c.id))];
+        });
+        setHasMore(r.hasMore);
+      } else {
+        setHasMore(false);
+      }
+      setLoadingMore(false);
+    })();
+  }, [commits, hasMore, loadingMore]);
+
+  // 스크롤 컨테이너 내 sentinel 이 보이면 다음 페이지 로드
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) loadMore();
+      },
+      { root: el.closest('[data-pick-scroll]'), rootMargin: '120px' },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [loadMore]);
 
   function togglePick(id: string) {
     setPicked((prev) => {
@@ -115,13 +158,16 @@ export default function BroadcastPanel({
         <p className="mt-1 text-[11px] text-fg-muted">
           최근 commit 중 메일에 같이 보여줄 것 선택 (최대 {MAX_PICKS}개). 선택 순서대로 표시돼요.
         </p>
-        <div className="mt-3 max-h-72 space-y-1 overflow-y-auto rounded-md border border-border bg-bg p-2">
-          {recentCommits.length === 0 && (
+        <div
+          data-pick-scroll
+          className="mt-3 max-h-72 space-y-1 overflow-y-auto rounded-md border border-border bg-bg p-2"
+        >
+          {commits.length === 0 && (
             <p className="px-2 py-4 text-center text-xs text-fg-muted">
-              최근 commit 이 없어요
+              commit 이 없어요
             </p>
           )}
-          {recentCommits.map((c) => {
+          {commits.map((c) => {
             const order = picked.indexOf(c.id);
             const checked = order >= 0;
             const disabled = !checked && picked.length >= MAX_PICKS;
@@ -158,6 +204,20 @@ export default function BroadcastPanel({
               </button>
             );
           })}
+          {/* 무한스크롤 sentinel */}
+          {hasMore && (
+            <div
+              ref={sentinelRef}
+              className="px-2 py-3 text-center text-[11px] text-fg-muted"
+            >
+              {loadingMore ? '불러오는 중…' : '스크롤하면 더 옛날 commit'}
+            </div>
+          )}
+          {!hasMore && commits.length > 0 && (
+            <p className="px-2 py-3 text-center text-[11px] text-fg-muted/60">
+              처음 commit 까지 다 봤어요
+            </p>
+          )}
         </div>
       </section>
 
