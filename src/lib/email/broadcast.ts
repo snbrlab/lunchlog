@@ -119,12 +119,46 @@ export function renderDigestHtml(
         </div>
       </div>
 
-      <!-- 1일 1커밋 후크 -->
-      <div style="padding:22px 24px 20px;">
+      <!-- 후크 -->
+      <div style="padding:22px 24px 16px;">
         <div style="font:800 17px/1.4 ${sans};color:${ink};">
-          ${esc(recipient.name)} 님,<br/>오늘 점심 커밋 완료? 🍱
+          ${esc(recipient.name)} 님,<br/>오늘 점심 드셨어요? 🍱
         </div>
-        <div style="margin-top:14px;">
+        <div style="margin-top:10px;font:400 13px/1.6 ${sans};color:${muted};">
+          그동안 동료들이 이만큼 쌓아놨어요 — 구경하러 올래요?
+        </div>
+      </div>
+
+      <!-- 커뮤니티 현황 (메인 후크: 이만큼 쌓였으니 구경 와) -->
+      <div style="padding:0 20px 20px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="border-collapse:separate;border-spacing:8px 0;">
+          <tr>
+            <td width="33%" style="background:#fafaf7;border:1px solid ${line};border-radius:12px;padding:18px 6px;text-align:center;">
+              <div style="font:800 26px/1 ${mono};color:${ink};">${stats.userCount}</div>
+              <div style="margin-top:6px;font:500 11px/1 ${sans};color:${muted};">참여 동료</div>
+            </td>
+            <td width="33%" style="background:#fafaf7;border:1px solid ${line};border-radius:12px;padding:18px 6px;text-align:center;">
+              <div style="font:800 26px/1 ${mono};color:${ink};">${stats.restaurantCount}</div>
+              <div style="margin-top:6px;font:500 11px/1 ${sans};color:${muted};">등록 맛집</div>
+            </td>
+            <td width="33%" style="background:#fff7ec;border:1px solid #f3d9a8;border-radius:12px;padding:18px 6px;text-align:center;">
+              <div style="font:800 26px/1 ${mono};color:${amber};">${stats.commitCount}</div>
+              <div style="margin-top:6px;font:500 11px/1 ${sans};color:${amber};">쌓인 commit</div>
+            </td>
+          </tr>
+        </table>
+        <a href="${SITE_URL}/log"
+           style="display:block;margin-top:16px;background:${ink};color:#fff;text-decoration:none;text-align:center;padding:14px 0;border-radius:10px;font:700 14px/1 ${sans};">
+          동료들 한 줄 평 구경하러 가기 →
+        </a>
+      </div>
+
+      <!-- 개인화: 나의 1일1커밋 -->
+      <div style="padding:0 24px 24px;">
+        <div style="border-top:1px solid ${line};padding-top:18px;font:700 13px/1 ${sans};color:${ink};">
+          나의 commit 잔디
+        </div>
+        <div style="margin-top:12px;">
           <table role="presentation" cellpadding="0" cellspacing="0" style="border-collapse:collapse;">
             <tr>${grass}</tr>
           </table>
@@ -134,21 +168,9 @@ export function renderDigestHtml(
         </div>
         ${lastCommitCard}
         <a href="${SITE_URL}/map"
-           style="display:block;margin-top:20px;background:${ink};color:#fff;text-decoration:none;text-align:center;padding:14px 0;border-radius:10px;font:700 14px/1 ${mono};letter-spacing:0.3px;">
+           style="display:block;margin-top:18px;border:1px solid ${ink};color:${ink};text-decoration:none;text-align:center;padding:13px 0;border-radius:10px;font:700 13px/1 ${mono};letter-spacing:0.3px;">
           git commit -m "오늘 점심 …" →
         </a>
-      </div>
-
-      <!-- 커뮤니티 현황 (보조) -->
-      <div style="padding:0 24px 24px;">
-        <div style="border-top:1px solid ${line};padding-top:16px;font:600 11px/1 ${mono};color:${muted};text-transform:uppercase;letter-spacing:1px;">
-          repo status
-        </div>
-        <div style="margin-top:10px;font:500 13px/1.9 ${mono};color:${ink};">
-          contributors <b>${stats.userCount}</b>&nbsp;·&nbsp;
-          식당 <b>${stats.restaurantCount}</b>&nbsp;·&nbsp;
-          commits <b style="color:${amber}">${stats.commitCount}</b>
-        </div>
       </div>
     </div>
     <div style="text-align:center;margin-top:16px;font:400 11px/1.6 ${mono};color:#9b9b9b;">
