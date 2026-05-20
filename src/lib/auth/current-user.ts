@@ -18,6 +18,9 @@ export interface CurrentUserProfile {
     office_id: string | null;
     building_id: string | null;
     password_set: boolean;
+    // D68: 임시 근무지 좌표 (공유 오피스 등) — 둘 다 set 이거나 둘 다 null
+    custom_lat: number | null;
+    custom_lng: number | null;
   } | null;
 }
 
@@ -31,7 +34,7 @@ export const getCurrentUserOrNull = cache(async (): Promise<CurrentUserProfile |
   const { data: profile } = await supabase
     .from('users')
     .select(
-      'name, avatar_color, avatar_emoji, role, department, office_id, building_id, password_set',
+      'name, avatar_color, avatar_emoji, role, department, office_id, building_id, password_set, custom_lat, custom_lng',
     )
     .eq('id', user.id)
     .maybeSingle();

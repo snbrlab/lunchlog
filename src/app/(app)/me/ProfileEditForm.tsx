@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { useMemo, useState, useTransition } from 'react';
 import { EmojiPicker } from '@/components/EmojiPicker';
+import { KakaoPlacesSearch } from '@/components/map/KakaoPlacesSearch';
 import { updateProfile, type UpdateProfileResult } from './actions';
 import type { Office, OfficeBuilding } from '@/types/db';
 
@@ -15,6 +16,9 @@ interface Props {
   avatarColor: string;
   offices: Office[];
   buildings: OfficeBuilding[];
+  initialCustomLat: number | null;
+  initialCustomLng: number | null;
+  initialCustomLabel?: string | null; // 현재 미저장 — 표시용만
 }
 
 export default function ProfileEditForm({
@@ -26,6 +30,9 @@ export default function ProfileEditForm({
   avatarColor,
   offices,
   buildings,
+  initialCustomLat,
+  initialCustomLng,
+  initialCustomLabel,
 }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
@@ -36,6 +43,13 @@ export default function ProfileEditForm({
   const [emoji, setEmoji] = useState(initialEmoji);
   const [pickerOpen, setPickerOpen] = useState(false);
   const [result, setResult] = useState<UpdateProfileResult | null>(null);
+  // D68: 사용자 지정 좌표 (공유 오피스 등 임시 근무지)
+  const [useCustomOrigin, setUseCustomOrigin] = useState(
+    initialCustomLat != null && initialCustomLng != null,
+  );
+  const [customLat, setCustomLat] = useState<number | null>(initialCustomLat);
+  const [customLng, setCustomLng] = useState<number | null>(initialCustomLng);
+  const [customLabel, setCustomLabel] = useState<string | null>(initialCustomLabel ?? null);
 
   // 선택한 사무실 산하 건물만 노출
   const buildingsForOffice = useMemo(
@@ -60,6 +74,8 @@ export default function ProfileEditForm({
         officeId,
         buildingId,
         avatarEmoji: emoji,
+        customLat: useCustomOrigin ? customLat : null,
+        customLng: useCustomOrigin ? customLng : null,
       });
       setResult(r);
       if (r.ok) router.refresh();
@@ -164,6 +180,66 @@ export default function ProfileEditForm({
           ))}
         </select>
       </label>
+
+      {/* D68: 공유 오피스 등 임시 근무지 — 직접 좌표 지정 */}
+      <div className="rounded-md border border-dashed border-border bg-bg/40 p-3 text-sm">
+        <label className="flex cursor-pointer items-start gap-2">
+          <input
+            type="checkbox"
+            checked={useCustomOrigin}
+            onChange={(e) => setUseCustomOrigin(e.target.checked)}
+            disabled={pending}
+            className="mt-0.5 h-4 w-4"
+          />
+          <span className="flex-1">
+            <span className="block font-medium text-fg">
+              건물 말고 다른 위치에서 근무 중이에요
+            </span>
+            <span className="mt-0.5 block text-[11px] text-fg-muted">
+              공유 오피스 등 등록된 건물에 없는 곳에서 일할 때 — 이 위치 기준으로 거리·도보 시간이 계산돼요
+            </span>
+          </span>
+        </label>
+
+        {useCustomOrigin && (
+          <div className="mt-3 space-y-2">
+            {customLat != null && customLng != null ? (
+              <div className="flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs">
+                <span aria-hidden>📍</span>
+                <span className="flex-1 text-amber-900">
+                  {customLabel ?? `${customLat.toFixed(5)}, ${customLng.toFixed(5)}`}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCustomLat(null);
+                    setCustomLng(null);
+                    setCustomLabel(null);
+                  }}
+                  disabled={pending}
+                  className="rounded px-1 text-amber-900/70 hover:bg-amber-200/60"
+                  aria-label="좌표 지우기"
+                >
+                  ✕
+                </button>
+              </div>
+            ) : (
+              <p className="text-[11px] text-fg-muted">
+                아래에서 장소를 검색하면 좌표가 설정돼요.
+              </p>
+            )}
+            <KakaoPlacesSearch
+              // 검색 bias 는 서울 시청 (공유 오피스가 보통 도심)
+              origin={{ lat: 37.5666, lng: 126.9784 }}
+              onSelect={(item) => {
+                setCustomLat(parseFloat(item.y));
+                setCustomLng(parseFloat(item.x));
+                setCustomLabel(item.place_name);
+              }}
+            />
+          </div>
+        )}
+      </div>
 
       {result?.ok && <p className="text-sm text-emerald-600">저장 완료!</p>}
       {result && !result.ok && <p className="text-sm text-red-500">{result.message}</p>}

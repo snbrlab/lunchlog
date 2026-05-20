@@ -33,10 +33,6 @@ interface Props {
   // D63: 사이드바 카테고리/술 필터를 지도 마커에도 반영
   cuisineGroup: string; // '전체' | group label
   onlyAlcohol: boolean;
-  // D68: 임시 근무지 origin 덮어쓰기
-  customOriginActive: boolean;
-  onSetCustomOrigin: (lat: number, lng: number) => void;
-  onClearCustomOrigin: () => void;
 }
 
 // CSS 변수 (theme 토큰) 를 런타임에 읽어 카카오 오버레이 색에 주입.
@@ -56,9 +52,6 @@ export function KakaoMap({
   cuisineItems,
   cuisineGroup,
   onlyAlcohol,
-  customOriginActive,
-  onSetCustomOrigin,
-  onClearCustomOrigin,
 }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   // map 인스턴스를 state 로 관리 — 비동기 init 완료 시 dependent effect 들이 자동 재실행.
@@ -71,8 +64,6 @@ export function KakaoMap({
   const [openClusterKey, setOpenClusterKey] = useState<string | null>(null);
   // D57: 줌/팬 후 픽셀 기반 재클러스터 트리거 (kakao map idle 이벤트)
   const [mapVersion, setMapVersion] = useState(0);
-  // D68: '지도 클릭으로 내 위치 지정' 모드. 켜져있는 동안 다음 클릭이 origin 으로
-  const [pinPickMode, setPinPickMode] = useState(false);
 
   const { mode } = useMealMode();
 
@@ -112,12 +103,8 @@ export function KakaoMap({
     if (!navigator.geolocation || !map) return;
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        const here = new window.kakao.maps.LatLng(lat, lng);
+        const here = new window.kakao.maps.LatLng(pos.coords.latitude, pos.coords.longitude);
         map.panTo(here);
-        // D68: GPS 좌표를 임시 근무지 origin 으로 저장
-        onSetCustomOrigin(lat, lng);
       },
       (err) => {
         alert(`위치 가져오기 실패: ${err.message}`);
@@ -135,13 +122,7 @@ export function KakaoMap({
   // 핀(CustomOverlay) 클릭은 element click 으로 별도 처리되므로 여기엔 안 잡힘.
   useEffect(() => {
     if (!map) return;
-    const handler = (mouseEvent?: { latLng?: { getLat: () => number; getLng: () => number } }) => {
-      // D68: '지도 클릭 지정' 모드면 그 좌표를 origin 으로 저장하고 모드 해제
-      if (pinPickMode && mouseEvent?.latLng) {
-        onSetCustomOrigin(mouseEvent.latLng.getLat(), mouseEvent.latLng.getLng());
-        setPinPickMode(false);
-        return;
-      }
+    const handler = () => {
       if (openClusterKey) setOpenClusterKey(null);
       if (selectedId) onDeselect();
     };
@@ -149,7 +130,7 @@ export function KakaoMap({
     return () => {
       window.kakao.maps.event.removeListener(map, 'click', handler);
     };
-  }, [map, selectedId, onDeselect, openClusterKey, pinPickMode, onSetCustomOrigin]);
+  }, [map, selectedId, onDeselect, openClusterKey]);
 
   // D57: 줌/팬 후 픽셀 기반 재클러스터 — idle 이벤트 한 번에 한 번씩 bump
   useEffect(() => {
@@ -564,46 +545,10 @@ export function KakaoMap({
   }, [map, selectedId, restaurants, origin.lat, origin.lng, mode]);
 
   return (
-    <div className={`relative h-full w-full ${pinPickMode ? 'cursor-crosshair' : ''}`}>
+    <div className="relative h-full w-full">
       <div ref={containerRef} className="kakao-map-tiles h-full w-full bg-surface" />
-      {/* D68: pin-pick 모드 안내 */}
-      {pinPickMode && (
-        <div className="pointer-events-none absolute left-1/2 top-3 z-20 -translate-x-1/2 rounded-full bg-amber-500 px-3 py-1.5 text-[11px] font-semibold text-white shadow-lg">
-          🖊️ 지도에서 내 위치를 클릭하세요
-        </div>
-      )}
-      {/* D68: 사용자 지정 위치 사용 중 배지 */}
-      {customOriginActive && !pinPickMode && (
-        <div className="absolute left-3 top-3 z-20 flex items-center gap-2 rounded-full border border-amber-300 bg-amber-50 px-2.5 py-1 text-[11px] text-amber-800 shadow-md max-lg:left-14">
-          <span aria-hidden>📍</span>
-          <span>사용자 지정 위치</span>
-          <button
-            type="button"
-            onClick={onClearCustomOrigin}
-            aria-label="등록된 건물로 복귀"
-            title="등록된 건물로 복귀"
-            className="ml-1 rounded-full px-1 hover:bg-amber-200/60"
-          >
-            ✕
-          </button>
-        </div>
-      )}
       {/* 우측 하단 floating 버튼 묶음 */}
       <div className="absolute bottom-4 right-4 z-10 flex flex-col gap-2">
-        <button
-          type="button"
-          onClick={() => setPinPickMode((v) => !v)}
-          disabled={!map}
-          title="지도 클릭으로 내 위치 지정"
-          aria-label="지도 클릭으로 내 위치 지정"
-          className={`flex h-10 w-10 items-center justify-center rounded-full border text-base shadow-md transition disabled:opacity-50 ${
-            pinPickMode
-              ? 'border-amber-500 bg-amber-100 text-amber-800'
-              : 'border-border bg-bg hover:bg-fg/5'
-          }`}
-        >
-          <span aria-hidden>{pinPickMode ? '✕' : '🖊️'}</span>
-        </button>
         <button
           type="button"
           onClick={recenterToOrigin}

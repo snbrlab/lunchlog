@@ -48,6 +48,9 @@ interface UpdateProfileInput {
   officeId: string;
   buildingId: string;
   avatarEmoji: string;
+  // D68: 사용자 지정 좌표 (공유 오피스 등). 둘 다 null 이면 비활성 → 등록 건물 좌표 사용.
+  customLat: number | null;
+  customLng: number | null;
 }
 
 export async function updateProfile(input: UpdateProfileInput): Promise<UpdateProfileResult> {
@@ -58,6 +61,24 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
   if (!input.buildingId) return { ok: false, message: '건물을 선택해주세요' };
   if (!(EMOJI_POOL as readonly string[]).includes(input.avatarEmoji)) {
     return { ok: false, message: '잘못된 이모지예요' };
+  }
+
+  // D68: custom 좌표 — 둘 다 set 이거나 둘 다 null
+  const hasCustom = input.customLat != null && input.customLng != null;
+  const halfCustom = (input.customLat == null) !== (input.customLng == null);
+  if (halfCustom) {
+    return { ok: false, message: '사용자 지정 좌표는 위·경도 둘 다 필요해요' };
+  }
+  if (
+    hasCustom &&
+    (!Number.isFinite(input.customLat as number) ||
+      !Number.isFinite(input.customLng as number) ||
+      (input.customLat as number) < -90 ||
+      (input.customLat as number) > 90 ||
+      (input.customLng as number) < -180 ||
+      (input.customLng as number) > 180)
+  ) {
+    return { ok: false, message: '좌표가 올바르지 않아요' };
   }
 
   const supabase = await createSupabaseServerClient();
@@ -89,6 +110,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
       office_id: input.officeId,
       building_id: input.buildingId,
       avatar_emoji: input.avatarEmoji,
+      custom_lat: hasCustom ? input.customLat : null,
+      custom_lng: hasCustom ? input.customLng : null,
     })
     .eq('id', user.id);
 

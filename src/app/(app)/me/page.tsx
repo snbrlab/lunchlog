@@ -20,6 +20,7 @@ export default async function MePage() {
     .from('users')
     .select(
       'name, avatar_color, avatar_emoji, role, department, office_id, building_id, ' +
+        'custom_lat, custom_lng, ' +
         'office:offices ( name ), building:office_buildings!users_building_id_fkey ( name )',
     )
     .eq('id', user.id)
@@ -34,6 +35,8 @@ export default async function MePage() {
         department: string | null;
         office_id: string | null;
         building_id: string | null;
+        custom_lat: number | null;
+        custom_lng: number | null;
         office: { name: string } | null;
         building: { name: string } | null;
       }
@@ -160,6 +163,8 @@ export default async function MePage() {
               avatarColor={avatarColor}
               offices={offices}
               buildings={buildings}
+              initialCustomLat={profile?.custom_lat ?? null}
+              initialCustomLng={profile?.custom_lng ?? null}
             />
           </div>
         </details>
