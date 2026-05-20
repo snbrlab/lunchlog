@@ -132,6 +132,7 @@ export default async function ReportPage({
                     comments={comments}
                     currentUserId={user.id}
                     isAdmin={false}
+                    status={r.status}
                   />
                 </li>
               );

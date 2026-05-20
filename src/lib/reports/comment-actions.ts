@@ -28,7 +28,7 @@ export async function addReportComment(
 
   const sa = getSupabaseAdminClient();
   const [reportRes, profileRes, lastRes] = await Promise.all([
-    sa.from('reports').select('id, author_id').eq('id', reportId).maybeSingle(),
+    sa.from('reports').select('id, author_id, status').eq('id', reportId).maybeSingle(),
     sa.from('users').select('role').eq('id', user.id).maybeSingle(),
     sa
       .from('report_comments')
@@ -39,12 +39,19 @@ export async function addReportComment(
       .maybeSingle(),
   ]);
 
-  const report = reportRes.data as { id: string; author_id: string | null } | null;
+  const report = reportRes.data as
+    | { id: string; author_id: string | null; status: 'open' | 'reviewing' | 'resolved' }
+    | null;
   if (!report) return { ok: false, message: '제보를 찾을 수 없어요' };
 
   const isAdmin = (profileRes.data as { role?: string } | null)?.role === 'admin';
   const isReporter = report.author_id === user.id;
   if (!isAdmin && !isReporter) return { ok: false, message: '권한이 없어요' };
+
+  // D69: 처리 완료된 제보는 잠금 — admin 이 다시 'reviewing' 으로 돌려야 댓글 가능
+  if (report.status === 'resolved') {
+    return { ok: false, message: '처리 완료된 제보엔 답글을 달 수 없어요' };
+  }
 
   const last = lastRes.data as { author_id: string | null } | null;
   if (!last) {

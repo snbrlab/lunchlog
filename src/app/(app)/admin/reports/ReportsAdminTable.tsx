@@ -168,6 +168,7 @@ function ReportCard({
           comments={comments}
           currentUserId={currentUserId}
           isAdmin
+          status={report.status}
         />
       </div>
     </li>

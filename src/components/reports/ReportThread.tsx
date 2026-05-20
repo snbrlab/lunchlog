@@ -33,6 +33,7 @@ interface Props {
   comments: CommentEntry[];
   currentUserId: string;
   isAdmin: boolean;
+  status: 'open' | 'reviewing' | 'resolved';
   maxBody?: number;
 }
 
@@ -43,6 +44,7 @@ export function ReportThread({
   comments,
   currentUserId,
   isAdmin,
+  status,
   maxBody = MAX_DEFAULT,
 }: Props) {
   const router = useRouter();
@@ -50,8 +52,16 @@ export function ReportThread({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
-  // 직전 게시자가 누구냐 + 내 차례냐
+  // 직전 게시자가 누구냐 + 내 차례냐. 단 resolved 면 양쪽 잠금.
   const { canPost, hint } = useMemo(() => {
+    if (status === 'resolved') {
+      return {
+        canPost: false,
+        hint: isAdmin
+          ? '처리 완료된 제보예요. 다시 얘기하려면 상태를 "확인중" 으로 바꾸세요'
+          : '처리 완료된 제보예요',
+      };
+    }
     const last = comments[comments.length - 1];
     if (!last) {
       // 댓글 0 → 본문 = 사용자. admin 차례.
@@ -65,7 +75,7 @@ export function ReportThread({
       return { canPost: false, hint: '상대 응답을 기다리는 중' };
     }
     return { canPost: true, hint: '내 차례 — 답글을 작성하세요' };
-  }, [comments, currentUserId, isAdmin]);
+  }, [comments, currentUserId, isAdmin, status]);
 
   function submit() {
     if (!canPost || !body.trim()) return;
