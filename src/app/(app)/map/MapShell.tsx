@@ -42,6 +42,40 @@ export default function MapShell({
   const [cuisineGroup, setCuisineGroup] = useState<string>('전체');
   const [onlyAlcohol, setOnlyAlcohol] = useState(false);
 
+  // D68: 공유 오피스 등 임시 근무지 — origin 을 GPS/지도클릭으로 덮어쓰기.
+  // localStorage 보존 (브라우저별, DB 까지 안 감 — 임시 용도).
+  const [customOrigin, setCustomOrigin] = useState<{ lat: number; lng: number } | null>(null);
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('lunchlog.custom_origin.v1');
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as { lat?: unknown; lng?: unknown };
+      if (typeof parsed.lat === 'number' && typeof parsed.lng === 'number') {
+        setCustomOrigin({ lat: parsed.lat, lng: parsed.lng });
+      }
+    } catch {
+      // ignore
+    }
+  }, []);
+  const applyCustomOrigin = (lat: number, lng: number) => {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+    setCustomOrigin({ lat, lng });
+    try {
+      localStorage.setItem('lunchlog.custom_origin.v1', JSON.stringify({ lat, lng }));
+    } catch {
+      // ignore
+    }
+  };
+  const clearCustomOrigin = () => {
+    setCustomOrigin(null);
+    try {
+      localStorage.removeItem('lunchlog.custom_origin.v1');
+    } catch {
+      // ignore
+    }
+  };
+  const effectiveOrigin = customOrigin ?? origin;
+
   // /log 등에서 ?focus=<id> 로 진입 시 자동 선택
   useEffect(() => {
     if (focusParam) setSelectedId(focusParam);
@@ -66,7 +100,7 @@ export default function MapShell({
         }`}
       >
         <RestaurantSidebar
-          origin={origin}
+          origin={effectiveOrigin}
           restaurants={restaurants}
           selectedId={selectedId}
           onSelect={setSelectedId}
@@ -104,11 +138,14 @@ export default function MapShell({
           </button>
 
           <KakaoMap
-            origin={origin}
+            origin={effectiveOrigin}
             restaurants={restaurants}
             selectedId={selectedId}
             onSelect={setSelectedId}
             onDeselect={() => setSelectedId(null)}
+          customOriginActive={!!customOrigin}
+          onSetCustomOrigin={applyCustomOrigin}
+          onClearCustomOrigin={clearCustomOrigin}
             includeClosed={includeClosed}
             cuisineItems={cuisineItems}
             cuisineGroup={cuisineGroup}
@@ -116,7 +153,7 @@ export default function MapShell({
           />
         </div>
         <RestaurantDetailPanel
-          origin={origin}
+          origin={effectiveOrigin}
           restaurant={selected}
           currentUserId={currentUserId}
           isAdmin={isAdmin}
