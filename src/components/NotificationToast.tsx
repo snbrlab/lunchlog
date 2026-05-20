@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   NotificationRow,
+  ReportCommentPayload,
   ReportNewPayload,
   ReportUpdatePayload,
   ReviewReplyPayload,
@@ -159,6 +160,41 @@ function ToastCard({
             </p>
             <p className="mt-1.5 line-clamp-2 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-fg">
               {p.message}
+            </p>
+          </div>
+          <DismissButton
+            onDismiss={(e) => {
+              e?.preventDefault();
+              e?.stopPropagation();
+              onDismiss();
+            }}
+          />
+        </div>
+      </Link>
+    );
+  }
+
+  if (note.type === 'report_comment') {
+    const p = note.payload as ReportCommentPayload;
+    const fromAdmin = p.from === 'admin';
+    const href = fromAdmin ? '/report' : '/admin/reports';
+    return (
+      <Link
+        href={href}
+        onClick={onDismiss}
+        className="block rounded-lg border border-border bg-surface p-3 shadow-lg ring-1 ring-black/5 transition hover:border-fg/40"
+      >
+        <div className="flex items-start gap-2">
+          <span aria-hidden className="text-base">💬</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-fg">
+              {fromAdmin ? '관리자가 제보에 답글을 남겼어요' : '제보자가 답글을 보냈어요'}
+            </p>
+            <p className="mt-0.5 text-[11px] text-fg-muted">
+              {CATEGORY_LABEL[p.category] ?? p.category}
+            </p>
+            <p className="mt-1.5 line-clamp-2 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-fg">
+              {p.preview}
             </p>
           </div>
           <DismissButton

@@ -117,12 +117,13 @@ export interface Review {
   edited_at: string | null;
 }
 
-// D41 인앱 노티
+// D41 인앱 노티 (+ D69: report_comment)
 export type NotificationType =
   | 'report_update'
   | 'review_reply'
   | 'signup_request_new'
-  | 'report_new';
+  | 'report_new'
+  | 'report_comment';
 
 export interface ReportUpdatePayload {
   report_id: string;
@@ -158,6 +159,14 @@ export interface ReportNewPayload {
   message: string;
 }
 
+// D69: 제보 댓글 — admin → user 또는 user → admin
+export interface ReportCommentPayload {
+  report_id: string;
+  category: ReportCategory;
+  from: 'admin' | 'user';
+  preview: string;
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
@@ -166,7 +175,8 @@ export interface NotificationRow {
     | ReportUpdatePayload
     | ReviewReplyPayload
     | SignupRequestNewPayload
-    | ReportNewPayload;
+    | ReportNewPayload
+    | ReportCommentPayload;
   read_at: string | null;
   created_at: string;
 }
