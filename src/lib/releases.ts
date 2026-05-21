@@ -12,6 +12,17 @@ export interface ReleaseItem {
 
 export const RELEASES: ReleaseItem[] = [
   {
+    version: 'D68',
+    hash: '693d91e',
+    date: '2026-05-20',
+    title: '임시 근무지 위치 직접 지정',
+    bullets: [
+      '공유 오피스 등 등록 안 된 곳에서 일할 때 거리/도보 시간이 안 맞던 문제 해결',
+      '마이페이지 → 프로필 편집에서 "건물 말고 다른 위치에서 근무 중이에요" 켜고 카카오 검색으로 위치 선택',
+      '한 번 설정하면 어느 기기에서든 동일하게 적용돼요',
+    ],
+  },
+  {
     version: 'D63',
     hash: '11b3d0f',
     date: '2026-05-15',
