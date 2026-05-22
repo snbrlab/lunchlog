@@ -2,33 +2,49 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import {
   autoFillKakaoPlaceUrlsForRestaurants,
   deleteRestaurant,
   type AutoFillPlaceUrlsResult,
 } from '@/lib/admin/actions';
 import { toggleRestaurantClosed } from '@/lib/restaurants/actions';
+import type { AdminRestaurantRow } from './page';
 
-interface Row {
-  id: string;
-  name: string;
-  cuisine_types: string[];
-  is_closed: boolean;
-  commit_count: number;
-  created_at: string;
-  kakao_place_url: string | null;
-  creator: { name: string } | null;
-}
+type Row = AdminRestaurantRow;
 
-export default function RestaurantsAdminTable({ rows }: { rows: Row[] }) {
+export default function RestaurantsAdminTable({
+  rows,
+  offices,
+}: {
+  rows: Row[];
+  offices: { id: string; name: string }[];
+}) {
   const router = useRouter();
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [autoFilling, setAutoFilling] = useState(false);
   const [autoFillResult, setAutoFillResult] = useState<AutoFillPlaceUrlsResult | null>(null);
   const [, startTransition] = useTransition();
+  // region 필터: 'all' | office.id | 'none' (office_id NULL)
+  const [region, setRegion] = useState<string>('all');
 
   const missingUrlCount = rows.filter((r) => !r.kakao_place_url).length;
+
+  const filtered = useMemo(() => {
+    if (region === 'all') return rows;
+    if (region === 'none') return rows.filter((r) => !r.office_id);
+    return rows.filter((r) => r.office_id === region);
+  }, [rows, region]);
+
+  // office 별 카운트 (chip 옆 표시)
+  const countByOffice = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const r of rows) {
+      const k = r.office_id ?? '__none__';
+      m.set(k, (m.get(k) ?? 0) + 1);
+    }
+    return m;
+  }, [rows]);
 
   function runAutoFillUrls() {
     if (missingUrlCount === 0) {
@@ -120,11 +136,61 @@ export default function RestaurantsAdminTable({ rows }: { rows: Row[] }) {
         </div>
       )}
 
+      {/* region 필터 */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface p-3 text-[11px]">
+        <span className="mr-1 text-fg-muted">지역:</span>
+        <button
+          type="button"
+          onClick={() => setRegion('all')}
+          className={`rounded-full px-2 py-0.5 transition ${
+            region === 'all'
+              ? 'bg-fg text-bg'
+              : 'bg-bg text-fg-muted hover:bg-fg/5'
+          }`}
+        >
+          전체 ({rows.length})
+        </button>
+        {offices.map((o) => {
+          const cnt = countByOffice.get(o.id) ?? 0;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => setRegion(o.id)}
+              className={`rounded-full px-2 py-0.5 transition ${
+                region === o.id
+                  ? 'bg-fg text-bg'
+                  : 'bg-bg text-fg-muted hover:bg-fg/5'
+              }`}
+            >
+              {o.name} ({cnt})
+            </button>
+          );
+        })}
+        {(countByOffice.get('__none__') ?? 0) > 0 && (
+          <button
+            type="button"
+            onClick={() => setRegion('none')}
+            className={`rounded-full px-2 py-0.5 transition ${
+              region === 'none'
+                ? 'bg-fg text-bg'
+                : 'bg-bg text-fg-muted hover:bg-fg/5'
+            }`}
+          >
+            미매핑 ({countByOffice.get('__none__')})
+          </button>
+        )}
+        <span className="ml-auto text-fg-muted/60">
+          {filtered.length}개 표시
+        </span>
+      </div>
+
       <div className="overflow-hidden rounded-lg border border-border">
         <table className="w-full text-sm">
         <thead className="bg-surface text-[11px] uppercase tracking-wider text-fg-muted">
           <tr>
             <th className="px-3 py-2 text-left">이름</th>
+            <th className="px-3 py-2 text-left">지역</th>
             <th className="px-3 py-2 text-left">cuisine</th>
             <th className="px-3 py-2 text-left">등록자</th>
             <th className="px-3 py-2 text-right">commit</th>
@@ -133,19 +199,22 @@ export default function RestaurantsAdminTable({ rows }: { rows: Row[] }) {
           </tr>
         </thead>
         <tbody>
-          {rows.length === 0 && (
+          {filtered.length === 0 && (
             <tr>
-              <td colSpan={6} className="px-3 py-6 text-center text-xs text-fg-muted">
-                등록된 식당 없음
+              <td colSpan={7} className="px-3 py-6 text-center text-xs text-fg-muted">
+                조건에 맞는 식당 없음
               </td>
             </tr>
           )}
-          {rows.map((r) => (
+          {filtered.map((r) => (
             <tr key={r.id} className="border-t border-border">
               <td className="px-3 py-2 font-medium text-fg">
                 <Link href={`/restaurants/${r.id}/edit`} className="hover:underline">
                   {r.name}
                 </Link>
+              </td>
+              <td className="px-3 py-2 text-xs text-fg-muted">
+                {r.office?.name ?? <span className="text-fg-muted/50">—</span>}
               </td>
               <td className="px-3 py-2 text-xs text-fg-muted">{r.cuisine_types.join(' / ')}</td>
               <td className="px-3 py-2 text-xs text-fg-muted">{r.creator?.name ?? '—'}</td>
