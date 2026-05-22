@@ -7,7 +7,6 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
 import { loadMoreReviewLog } from './actions';
 import { BadgeChip } from '@/components/badges/BadgeChip';
-import { RegionCrowns } from '@/components/badges/RegionCrown';
 import type { Office } from '@/types/db';
 
 type MealFilter = 'all' | 'lunch' | 'dinner';
@@ -237,15 +236,6 @@ function LogItem({ row }: { row: LogReviewRow }) {
             </Link>
           ) : (
             <span className="font-medium text-fg">{authorName}</span>
-          )}
-          {row.author?.region_champions && row.author.region_champions.length > 0 && (
-            <RegionCrowns
-              size="xs"
-              crowns={row.author.region_champions
-                .map((rc) => rc.office)
-                .filter((o): o is { id: string; name: string } => !!o)
-                .map((o) => ({ office_id: o.id, office_name: o.name }))}
-            />
           )}
           {row.author?.primary_badge_code && (
             <BadgeChip code={row.author.primary_badge_code} size="xs" />

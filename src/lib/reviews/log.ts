@@ -19,10 +19,6 @@ export interface LogReviewRow {
     avatar_color: string;
     office_id: string | null;
     primary_badge_code: string | null;
-    // D71: 보유한 지역 대장 왕관 (여러 office 가능). reverse embed.
-    region_champions?: Array<{
-      office: { id: string; name: string } | null;
-    }>;
   } | null;
   restaurant: {
     id: string;
@@ -47,7 +43,7 @@ export async function fetchReviewLogPage(
     .from('reviews')
     .select(
       'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
-        'author:users!reviews_author_id_fkey ( id, name, avatar_emoji, avatar_color, office_id, primary_badge_code, region_champions ( office:offices ( id, name ) ) ), ' +
+        'author:users!reviews_author_id_fkey ( id, name, avatar_emoji, avatar_color, office_id, primary_badge_code ), ' +
         'restaurant:restaurants ( id, name, cuisine_types, is_closed )',
     )
     .order('created_at', { ascending: false })
