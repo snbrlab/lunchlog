@@ -134,23 +134,39 @@ export function BadgeCollection({ earnedCodes, primaryCode }: Props) {
 }
 
 function BadgeCell({ meta, owned }: { meta: BadgeMeta; owned: boolean }) {
+  // 모바일 탭 / 데스크탑 호버 둘 다 동작 — group-hover + focus-within
   return (
     <li
-      title={owned ? `${meta.label} — ${meta.description}` : meta.description}
-      className={`flex w-[88px] flex-col items-center gap-1 rounded-md border px-1.5 py-2 text-center ${
+      className={`group relative flex w-[88px] flex-col items-center gap-1 rounded-md border px-1.5 py-2 text-center ${
         owned
           ? 'border-amber-200 bg-amber-50 text-amber-900'
           : 'border-border bg-fg/5 text-fg-muted/60'
       }`}
     >
-      <span
-        aria-hidden
-        className={`text-xl leading-none ${owned ? '' : 'grayscale opacity-40'}`}
+      <button
+        type="button"
+        aria-label={owned ? meta.label : '잠긴 뱃지'}
+        className="flex flex-col items-center gap-1 focus:outline-none"
       >
-        {owned ? meta.emoji : '🔒'}
-      </span>
-      <span className="line-clamp-2 text-[10px] font-medium leading-tight">
-        {owned ? meta.label : '???'}
+        <span
+          aria-hidden
+          className={`text-xl leading-none ${owned ? '' : 'grayscale opacity-40'}`}
+        >
+          {owned ? meta.emoji : '🔒'}
+        </span>
+        <span className="line-clamp-2 text-[10px] font-medium leading-tight">
+          {owned ? meta.label : '???'}
+        </span>
+      </button>
+      {/* hover/focus 시 설명 툴팁 */}
+      <span
+        role="tooltip"
+        className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 hidden w-44 -translate-x-1/2 rounded-md border border-border bg-bg px-2 py-1.5 text-[10px] font-normal leading-tight text-fg shadow-lg group-hover:block group-focus-within:block"
+      >
+        <span className="block font-semibold text-fg">
+          {owned ? meta.label : '🔒 잠긴 뱃지'}
+        </span>
+        <span className="mt-0.5 block text-fg-muted">{meta.description}</span>
       </span>
     </li>
   );

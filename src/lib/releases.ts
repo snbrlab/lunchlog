@@ -12,6 +12,18 @@ export interface ReleaseItem {
 
 export const RELEASES: ReleaseItem[] = [
   {
+    version: 'D70',
+    hash: 'ba48f74',
+    date: '2026-05-22',
+    title: '뱃지 + 지역별 대장 👑',
+    bullets: [
+      '30개 뱃지 (활동량 / 꾸준함 / 개척 / 다양성 / 시간대 / cuisine 특화)',
+      '마이페이지 도감에서 받은 거 확인 + 대표 뱃지 선택 → /log 에 노출',
+      '지역별 대장 — 그 지역 식당 commit 1위가 가져가는 👑 롤링 왕관 (빼앗기는 자리)',
+      '새 뱃지 / 새 왕관 받으면 알림',
+    ],
+  },
+  {
     version: 'D68',
     hash: '693d91e',
     date: '2026-05-20',
