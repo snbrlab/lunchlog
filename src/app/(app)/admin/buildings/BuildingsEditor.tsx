@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { useState, useTransition } from 'react';
+import { useMemo, useState, useTransition } from 'react';
 import {
   autoFillAllBuildingCoords,
   createBuilding,
@@ -12,6 +12,10 @@ import {
 import { KakaoPlacesSearch } from '@/components/map/KakaoPlacesSearch';
 import type { Office, OfficeBuilding } from '@/types/db';
 import type { KakaoPlaceItem } from '@/types/kakao-maps';
+
+function kakaoMapLink(name: string, lat: number, lng: number): string {
+  return `https://map.kakao.com/link/map/${encodeURIComponent(name)},${lat},${lng}`;
+}
 
 // 카카오 검색의 origin (거리 정렬용 기본값) — 서울 시청
 const SEARCH_ORIGIN = { lat: 37.5666, lng: 126.9784 };
@@ -90,24 +94,70 @@ export default function BuildingsEditor({ offices, buildings }: Props) {
 
       <section>
         <h2 className="mb-3 text-sm font-medium text-fg">수동 편집</h2>
-        <div className="overflow-hidden rounded-lg border border-border">
-          <table className="w-full text-sm">
-            <thead className="bg-surface text-[11px] uppercase tracking-wider text-fg-muted">
-              <tr>
-                <th className="px-3 py-2 text-left">이름</th>
-                <th className="px-3 py-2 text-left">위도 (lat)</th>
-                <th className="px-3 py-2 text-left">경도 (lng)</th>
-                <th className="px-3 py-2 text-left">저장</th>
-              </tr>
-            </thead>
-            <tbody>
-              {buildings.map((b) => (
-                <BuildingRow key={b.id} building={b} />
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <ManualEditByOffice offices={offices} buildings={buildings} />
       </section>
+    </div>
+  );
+}
+
+function ManualEditByOffice({
+  offices,
+  buildings,
+}: {
+  offices: Office[];
+  buildings: OfficeBuilding[];
+}) {
+  const grouped = useMemo(() => {
+    const m = new Map<string, OfficeBuilding[]>();
+    for (const b of buildings) {
+      const arr = m.get(b.office_id) ?? [];
+      arr.push(b);
+      m.set(b.office_id, arr);
+    }
+    return m;
+  }, [buildings]);
+
+  if (buildings.length === 0) {
+    return (
+      <p className="rounded-lg border border-border bg-surface px-4 py-6 text-center text-xs text-fg-muted">
+        등록된 건물 없음
+      </p>
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      {offices.map((o) => {
+        const list = grouped.get(o.id) ?? [];
+        if (list.length === 0) return null;
+        return (
+          <div key={o.id}>
+            <h3 className="mb-2 flex items-baseline gap-2 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
+              📍 {o.name}
+              <span className="font-normal normal-case tracking-normal text-fg-muted/60">
+                ({list.length}개)
+              </span>
+            </h3>
+            <div className="overflow-hidden rounded-lg border border-border">
+              <table className="w-full text-sm">
+                <thead className="bg-surface text-[11px] uppercase tracking-wider text-fg-muted">
+                  <tr>
+                    <th className="px-3 py-2 text-left">이름</th>
+                    <th className="px-3 py-2 text-left">위도 (lat)</th>
+                    <th className="px-3 py-2 text-left">경도 (lng)</th>
+                    <th className="px-3 py-2 text-left">저장</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((b) => (
+                    <BuildingRow key={b.id} building={b} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
 }
@@ -139,7 +189,18 @@ function BuildingRow({ building }: { building: OfficeBuilding }) {
 
   return (
     <tr className="border-t border-border">
-      <td className="px-3 py-2 font-medium text-fg">{building.name}</td>
+      <td className="px-3 py-2 font-medium text-fg">
+        <a
+          href={kakaoMapLink(building.name, building.latitude, building.longitude)}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-1 hover:underline"
+          title="카카오맵에서 위치 보기"
+        >
+          {building.name}
+          <span aria-hidden className="text-[10px] text-fg-muted">↗</span>
+        </a>
+      </td>
       <td className="px-3 py-2">
         <input
           type="number"
