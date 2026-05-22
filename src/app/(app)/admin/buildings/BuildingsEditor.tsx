@@ -6,6 +6,7 @@ import {
   autoFillAllBuildingCoords,
   createBuilding,
   createOffice,
+  deleteBuilding,
   updateBuildingCoord,
   type AutoFillResult,
 } from '@/lib/admin/actions';
@@ -46,56 +47,64 @@ export default function BuildingsEditor({ offices, buildings }: Props) {
   }
 
   return (
-    <div className="space-y-6">
-      {/* 새 사무실 추가 */}
-      <NewOfficeForm />
+    <div className="space-y-5">
+      {/* 메인: 건물 목록 (office 별) */}
+      <ManualEditByOffice offices={offices} buildings={buildings} />
 
-      {/* 새 건물 추가 */}
-      <NewBuildingForm offices={offices} />
+      {/* 자주 안 쓰는 작업 — 접어둠 */}
+      <details className="rounded-lg border border-border bg-surface">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
+          ➕ 새 사무실 추가
+        </summary>
+        <div className="border-t border-border px-4 py-4">
+          <NewOfficeForm />
+        </div>
+      </details>
 
-      <section className="flex items-start justify-between gap-4 rounded-lg border border-border bg-surface p-5">
-        <div>
-          <h2 className="text-sm font-medium text-fg">전체 자동 보정</h2>
-          <p className="mt-1 text-xs text-fg-muted">
+      <details className="rounded-lg border border-border bg-surface">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
+          ➕ 새 건물 추가
+        </summary>
+        <div className="border-t border-border px-4 py-4">
+          <NewBuildingForm offices={offices} />
+        </div>
+      </details>
+
+      <details className="rounded-lg border border-border bg-surface">
+        <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-fg marker:hidden">
+          🪄 전체 자동 좌표 보정
+        </summary>
+        <div className="space-y-3 border-t border-border px-4 py-4">
+          <p className="text-xs text-fg-muted">
             각 건물 이름으로 <span className="font-mono">{`"LG사이언스파크 {이름}"`}</span> 키워드
-            검색 → 첫 결과 좌표 사용. KAKAO_REST_KEY 필요.
+            검색 → 첫 결과 좌표 사용. KAKAO_REST_KEY 필요. 기존 좌표 덮어쓰임.
           </p>
+          <button
+            type="button"
+            onClick={runAutoFill}
+            disabled={pending}
+            className="rounded-md bg-fg px-4 py-2 text-xs font-semibold text-bg transition hover:opacity-90 disabled:opacity-50"
+          >
+            {pending ? '보정 중…' : '실행'}
+          </button>
+          {autoFillResult && !autoFillResult.ok && (
+            <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+              {autoFillResult.message}
+            </p>
+          )}
+          {autoFillResult?.ok && (
+            <ul className="max-h-40 space-y-0.5 overflow-y-auto rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800">
+              {autoFillResult.results.map((r) => (
+                <li key={r.name} className="font-mono">
+                  {r.status === 'updated' ? '✓' : r.status === 'not_found' ? '✗' : '⚠️'} {r.name}
+                  {r.status === 'not_found' && ' (없음)'}
+                  {r.status === 'failed' && ' (실패)'}
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        <button
-          type="button"
-          onClick={runAutoFill}
-          disabled={pending}
-          className="shrink-0 rounded-md bg-fg px-4 py-2 text-xs font-semibold text-bg transition hover:opacity-90 disabled:opacity-50"
-        >
-          {pending ? '보정 중…' : '🪄 자동 보정'}
-        </button>
-      </section>
-
-      {autoFillResult && !autoFillResult.ok && (
-        <p className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-xs text-red-700">
-          {autoFillResult.message}
-        </p>
-      )}
-      {autoFillResult?.ok && (
-        <div className="rounded-md border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs text-emerald-800">
-          <p className="font-medium">자동 보정 결과</p>
-          <ul className="mt-1.5 space-y-0.5">
-            {autoFillResult.results.map((r) => (
-              <li key={r.name} className="font-mono text-[11px]">
-                {r.status === 'updated' ? '✓' : r.status === 'not_found' ? '✗' : '⚠️'} {r.name}{' '}
-                {r.lat && r.lng ? `→ ${r.lat.toFixed(6)}, ${r.lng.toFixed(6)}` : ''}
-                {r.status === 'not_found' && ' (검색 결과 없음)'}
-                {r.status === 'failed' && ' (실패)'}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <section>
-        <h2 className="mb-3 text-sm font-medium text-fg">수동 편집</h2>
-        <ManualEditByOffice offices={offices} buildings={buildings} />
-      </section>
+      </details>
     </div>
   );
 }
@@ -145,7 +154,7 @@ function ManualEditByOffice({
                     <th className="px-3 py-2 text-left">이름</th>
                     <th className="px-3 py-2 text-left">위도 (lat)</th>
                     <th className="px-3 py-2 text-left">경도 (lng)</th>
-                    <th className="px-3 py-2 text-left">저장</th>
+                    <th className="px-3 py-2 text-left">액션</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -163,6 +172,7 @@ function ManualEditByOffice({
 }
 
 function BuildingRow({ building }: { building: OfficeBuilding }) {
+  const router = useRouter();
   const [lat, setLat] = useState(String(building.latitude));
   const [lng, setLng] = useState(String(building.longitude));
   const [pending, startTransition] = useTransition();
@@ -184,6 +194,26 @@ function BuildingRow({ building }: { building: OfficeBuilding }) {
         setStatus('err');
         setErrMsg(r.message);
       }
+    });
+  }
+
+  function onDelete() {
+    if (
+      !confirm(
+        `"${building.name}" 건물을 삭제할까요?\n\n` +
+          '· 이 건물을 근무지로 설정한 사용자는 건물 정보만 비워집니다 (계정 유지)\n' +
+          '· 식당 office 매핑이 자동으로 재계산됩니다',
+      )
+    )
+      return;
+    startTransition(async () => {
+      const r = await deleteBuilding(building.id);
+      if (!r.ok) {
+        setStatus('err');
+        setErrMsg(r.message);
+        return;
+      }
+      router.refresh();
     });
   }
 
@@ -220,16 +250,26 @@ function BuildingRow({ building }: { building: OfficeBuilding }) {
         />
       </td>
       <td className="px-3 py-2">
-        <button
-          type="button"
-          onClick={save}
-          disabled={!dirty || pending}
-          className="rounded bg-fg px-2 py-1 text-[11px] font-semibold text-bg transition hover:opacity-90 disabled:opacity-30"
-        >
-          {pending ? '…' : '저장'}
-        </button>
-        {status === 'ok' && <span className="ml-2 text-[11px] text-emerald-600">✓</span>}
-        {status === 'err' && <span className="ml-2 text-[11px] text-red-500">{errMsg}</span>}
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={save}
+            disabled={!dirty || pending}
+            className="rounded bg-fg px-2 py-1 text-[11px] font-semibold text-bg transition hover:opacity-90 disabled:opacity-30"
+          >
+            {pending ? '…' : '저장'}
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            disabled={pending}
+            className="rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 transition hover:border-red-500 hover:bg-red-50 disabled:opacity-50"
+          >
+            삭제
+          </button>
+          {status === 'ok' && <span className="text-[11px] text-emerald-600">✓</span>}
+          {status === 'err' && <span className="text-[11px] text-red-500">{errMsg}</span>}
+        </div>
       </td>
     </tr>
   );

@@ -59,6 +59,26 @@ export async function updateBuildingCoord(
   return { ok: true };
 }
 
+// D73: 건물 삭제. users.building_id FK 는 ON DELETE SET NULL (migration).
+// 빌딩 삭제 → office_buildings 트리거가 식당 office_id 자동 재매핑.
+export type DeleteBuildingResult = { ok: true } | { ok: false; message: string };
+
+export async function deleteBuilding(buildingId: string): Promise<DeleteBuildingResult> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+  const { error } = await admin.supabase
+    .from('office_buildings')
+    .delete()
+    .eq('id', buildingId);
+  if (error) return { ok: false, message: error.message };
+  invalidateOfficesCache();
+  return { ok: true };
+}
+
 // ---------------------------------------------------------------
 // 사무실 / 건물 생성 (D49) — admin 페이지에서 직접 추가
 // ---------------------------------------------------------------
