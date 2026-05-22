@@ -6,6 +6,7 @@ import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
 import { loadMoreReviewLog } from './actions';
+import { BadgeChip } from '@/components/badges/BadgeChip';
 import type { Office } from '@/types/db';
 
 type MealFilter = 'all' | 'lunch' | 'dinner';
@@ -235,6 +236,9 @@ function LogItem({ row }: { row: LogReviewRow }) {
             </Link>
           ) : (
             <span className="font-medium text-fg">{authorName}</span>
+          )}
+          {row.author?.primary_badge_code && (
+            <BadgeChip code={row.author.primary_badge_code} size="xs" />
           )}
           <span>가</span>
           {restaurantNode}

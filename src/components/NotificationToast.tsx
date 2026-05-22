@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
+  BadgeEarnedPayload,
   NotificationRow,
   ReportCommentPayload,
   ReportNewPayload,
@@ -11,6 +12,7 @@ import type {
   ReviewReplyPayload,
   SignupRequestNewPayload,
 } from '@/types/db';
+import { BADGE_BY_CODE } from '@/lib/badges';
 
 const STATUS_LABEL: Record<string, string> = {
   open: '접수',
@@ -160,6 +162,40 @@ function ToastCard({
             </p>
             <p className="mt-1.5 line-clamp-2 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-fg">
               {p.message}
+            </p>
+          </div>
+          <DismissButton
+            onDismiss={(e) => {
+              e?.preventDefault();
+              e?.stopPropagation();
+              onDismiss();
+            }}
+          />
+        </div>
+      </Link>
+    );
+  }
+
+  if (note.type === 'badge_earned') {
+    const p = note.payload as BadgeEarnedPayload;
+    const meta = BADGE_BY_CODE.get(p.code);
+    return (
+      <Link
+        href="/me"
+        onClick={onDismiss}
+        className="block rounded-lg border border-amber-300 bg-amber-50 p-3 shadow-lg ring-1 ring-black/5 transition hover:border-amber-400"
+      >
+        <div className="flex items-start gap-2">
+          <span aria-hidden className="text-2xl leading-none">{meta?.emoji ?? '🏆'}</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-amber-900">
+              새 뱃지 획득!
+            </p>
+            <p className="mt-0.5 text-[12px] font-semibold text-amber-900">
+              {meta?.label ?? p.code}
+            </p>
+            <p className="mt-0.5 text-[11px] text-amber-800/80">
+              {meta?.description ?? ''}
             </p>
           </div>
           <DismissButton

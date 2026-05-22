@@ -5,6 +5,7 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { formatRelativeTime } from '@/lib/format-time';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { aggregateCounts } from '@/lib/heatmap';
+import { BadgeCollection } from '@/components/badges/BadgeCollection';
 import ChangePasswordForm from './ChangePasswordForm';
 import ProfileEditForm from './ProfileEditForm';
 
@@ -20,7 +21,7 @@ export default async function MePage() {
     .from('users')
     .select(
       'name, avatar_color, avatar_emoji, role, department, office_id, building_id, ' +
-        'custom_lat, custom_lng, ' +
+        'custom_lat, custom_lng, primary_badge_code, ' +
         'office:offices ( name ), building:office_buildings!users_building_id_fkey ( name )',
     )
     .eq('id', user.id)
@@ -37,6 +38,7 @@ export default async function MePage() {
         building_id: string | null;
         custom_lat: number | null;
         custom_lng: number | null;
+        primary_badge_code: string | null;
         office: { name: string } | null;
         building: { name: string } | null;
       }
@@ -59,6 +61,7 @@ export default async function MePage() {
     { data: myReviews },
     { data: myFavorites },
     { data: heatmapRows },
+    { data: myBadgeRows },
   ] = await Promise.all([
     getCachedOffices(),
     getCachedBuildings(),
@@ -84,11 +87,16 @@ export default async function MePage() {
       .select('created_at')
       .eq('author_id', user.id)
       .gte('created_at', oneYearAgo.toISOString()),
+    supabase
+      .from('user_badges')
+      .select('code')
+      .eq('user_id', user.id),
   ]);
 
   const heatmapCounts = aggregateCounts(
     ((heatmapRows ?? []) as { created_at: string }[]).map((r) => r.created_at),
   );
+  const badgeCodes = ((myBadgeRows ?? []) as { code: string }[]).map((b) => b.code);
 
   const reviewItems = ((myReviews ?? []) as unknown) as Array<{
     id: string;
@@ -183,6 +191,14 @@ export default async function MePage() {
       <section className="mb-8 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-3 text-sm font-medium text-fg">🌱 활동</h2>
         <ActivityHeatmap counts={heatmapCounts} />
+      </section>
+
+      {/* D70: 뱃지 도감 */}
+      <section className="mb-8">
+        <BadgeCollection
+          earnedCodes={badgeCodes}
+          primaryCode={profile?.primary_badge_code ?? null}
+        />
       </section>
 
       {/* 찜한 곳 */}

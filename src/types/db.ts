@@ -117,13 +117,14 @@ export interface Review {
   edited_at: string | null;
 }
 
-// D41 인앱 노티 (+ D69: report_comment)
+// D41 인앱 노티 (+ D69 report_comment, + D70 badge_earned)
 export type NotificationType =
   | 'report_update'
   | 'review_reply'
   | 'signup_request_new'
   | 'report_new'
-  | 'report_comment';
+  | 'report_comment'
+  | 'badge_earned';
 
 export interface ReportUpdatePayload {
   report_id: string;
@@ -167,6 +168,11 @@ export interface ReportCommentPayload {
   preview: string;
 }
 
+// D70: 뱃지 획득 — code 만 들고 UI 가 lib/badges.ts 에서 lookup
+export interface BadgeEarnedPayload {
+  code: string;
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
@@ -176,7 +182,8 @@ export interface NotificationRow {
     | ReviewReplyPayload
     | SignupRequestNewPayload
     | ReportNewPayload
-    | ReportCommentPayload;
+    | ReportCommentPayload
+    | BadgeEarnedPayload;
   read_at: string | null;
   created_at: string;
 }

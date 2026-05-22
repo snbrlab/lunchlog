@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { formatRelativeTime } from '@/lib/format-time';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
+import { BadgeGrid } from '@/components/badges/BadgeGrid';
 import { aggregateCounts } from '@/lib/heatmap';
 
 interface PageProps {
@@ -51,7 +52,12 @@ export default async function UserProfilePage({ params }: PageProps) {
   const oneYearAgo = new Date();
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
-  const [{ data: reviews }, { data: favorites }, { data: heatmapRows }] = await Promise.all([
+  const [
+    { data: reviews },
+    { data: favorites },
+    { data: heatmapRows },
+    { data: badgeRows },
+  ] = await Promise.all([
     supabase
       .from('reviews')
       .select(
@@ -74,7 +80,9 @@ export default async function UserProfilePage({ params }: PageProps) {
       .select('created_at')
       .eq('author_id', profile.id)
       .gte('created_at', oneYearAgo.toISOString()),
+    supabase.from('user_badges').select('code').eq('user_id', profile.id),
   ]);
+  const badgeCodes = ((badgeRows ?? []) as { code: string }[]).map((b) => b.code);
 
   const heatmapCounts = aggregateCounts(
     ((heatmapRows ?? []) as { created_at: string }[]).map((r) => r.created_at),
@@ -149,6 +157,14 @@ export default async function UserProfilePage({ params }: PageProps) {
       <section className="mb-6 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-3 text-sm font-medium text-fg">🌱 활동</h2>
         <ActivityHeatmap counts={heatmapCounts} />
+      </section>
+
+      {/* D70: 받은 뱃지 (잠긴 거 X) */}
+      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
+        <h2 className="mb-3 text-sm font-medium text-fg">
+          🏆 받은 뱃지 ({badgeCodes.length})
+        </h2>
+        <BadgeGrid codes={badgeCodes} />
       </section>
 
       {/* 작성한 commit */}

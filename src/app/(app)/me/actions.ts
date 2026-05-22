@@ -3,6 +3,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { EMOJI_POOL } from '@/lib/avatar-emoji';
 import { isNicknameTaken, validateNicknameShape } from '@/lib/auth/nickname';
+import { BADGE_BY_CODE } from '@/lib/badges';
 
 export type ChangePasswordResult =
   | { ok: true }
@@ -115,6 +116,41 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
     })
     .eq('id', user.id);
 
+  if (error) return { ok: false, message: error.message };
+  return { ok: true };
+}
+
+// D70: /log 등에서 노출할 대표 뱃지 선택. null 이면 표시 안 함.
+export type SetPrimaryBadgeResult = { ok: true } | { ok: false; message: string };
+
+export async function setPrimaryBadge(
+  code: string | null,
+): Promise<SetPrimaryBadgeResult> {
+  if (code !== null && !BADGE_BY_CODE.has(code)) {
+    return { ok: false, message: '존재하지 않는 뱃지예요' };
+  }
+
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return { ok: false, message: '세션이 만료됐어요' };
+
+  // 본인이 그 뱃지를 보유하고 있는지 검증
+  if (code !== null) {
+    const { data: owned } = await supabase
+      .from('user_badges')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('code', code)
+      .maybeSingle();
+    if (!owned) return { ok: false, message: '받지 않은 뱃지는 선택할 수 없어요' };
+  }
+
+  const { error } = await supabase
+    .from('users')
+    .update({ primary_badge_code: code })
+    .eq('id', user.id);
   if (error) return { ok: false, message: error.message };
   return { ok: true };
 }
