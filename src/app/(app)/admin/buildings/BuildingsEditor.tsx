@@ -116,15 +116,25 @@ function ManualEditByOffice({
   offices: Office[];
   buildings: OfficeBuilding[];
 }) {
-  const grouped = useMemo(() => {
-    const m = new Map<string, OfficeBuilding[]>();
-    for (const b of buildings) {
-      const arr = m.get(b.office_id) ?? [];
-      arr.push(b);
-      m.set(b.office_id, arr);
-    }
+  // 지역 필터 (admin/restaurants 와 같은 패턴)
+  const [region, setRegion] = useState<string>('all');
+
+  const countByOffice = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const b of buildings) m.set(b.office_id, (m.get(b.office_id) ?? 0) + 1);
     return m;
   }, [buildings]);
+
+  const officeNameById = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const o of offices) m.set(o.id, o.name);
+    return m;
+  }, [offices]);
+
+  const filtered = useMemo(() => {
+    if (region === 'all') return buildings;
+    return buildings.filter((b) => b.office_id === region);
+  }, [buildings, region]);
 
   if (buildings.length === 0) {
     return (
@@ -135,43 +145,82 @@ function ManualEditByOffice({
   }
 
   return (
-    <div className="space-y-5">
-      {offices.map((o) => {
-        const list = grouped.get(o.id) ?? [];
-        if (list.length === 0) return null;
-        return (
-          <div key={o.id}>
-            <h3 className="mb-2 flex items-baseline gap-2 text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
-              📍 {o.name}
-              <span className="font-normal normal-case tracking-normal text-fg-muted/60">
-                ({list.length}개)
-              </span>
-            </h3>
-            <div className="overflow-hidden rounded-lg border border-border">
-              <table className="w-full text-sm">
-                <thead className="bg-surface text-[11px] uppercase tracking-wider text-fg-muted">
-                  <tr>
-                    <th className="px-3 py-2 text-left">이름</th>
-                    <th className="px-3 py-2 text-left">위도 (lat)</th>
-                    <th className="px-3 py-2 text-left">경도 (lng)</th>
-                    <th className="px-3 py-2 text-left">액션</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {list.map((b) => (
-                    <BuildingRow key={b.id} building={b} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        );
-      })}
+    <div className="space-y-3">
+      {/* 지역 필터 chip */}
+      <div className="flex flex-wrap items-center gap-1.5 rounded-lg border border-border bg-surface p-3 text-[11px]">
+        <span className="mr-1 text-fg-muted">지역:</span>
+        <button
+          type="button"
+          onClick={() => setRegion('all')}
+          className={`rounded-full px-2 py-0.5 transition ${
+            region === 'all'
+              ? 'bg-fg text-bg'
+              : 'bg-bg text-fg-muted hover:bg-fg/5'
+          }`}
+        >
+          전체 ({buildings.length})
+        </button>
+        {offices.map((o) => {
+          const cnt = countByOffice.get(o.id) ?? 0;
+          if (cnt === 0) return null;
+          return (
+            <button
+              key={o.id}
+              type="button"
+              onClick={() => setRegion(o.id)}
+              className={`rounded-full px-2 py-0.5 transition ${
+                region === o.id
+                  ? 'bg-fg text-bg'
+                  : 'bg-bg text-fg-muted hover:bg-fg/5'
+              }`}
+            >
+              {o.name} ({cnt})
+            </button>
+          );
+        })}
+        <span className="ml-auto text-fg-muted/60">{filtered.length}개 표시</span>
+      </div>
+
+      <div className="overflow-hidden rounded-lg border border-border">
+        <table className="w-full text-sm">
+          <thead className="bg-surface text-[11px] uppercase tracking-wider text-fg-muted">
+            <tr>
+              <th className="px-3 py-2 text-left">이름</th>
+              <th className="px-3 py-2 text-left">지역</th>
+              <th className="px-3 py-2 text-left">위도 (lat)</th>
+              <th className="px-3 py-2 text-left">경도 (lng)</th>
+              <th className="px-3 py-2 text-left">액션</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={5} className="px-3 py-6 text-center text-xs text-fg-muted">
+                  조건에 맞는 건물 없음
+                </td>
+              </tr>
+            )}
+            {filtered.map((b) => (
+              <BuildingRow
+                key={b.id}
+                building={b}
+                officeName={officeNameById.get(b.office_id) ?? '—'}
+              />
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
 
-function BuildingRow({ building }: { building: OfficeBuilding }) {
+function BuildingRow({
+  building,
+  officeName,
+}: {
+  building: OfficeBuilding;
+  officeName: string;
+}) {
   const router = useRouter();
   const [lat, setLat] = useState(String(building.latitude));
   const [lng, setLng] = useState(String(building.longitude));
@@ -231,6 +280,7 @@ function BuildingRow({ building }: { building: OfficeBuilding }) {
           <span aria-hidden className="text-[10px] text-fg-muted">↗</span>
         </a>
       </td>
+      <td className="px-3 py-2 text-xs text-fg-muted">{officeName}</td>
       <td className="px-3 py-2">
         <input
           type="number"
