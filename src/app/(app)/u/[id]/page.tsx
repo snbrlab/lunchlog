@@ -5,6 +5,7 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { formatRelativeTime } from '@/lib/format-time';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { BadgeGrid } from '@/components/badges/BadgeGrid';
+import { RegionCrowns } from '@/components/badges/RegionCrown';
 import { aggregateCounts } from '@/lib/heatmap';
 
 interface PageProps {
@@ -57,6 +58,7 @@ export default async function UserProfilePage({ params }: PageProps) {
     { data: favorites },
     { data: heatmapRows },
     { data: badgeRows },
+    { data: crownRows },
   ] = await Promise.all([
     supabase
       .from('reviews')
@@ -81,8 +83,25 @@ export default async function UserProfilePage({ params }: PageProps) {
       .eq('author_id', profile.id)
       .gte('created_at', oneYearAgo.toISOString()),
     supabase.from('user_badges').select('code').eq('user_id', profile.id),
+    supabase
+      .from('region_champions')
+      .select('office_id, since_at, office:offices ( name )')
+      .eq('user_id', profile.id),
   ]);
   const badgeCodes = ((badgeRows ?? []) as { code: string }[]).map((b) => b.code);
+  const crowns = (
+    (crownRows ?? []) as unknown as Array<{
+      office_id: string;
+      since_at: string;
+      office: { name: string } | null;
+    }>
+  )
+    .map((r) => ({
+      office_id: r.office_id,
+      office_name: r.office?.name ?? '?',
+      since_at: r.since_at,
+    }))
+    .filter((c) => c.office_name !== '?');
 
   const heatmapCounts = aggregateCounts(
     ((heatmapRows ?? []) as { created_at: string }[]).map((r) => r.created_at),
@@ -140,6 +159,11 @@ export default async function UserProfilePage({ params }: PageProps) {
                   <span className="text-fg-muted/70"> · {profile.department}</span>
                 )}
               </p>
+            )}
+            {crowns.length > 0 && (
+              <div className="mt-1.5">
+                <RegionCrowns crowns={crowns} />
+              </div>
             )}
             {isMe && (
               <Link

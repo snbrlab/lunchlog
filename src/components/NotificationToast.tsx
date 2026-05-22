@@ -6,6 +6,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   BadgeEarnedPayload,
   NotificationRow,
+  RegionChampionPayload,
   ReportCommentPayload,
   ReportNewPayload,
   ReportUpdatePayload,
@@ -162,6 +163,36 @@ function ToastCard({
             </p>
             <p className="mt-1.5 line-clamp-2 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-fg">
               {p.message}
+            </p>
+          </div>
+          <DismissButton
+            onDismiss={(e) => {
+              e?.preventDefault();
+              e?.stopPropagation();
+              onDismiss();
+            }}
+          />
+        </div>
+      </Link>
+    );
+  }
+
+  if (note.type === 'region_champion') {
+    const p = note.payload as RegionChampionPayload;
+    return (
+      <Link
+        href="/me"
+        onClick={onDismiss}
+        className="block rounded-lg border border-rose-300 bg-rose-50 p-3 shadow-lg ring-1 ring-black/5 transition hover:border-rose-400"
+      >
+        <div className="flex items-start gap-2">
+          <span aria-hidden className="text-2xl leading-none">👑</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-rose-900">
+              🎉 {p.office_name} 대장이 됐어요!
+            </p>
+            <p className="mt-0.5 text-[11px] text-rose-800/80">
+              {p.office_name} 식당 commit {p.commit_count}개로 1위 — 왕관 획득 👑
             </p>
           </div>
           <DismissButton

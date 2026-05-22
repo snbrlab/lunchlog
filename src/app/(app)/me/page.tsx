@@ -6,6 +6,7 @@ import { formatRelativeTime } from '@/lib/format-time';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { aggregateCounts } from '@/lib/heatmap';
 import { BadgeCollection } from '@/components/badges/BadgeCollection';
+import { RegionCrowns } from '@/components/badges/RegionCrown';
 import ChangePasswordForm from './ChangePasswordForm';
 import ProfileEditForm from './ProfileEditForm';
 
@@ -62,6 +63,7 @@ export default async function MePage() {
     { data: myFavorites },
     { data: heatmapRows },
     { data: myBadgeRows },
+    { data: myCrownRows },
   ] = await Promise.all([
     getCachedOffices(),
     getCachedBuildings(),
@@ -91,12 +93,29 @@ export default async function MePage() {
       .from('user_badges')
       .select('code')
       .eq('user_id', user.id),
+    supabase
+      .from('region_champions')
+      .select('office_id, since_at, office:offices ( name )')
+      .eq('user_id', user.id),
   ]);
 
   const heatmapCounts = aggregateCounts(
     ((heatmapRows ?? []) as { created_at: string }[]).map((r) => r.created_at),
   );
   const badgeCodes = ((myBadgeRows ?? []) as { code: string }[]).map((b) => b.code);
+  const myCrowns = (
+    (myCrownRows ?? []) as unknown as Array<{
+      office_id: string;
+      since_at: string;
+      office: { name: string } | null;
+    }>
+  )
+    .map((r) => ({
+      office_id: r.office_id,
+      office_name: r.office?.name ?? '?',
+      since_at: r.since_at,
+    }))
+    .filter((c) => c.office_name !== '?');
 
   const reviewItems = ((myReviews ?? []) as unknown) as Array<{
     id: string;
@@ -151,6 +170,11 @@ export default async function MePage() {
                 <span className="ml-1.5 text-fg-muted/70">· {profile.department}</span>
               )}
             </p>
+          )}
+          {myCrowns.length > 0 && (
+            <div className="mt-1.5">
+              <RegionCrowns crowns={myCrowns} />
+            </div>
           )}
         </div>
       </section>

@@ -117,14 +117,15 @@ export interface Review {
   edited_at: string | null;
 }
 
-// D41 인앱 노티 (+ D69 report_comment, + D70 badge_earned)
+// D41 인앱 노티 (+ D69 report_comment, + D70 badge_earned, + D71 region_champion)
 export type NotificationType =
   | 'report_update'
   | 'review_reply'
   | 'signup_request_new'
   | 'report_new'
   | 'report_comment'
-  | 'badge_earned';
+  | 'badge_earned'
+  | 'region_champion';
 
 export interface ReportUpdatePayload {
   report_id: string;
@@ -173,6 +174,13 @@ export interface BadgeEarnedPayload {
   code: string;
 }
 
+// D71: 지역 대장 획득 (롤링)
+export interface RegionChampionPayload {
+  office_id: string;
+  office_name: string;
+  commit_count: number;
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
@@ -183,7 +191,8 @@ export interface NotificationRow {
     | SignupRequestNewPayload
     | ReportNewPayload
     | ReportCommentPayload
-    | BadgeEarnedPayload;
+    | BadgeEarnedPayload
+    | RegionChampionPayload;
   read_at: string | null;
   created_at: string;
 }
