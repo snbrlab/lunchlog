@@ -8,7 +8,6 @@ import { allCuisineValues } from '@/lib/cuisine';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
 import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
-import { getCachedOffices } from '@/lib/cache/offices';
 import type { CuisineType, MealMode } from '@/types/db';
 
 interface CreateRestaurantInput {
@@ -225,22 +224,14 @@ export async function createRestaurant(
       address: input.address.trim(),
       note: input.note?.trim() || null,
       // D72: office_id 를 식당 좌표 기준 가장 가까운 office 로 자동 매핑.
-      // 평택 사람이 마곡 식당 등록하면 office_id=마곡 으로 잡혀야 D71 지역 대장 일관됨.
+      // DB 함수 nearest_office_id 호출 — buildings centroid + 15km cap 일관 적용.
+      // 15km 밖이면 NULL ('미분류') — 강릉/동해/분당 식당이 서초로 잘못 박히던 버그 방지.
       office_id: await (async () => {
-        const offices = await getCachedOffices();
-        let nearest = profile.office_id; // fallback
-        let best = Infinity;
-        for (const o of offices) {
-          const d = haversineDistanceMeters(
-            { lat: input.latitude, lng: input.longitude },
-            { lat: o.default_lat, lng: o.default_lng },
-          );
-          if (d < best) {
-            best = d;
-            nearest = o.id;
-          }
-        }
-        return nearest;
+        const { data } = await supabase.rpc('nearest_office_id', {
+          p_lat: input.latitude,
+          p_lng: input.longitude,
+        });
+        return (data as string | null) ?? null;
       })(),
       created_by: user.id,
       recommended_min_size: input.recommendedMinSize,

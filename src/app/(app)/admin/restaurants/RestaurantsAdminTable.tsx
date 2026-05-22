@@ -167,19 +167,17 @@ export default function RestaurantsAdminTable({
             </button>
           );
         })}
-        {(countByOffice.get('__none__') ?? 0) > 0 && (
-          <button
-            type="button"
-            onClick={() => setRegion('none')}
-            className={`rounded-full px-2 py-0.5 transition ${
-              region === 'none'
-                ? 'bg-fg text-bg'
-                : 'bg-bg text-fg-muted hover:bg-fg/5'
-            }`}
-          >
-            미매핑 ({countByOffice.get('__none__')})
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => setRegion('none')}
+          className={`rounded-full px-2 py-0.5 transition ${
+            region === 'none'
+              ? 'bg-fg text-bg'
+              : 'bg-bg text-fg-muted hover:bg-fg/5'
+          }`}
+        >
+          미분류 ({countByOffice.get('__none__') ?? 0})
+        </button>
         <span className="ml-auto text-fg-muted/60">
           {filtered.length}개 표시
         </span>
@@ -214,7 +212,9 @@ export default function RestaurantsAdminTable({
                 </Link>
               </td>
               <td className="px-3 py-2 text-xs text-fg-muted">
-                {r.office?.name ?? <span className="text-fg-muted/50">—</span>}
+                {r.office?.name ?? (
+                  <span className="italic text-fg-muted/60">미분류</span>
+                )}
               </td>
               <td className="px-3 py-2 text-xs text-fg-muted">{r.cuisine_types.join(' / ')}</td>
               <td className="px-3 py-2 text-xs text-fg-muted">{r.creator?.name ?? '—'}</td>
