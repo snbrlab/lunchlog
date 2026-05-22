@@ -32,6 +32,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         <AdminNavLink href="/admin/reports">제보</AdminNavLink>
         <AdminNavLink href="/admin/announcements">공지</AdminNavLink>
         <AdminNavLink href="/admin/broadcast">전체메일</AdminNavLink>
+        <AdminNavLink href="/admin/champions">대장</AdminNavLink>
         <Link
           href="/map"
           className="ml-auto rounded px-2 py-1 text-fg-muted hover:bg-fg/5 hover:text-fg"

@@ -8,6 +8,7 @@ import { allCuisineValues } from '@/lib/cuisine';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
 import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
+import { getCachedOffices } from '@/lib/cache/offices';
 import type { CuisineType, MealMode } from '@/types/db';
 
 interface CreateRestaurantInput {
@@ -223,7 +224,24 @@ export async function createRestaurant(
       longitude: input.longitude,
       address: input.address.trim(),
       note: input.note?.trim() || null,
-      office_id: profile.office_id,
+      // D72: office_id 를 식당 좌표 기준 가장 가까운 office 로 자동 매핑.
+      // 평택 사람이 마곡 식당 등록하면 office_id=마곡 으로 잡혀야 D71 지역 대장 일관됨.
+      office_id: await (async () => {
+        const offices = await getCachedOffices();
+        let nearest = profile.office_id; // fallback
+        let best = Infinity;
+        for (const o of offices) {
+          const d = haversineDistanceMeters(
+            { lat: input.latitude, lng: input.longitude },
+            { lat: o.default_lat, lng: o.default_lng },
+          );
+          if (d < best) {
+            best = d;
+            nearest = o.id;
+          }
+        }
+        return nearest;
+      })(),
       created_by: user.id,
       recommended_min_size: input.recommendedMinSize,
       recommended_max_size: input.recommendedMaxSize,

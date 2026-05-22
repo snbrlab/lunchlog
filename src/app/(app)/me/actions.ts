@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { EMOJI_POOL } from '@/lib/avatar-emoji';
 import { isNicknameTaken, validateNicknameShape } from '@/lib/auth/nickname';
 import { BADGE_BY_CODE } from '@/lib/badges';
+import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
 
 export type ChangePasswordResult =
   | { ok: true }
@@ -117,6 +118,8 @@ export async function updateProfile(input: UpdateProfileInput): Promise<UpdatePr
     .eq('id', user.id);
 
   if (error) return { ok: false, message: error.message };
+  // name / avatar_emoji / office_id 등이 /log author embed 에 들어가 있어서 무효화
+  invalidateReviewsLogCache();
   return { ok: true };
 }
 
@@ -152,5 +155,7 @@ export async function setPrimaryBadge(
     .update({ primary_badge_code: code })
     .eq('id', user.id);
   if (error) return { ok: false, message: error.message };
+  // /log 캐시가 author.primary_badge_code 를 embed 하므로 무효화 필요
+  invalidateReviewsLogCache();
   return { ok: true };
 }
