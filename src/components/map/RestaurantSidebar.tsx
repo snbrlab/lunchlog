@@ -58,6 +58,7 @@ export function RestaurantSidebar({
   // D63: cuisine / onlyAlcohol 은 부모(MapShell) 상태로 controlled — 지도와 동기.
   //      검색어(query) 는 사이드바 전용 — 지도 마커까지 사라지면 혼란
   const [query, setQuery] = useState('');
+  const [sortMode, setSortMode] = useState<'distance' | 'commits'>('distance');
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -93,16 +94,38 @@ export function RestaurantSidebar({
         const meters = haversineDistanceMeters(origin, { lat: r.latitude, lng: r.longitude });
         return { r, meters, travel: travelInfo(meters) };
       })
-      .sort((a, b) => a.meters - b.meters);
-  }, [restaurants, mode, cuisineGroup, groupToValues, cuisineItems, includeClosed, onlyAlcohol, origin, query]);
+      .sort((a, b) =>
+        sortMode === 'commits'
+          // commit 내림차순, 동률 시 가까운 순
+          ? b.r.commit_count - a.r.commit_count || a.meters - b.meters
+          : a.meters - b.meters,
+      );
+  }, [restaurants, mode, cuisineGroup, groupToValues, cuisineItems, includeClosed, onlyAlcohol, origin, query, sortMode]);
 
   return (
     <aside className="flex h-full w-[85vw] max-w-[320px] shrink-0 flex-col border-r border-border bg-surface lg:w-[280px]">
       <header className="border-b border-border px-4 py-3">
-        <div className="flex items-baseline justify-between">
-          <p className="text-[11px] font-semibold uppercase tracking-wider text-fg-muted">
-            SORTED BY DISTANCE
-          </p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex gap-1 text-[10px] font-semibold uppercase tracking-wider">
+            <button
+              type="button"
+              onClick={() => setSortMode('distance')}
+              className={`rounded px-1.5 py-0.5 transition ${
+                sortMode === 'distance' ? 'bg-fg text-bg' : 'text-fg-muted hover:bg-fg/5'
+              }`}
+            >
+              가까운순
+            </button>
+            <button
+              type="button"
+              onClick={() => setSortMode('commits')}
+              className={`rounded px-1.5 py-0.5 transition ${
+                sortMode === 'commits' ? 'bg-fg text-bg' : 'text-fg-muted hover:bg-fg/5'
+              }`}
+            >
+              인기순
+            </button>
+          </div>
           <Link
             href="/log"
             className="text-[10px] text-fg-muted underline-offset-2 hover:text-fg hover:underline"
