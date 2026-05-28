@@ -91,13 +91,14 @@ export default function OnboardingForm({
 
       <label className="block text-sm">
         <span className="mb-1.5 block font-medium text-neutral-700">
-          부서 <span className="font-normal text-neutral-400">(선택)</span>
+          한마디 <span className="font-normal text-neutral-400">(선택)</span>
         </span>
         <input
           type="text"
           name="department"
           defaultValue={defaultDepartment}
           maxLength={60}
+          placeholder="소속·직군·자기소개 자유롭게"
           className="w-full rounded-md border border-neutral-300 px-3 py-2.5 text-sm outline-none transition focus:border-neutral-900 focus:ring-2 focus:ring-neutral-900/10"
         />
       </label>

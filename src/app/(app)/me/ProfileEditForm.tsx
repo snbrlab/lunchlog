@@ -134,13 +134,14 @@ export default function ProfileEditForm({
 
       <label className="block text-sm">
         <span className="mb-1.5 block font-medium text-fg">
-          부서 <span className="font-normal text-fg-muted">(선택)</span>
+          한마디 <span className="font-normal text-fg-muted">(선택)</span>
         </span>
         <input
           type="text"
           value={department}
           onChange={(e) => setDepartment(e.target.value)}
           maxLength={60}
+          placeholder="소속·직군·자기소개 자유롭게"
           disabled={pending}
           className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm text-fg outline-none focus:border-fg disabled:opacity-50"
         />
