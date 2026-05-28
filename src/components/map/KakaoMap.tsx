@@ -144,6 +144,18 @@ export function KakaoMap({
     };
   }, [map]);
 
+  // 컨테이너 크기 변화 시 kakao 지도 타일 재배치.
+  // detail panel 이 placeholder(300px) ↔ 상세(500px) 로 바뀔 때 map 영역이
+  // 변하는데, relayout 안 부르면 새 영역에 타일이 안 깔려서 회색 배경이 비침.
+  useEffect(() => {
+    if (!map || !containerRef.current) return;
+    const ro = new ResizeObserver(() => {
+      map.relayout();
+    });
+    ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, [map]);
+
   // origin 변경 시 회사 마커 재생성 + 중심 이동
   useEffect(() => {
     if (!map) return;
