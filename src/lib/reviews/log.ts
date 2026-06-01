@@ -25,6 +25,7 @@ export interface LogReviewRow {
     name: string;
     cuisine_types: string[];
     is_closed: boolean;
+    office_id: string | null;
   } | null;
   // 답글일 때 부모 commit 의 hash + 작성자 (별도 select)
   parent: { hash: string; author: { name: string } | null } | null;
@@ -44,7 +45,7 @@ export async function fetchReviewLogPage(
     .select(
       'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
         'author:users!reviews_author_id_fkey ( id, name, avatar_emoji, avatar_color, office_id, primary_badge_code ), ' +
-        'restaurant:restaurants ( id, name, cuisine_types, is_closed )',
+        'restaurant:restaurants ( id, name, cuisine_types, is_closed, office_id )',
     )
     .order('created_at', { ascending: false })
     .limit(limit);

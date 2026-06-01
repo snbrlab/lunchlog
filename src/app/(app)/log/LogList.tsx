@@ -23,7 +23,7 @@ export default function LogList({
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [showReverted, setShowReverted] = useState(false);
   const [query, setQuery] = useState('');
-  // 작성자 근무지 필터 — 'all' 또는 office.id (D46)
+  // 식당 지역 필터 — 'all' / office.id / 'none' (미분류). D72 의미: 작성자 근무지 → 식당 지역
   const [officeFilter, setOfficeFilter] = useState<string>('all');
 
   // D64: keyset 페이지네이션 — 누적 rows + "더 보기"
@@ -58,7 +58,8 @@ export default function LogList({
       if (!showReverted && r.reverted) return false;
       if (meal !== 'all' && r.meal_time !== meal) return false;
       if (cutoff > 0 && new Date(r.created_at).getTime() < cutoff) return false;
-      if (officeFilter !== 'all' && r.author?.office_id !== officeFilter) return false;
+      if (officeFilter === 'none') { if (r.restaurant?.office_id) return false; }
+      else if (officeFilter !== 'all' && r.restaurant?.office_id !== officeFilter) return false;
       if (q) {
         const hay = [
           r.message,
@@ -127,9 +128,9 @@ export default function LogList({
         </label>
       </div>
 
-      {/* 작성자 근무지 필터 (D46) */}
+      {/* 식당 지역 필터 (D72 의미 변경: 작성자 근무지 → 식당 지역) */}
       <div className="flex flex-wrap items-center gap-1">
-        <span className="mr-1 text-[10px] text-fg-muted">작성자 근무지</span>
+        <span className="mr-1 text-[10px] text-fg-muted">지역</span>
         <button
           type="button"
           onClick={() => setOfficeFilter('all')}
@@ -155,6 +156,17 @@ export default function LogList({
             {o.name}
           </button>
         ))}
+        <button
+          type="button"
+          onClick={() => setOfficeFilter('none')}
+          className={`rounded-full px-2 py-0.5 text-[11px] transition ${
+            officeFilter === 'none'
+              ? 'bg-fg text-bg'
+              : 'bg-surface text-fg-muted hover:bg-fg/5'
+          }`}
+        >
+          미분류
+        </button>
       </div>
 
       <div className="text-xs text-fg-muted">
