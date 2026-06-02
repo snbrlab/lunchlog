@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { getCurrentUserOrNull } from '@/lib/auth/current-user';
 import { MealModeToggle } from './MealModeToggle';
+import { NotificationBell } from './NotificationBell';
 import { UserMenu } from './UserMenu';
 
 // 인증된 영역의 공용 헤더 (SPEC 5.1).
@@ -37,6 +38,7 @@ export async function Header() {
           <span className="hidden sm:inline">+ 새 맛집</span>
           <span aria-hidden className="text-base leading-none sm:hidden">＋</span>
         </Link>
+        <NotificationBell />
         <UserMenu
           name={name}
           email={email}
