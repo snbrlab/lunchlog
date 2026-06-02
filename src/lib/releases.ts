@@ -12,6 +12,28 @@ export interface ReleaseItem {
 
 export const RELEASES: ReleaseItem[] = [
   {
+    version: 'D74',
+    hash: 'fb886fb',
+    date: '2026-06-02',
+    title: '소통 강화 — @멘션 + 🔔 알림 모아보기',
+    bullets: [
+      '@닉네임 으로 다른 사람 멘션 — composer 에서 자동완성, 멘션받은 사람에게 알림',
+      '메시지의 @닉네임 부분은 sky 색 chip 으로 시각화',
+      '헤더 🔔 아이콘 — 미확인 / 읽은 알림 최근 20개 모아보기, 미확인 수 뱃지 표시',
+      '"전체 읽음" 한 번에 정리',
+    ],
+  },
+  {
+    version: 'D73',
+    hash: '2f22c31',
+    date: '2026-06-01',
+    title: '지도/Log 보강',
+    bullets: [
+      '지도 사이드바에 "인기순" 정렬 추가 — commit 많은 순으로 정렬',
+      '/log 의 지역 필터를 작성자 근무지 → 식당 지역 기준으로 변경 (어디서 먹은 commit 인지로 분류)',
+    ],
+  },
+  {
     version: 'D70',
     hash: 'ba48f74',
     date: '2026-05-22',
