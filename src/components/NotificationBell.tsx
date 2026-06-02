@@ -9,6 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   BadgeEarnedPayload,
+  MentionPayload,
   NotificationRow,
   RegionChampionPayload,
   ReportCommentPayload,
@@ -281,6 +282,22 @@ function NotificationItem({ note, onClick }: { note: NotificationRow; onClick: (
         <div className="min-w-0 flex-1">
           <p className="text-xs text-fg">
             <span className="font-medium">{p.reply_author_name}</span> 님 답글
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-fg-muted">📍 {p.restaurant_name}</p>
+        </div>
+        {time}
+      </Link>
+    );
+  }
+
+  if (note.type === 'mention') {
+    const p = note.payload as MentionPayload;
+    return (
+      <Link href={`/map?focus=${p.restaurant_id}`} onClick={onClick} className={itemClass}>
+        <span aria-hidden className="text-base leading-none">📣</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-fg">
+            <span className="font-medium">{p.author_name}</span> 님이 멘션
           </p>
           <p className="mt-0.5 truncate text-[11px] text-fg-muted">📍 {p.restaurant_name}</p>
         </div>

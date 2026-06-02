@@ -1,10 +1,34 @@
 'use client';
 
-import { useState, useTransition } from 'react';
+import { useEffect, useRef, useState, useTransition } from 'react';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
 import { generateCommitHash } from '@/lib/hash';
 import { createReview } from '@/lib/reviews/actions';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { MealMode } from '@/types/db';
+
+// D75: @멘션 — 입력 중 "@..." 패턴 감지 → 사용자 typeahead.
+// 한 번 fetch 한 사용자 목록을 module-level 로 캐시 (탭 전환마다 재요청 X).
+let cachedUsers: { id: string; name: string }[] | null = null;
+
+async function fetchUsersOnce() {
+  if (cachedUsers) return cachedUsers;
+  const supabase = createSupabaseBrowserClient();
+  const { data } = await supabase.from('users').select('id, name').order('name').limit(500);
+  cachedUsers = (data ?? []) as { id: string; name: string }[];
+  return cachedUsers;
+}
+
+// 현재 cursor 위치 직전의 @nickname 부분 (있으면) 추출. 없으면 null.
+function detectMention(value: string, caret: number): { start: number; query: string } | null {
+  // caret 직전부터 거꾸로 — @ 만나기 전까지 [\w가-힣] 만 허용
+  let i = caret - 1;
+  while (i >= 0 && /[\w가-힣]/.test(value[i]!)) i--;
+  if (i < 0 || value[i] !== '@') return null;
+  // @ 앞은 공백/문장시작/구두점이어야 함 (이메일 등 오탐 방지)
+  if (i > 0 && /[\w가-힣@]/.test(value[i - 1]!)) return null;
+  return { start: i, query: value.slice(i + 1, caret) };
+}
 
 // 부모에 group 클래스 박혀있을 때 hover 시 위에 띄우는 작은 라벨.
 function Tooltip({ children }: { children: React.ReactNode }) {
@@ -40,10 +64,69 @@ export function ReviewComposer({ restaurantId, onCreated, replyTo, onCancelReply
   const [mealTime, setMealTime] = useState<MealMode>(mode);
   const [partySize, setPartySize] = useState<string>(''); // 빈 문자열 = 안 적음
   const [pending, startTransition] = useTransition();
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // D75: @멘션 typeahead
+  const [users, setUsers] = useState<{ id: string; name: string }[]>([]);
+  const [mention, setMention] = useState<{ start: number; query: string } | null>(null);
+  const [mentionIdx, setMentionIdx] = useState(0);
+  useEffect(() => {
+    fetchUsersOnce().then(setUsers);
+  }, []);
+  const mentionMatches = mention
+    ? users
+        .filter((u) => u.name.toLowerCase().includes(mention.query.toLowerCase()))
+        .slice(0, 5)
+    : [];
 
   // 사용자가 명시적 토글 안 했을 때 점심/저녁 모드 변경에 따라가도록 — 명시적 변경 후엔 고정.
   const [touched, setTouched] = useState(false);
   if (!touched && mealTime !== mode) setMealTime(mode);
+
+  function onMessageChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const v = e.target.value;
+    setMessage(v);
+    const caret = e.target.selectionStart ?? v.length;
+    const m = detectMention(v, caret);
+    setMention(m);
+    setMentionIdx(0);
+  }
+
+  function pickMention(name: string) {
+    if (!mention) return;
+    const before = message.slice(0, mention.start);
+    const after = message.slice(mention.start + 1 + mention.query.length);
+    // 닉네임에 공백 있으면 underscore 로 join — 트리거 정규식이 공백 없는 chunk 만 매칭하므로
+    const safe = name.replace(/\s+/g, '_');
+    const newValue = `${before}@${safe} ${after}`;
+    setMessage(newValue);
+    setMention(null);
+    // cursor 를 멘션 직후로 이동
+    const newCaret = before.length + 1 + safe.length + 1;
+    setTimeout(() => {
+      inputRef.current?.setSelectionRange(newCaret, newCaret);
+      inputRef.current?.focus();
+    }, 0);
+  }
+
+  function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (!mention || mentionMatches.length === 0) return;
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setMentionIdx((i) => (i + 1) % mentionMatches.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setMentionIdx((i) => (i - 1 + mentionMatches.length) % mentionMatches.length);
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+      const pick = mentionMatches[mentionIdx];
+      if (pick) {
+        e.preventDefault();
+        pickMention(pick.name);
+      }
+    } else if (e.key === 'Escape') {
+      setMention(null);
+    }
+  }
 
   function onSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -101,16 +184,43 @@ export function ReviewComposer({ restaurantId, onCreated, replyTo, onCancelReply
         onSubmit={onSubmit}
         className="flex flex-wrap items-stretch gap-2 px-5 py-2.5 max-sm:gap-y-1.5"
       >
-        <input
-          type="text"
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-          placeholder={replyTo ? `${replyTo.authorName} 의 commit 에 답글…` : '한 줄 리뷰…'}
-          maxLength={MAX}
-          disabled={pending}
-          className="min-w-0 flex-1 basis-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted/70 outline-none transition focus:border-fg disabled:opacity-50 sm:basis-0"
-          aria-label="리뷰 메시지"
-        />
+        <div className="relative min-w-0 flex-1 basis-full sm:basis-0">
+          <input
+            ref={inputRef}
+            type="text"
+            value={message}
+            onChange={onMessageChange}
+            onKeyDown={onKeyDown}
+            onBlur={() => setTimeout(() => setMention(null), 150)}
+            placeholder={replyTo ? `${replyTo.authorName} 의 commit 에 답글…` : '한 줄 리뷰… (@닉네임 으로 멘션)'}
+            maxLength={MAX}
+            disabled={pending}
+            className="w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-fg placeholder:text-fg-muted/70 outline-none transition focus:border-fg disabled:opacity-50"
+            aria-label="리뷰 메시지"
+          />
+          {mention && mentionMatches.length > 0 && (
+            <ul
+              role="listbox"
+              className="absolute bottom-full left-0 z-20 mb-1 w-full max-w-xs rounded-md border border-border bg-bg shadow-lg ring-1 ring-black/5"
+            >
+              {mentionMatches.map((u, i) => (
+                <li key={u.id}>
+                  <button
+                    type="button"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => pickMention(u.name)}
+                    className={`flex w-full items-center gap-2 px-3 py-1.5 text-left text-xs transition ${
+                      i === mentionIdx ? 'bg-fg/10' : 'hover:bg-fg/5'
+                    }`}
+                  >
+                    <span aria-hidden className="text-fg-muted">@</span>
+                    <span className="font-medium text-fg">{u.name}</span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
 
       {/* 방문 인원 (선택) */}
       <div className="group relative">

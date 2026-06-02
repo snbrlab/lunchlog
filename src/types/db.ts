@@ -125,7 +125,8 @@ export type NotificationType =
   | 'report_new'
   | 'report_comment'
   | 'badge_earned'
-  | 'region_champion';
+  | 'region_champion'
+  | 'mention';
 
 export interface ReportUpdatePayload {
   report_id: string;
@@ -181,6 +182,17 @@ export interface RegionChampionPayload {
   commit_count: number;
 }
 
+// D75: @user 멘션
+export interface MentionPayload {
+  review_id: string;
+  hash: string;
+  author_id: string;
+  author_name: string;
+  restaurant_id: string;
+  restaurant_name: string;
+  message: string;
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
@@ -192,7 +204,8 @@ export interface NotificationRow {
     | ReportNewPayload
     | ReportCommentPayload
     | BadgeEarnedPayload
-    | RegionChampionPayload;
+    | RegionChampionPayload
+    | MentionPayload;
   read_at: string | null;
   created_at: string;
 }

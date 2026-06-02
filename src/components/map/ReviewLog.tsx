@@ -8,6 +8,29 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { deleteReview, revertReview, setReviewMealTime } from '@/lib/reviews/actions';
 import type { MealMode, Review } from '@/types/db';
 
+// D75: @nickname 패턴을 chip 형태로 렌더. 트리거 정규식과 동일한 [\w가-힣]+ 매칭.
+function renderMessageWithMentions(text: string): React.ReactNode[] {
+  const parts: React.ReactNode[] = [];
+  const re = /@([\w가-힣]+)/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  let i = 0;
+  while ((m = re.exec(text)) !== null) {
+    if (m.index > last) parts.push(text.slice(last, m.index));
+    parts.push(
+      <span
+        key={`mention-${i++}`}
+        className="rounded bg-sky-100 px-1 py-0.5 text-[0.95em] font-medium text-sky-800"
+      >
+        @{m[1]}
+      </span>,
+    );
+    last = m.index + m[0].length;
+  }
+  if (last < text.length) parts.push(text.slice(last));
+  return parts;
+}
+
 type AuthorMeta = {
   id: string;
   name: string;
@@ -453,7 +476,7 @@ function ReviewRow({
             review.reverted ? 'text-fg-muted line-through' : 'text-fg'
           }`}
         >
-          {review.message}
+          {renderMessageWithMentions(review.message)}
         </p>
       </div>
     </div>

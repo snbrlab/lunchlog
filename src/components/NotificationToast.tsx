@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
   BadgeEarnedPayload,
+  MentionPayload,
   NotificationRow,
   RegionChampionPayload,
   ReportCommentPayload,
@@ -295,6 +296,39 @@ function ToastCard({
               📍 {p.restaurant_name}
             </p>
             <p className="mt-1.5 line-clamp-2 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-fg">
+              {p.message}
+            </p>
+          </div>
+          <DismissButton
+            onDismiss={(e) => {
+              e?.preventDefault();
+              e?.stopPropagation();
+              onDismiss();
+            }}
+          />
+        </div>
+      </Link>
+    );
+  }
+
+  if (note.type === 'mention') {
+    const p = note.payload as MentionPayload;
+    return (
+      <Link
+        href={`/map?focus=${p.restaurant_id}`}
+        onClick={onDismiss}
+        className="block rounded-lg border border-sky-300 bg-sky-50 p-3 shadow-lg ring-1 ring-black/5 transition hover:border-sky-400"
+      >
+        <div className="flex items-start gap-2">
+          <span aria-hidden className="text-base">📣</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-sky-900">
+              <span className="font-medium">{p.author_name}</span> 님이 멘션했어요
+            </p>
+            <p className="mt-0.5 text-[11px] text-sky-800/80">
+              📍 {p.restaurant_name}
+            </p>
+            <p className="mt-1.5 line-clamp-2 rounded-md border border-sky-200 bg-white px-2 py-1.5 text-xs text-fg">
               {p.message}
             </p>
           </div>
