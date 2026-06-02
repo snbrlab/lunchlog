@@ -62,8 +62,10 @@ export function RestaurantSidebar({
 
   const items = useMemo(() => {
     const q = query.trim().toLowerCase();
+    const searching = q.length > 0;
+    // D76: 검색어 있으면 mode 필터 해제 — "내가 아는 그곳" 찾기 의도가 mode 보다 우선.
     return restaurants
-      .filter((r) => r.categories.includes(mode))
+      .filter((r) => (searching ? true : r.categories.includes(mode)))
       .filter((r) => (includeClosed ? true : !r.is_closed))
       .filter((r) => (onlyAlcohol ? r.has_alcohol : true))
       .filter((r) => {
@@ -92,7 +94,9 @@ export function RestaurantSidebar({
       })
       .map((r) => {
         const meters = haversineDistanceMeters(origin, { lat: r.latitude, lng: r.longitude });
-        return { r, meters, travel: travelInfo(meters) };
+        // 검색 결과 중 현재 mode 와 다른 식당 표시용
+        const outOfMode = searching && !r.categories.includes(mode);
+        return { r, meters, travel: travelInfo(meters), outOfMode };
       })
       .sort((a, b) =>
         sortMode === 'commits'
@@ -205,8 +209,14 @@ export function RestaurantSidebar({
             우상단 “+ 새 맛집” 으로 추가해주세요.
           </li>
         )}
-        {items.map(({ r, meters, travel }) => {
+        {items.map(({ r, meters, travel, outOfMode }) => {
           const selected = r.id === selectedId;
+          // 검색 결과 중 다른 mode 식당의 chip — 점심/저녁 표시
+          const otherModeLabel = outOfMode
+            ? r.categories.includes('lunch')
+              ? '☀ 점심만'
+              : '🌙 저녁만'
+            : null;
           return (
             <li key={r.id}>
               <button
@@ -241,6 +251,11 @@ export function RestaurantSidebar({
                     {r.is_closed && (
                       <span className="ml-1.5 rounded bg-fg/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-fg-muted">
                         폐업
+                      </span>
+                    )}
+                    {otherModeLabel && (
+                      <span className="ml-1.5 rounded bg-sky-100 px-1.5 py-0.5 text-[9px] font-semibold text-sky-800">
+                        {otherModeLabel}
                       </span>
                     )}
                   </p>
