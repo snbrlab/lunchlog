@@ -128,7 +128,7 @@ export function NotificationBell() {
         <div
           role="dialog"
           aria-label="알림 목록"
-          className="absolute right-0 top-full z-50 mt-2 w-[min(360px,90vw)] max-h-[70vh] overflow-hidden rounded-lg border border-border bg-bg shadow-xl ring-1 ring-black/5"
+          className="fixed right-2 top-[3.5rem] z-50 mt-1 w-[min(360px,calc(100vw-1rem))] max-h-[70vh] overflow-hidden rounded-lg border border-border bg-bg shadow-xl ring-1 ring-black/5"
         >
           <header className="flex items-center justify-between border-b border-border px-3 py-2">
             <p className="text-xs font-semibold text-fg">알림</p>

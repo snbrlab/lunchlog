@@ -57,8 +57,13 @@ export default function MapShell({
     if (selectedId) setSidebarOpen(false);
   }, [selectedId]);
 
+  // 모바일에서 사이드바 열리면 detail panel 도 닫음 (둘이 한 화면에서 겹치지 않게)
+  useEffect(() => {
+    if (sidebarOpen) setSelectedId(null);
+  }, [sidebarOpen]);
+
   return (
-    <div className="relative flex h-[calc(100dvh-6rem)] overflow-hidden">
+    <div className="relative flex h-[calc(100dvh-5rem)] overflow-hidden">
       {/* 사이드바 — 데스크탑은 항상 보임. 모바일은 fixed overlay */}
       <div
         className={`absolute inset-y-0 left-0 z-30 transition-transform duration-300 lg:static lg:translate-x-0 ${
