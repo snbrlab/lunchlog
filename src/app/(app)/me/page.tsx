@@ -242,7 +242,7 @@ export default async function MePage() {
 
       {/* D78: cuisine languages bar — 어떤 음식 그룹에 얼마나 commit 했는지 */}
       <section className="mb-8 rounded-lg border border-border bg-surface p-4">
-        <h2 className="mb-3 text-sm font-medium text-fg">📊 음식 분포</h2>
+        <h2 className="mb-3 text-sm font-medium text-fg">🥢 입맛 분포</h2>
         <CuisineLanguageBar
           slices={cuisineSlices}
           total={cuisineTotal}
