@@ -70,14 +70,16 @@ export default function ReactionBar({
     });
   }
 
-  // compact: 칩 작게, 마진 작게 (우측 정렬은 부모가 처리)
+  // compact: 칩 크기 적당히 (너무 작으면 모바일에서 emoji 잘림). leading-tight 으로 vertical 여유.
   const chipCls = compact
-    ? 'flex items-center gap-0.5 rounded-full border px-1.5 py-px text-[10px] transition disabled:opacity-50'
+    ? 'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs leading-tight transition disabled:opacity-50'
     : 'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition disabled:opacity-50';
-  const countCls = compact ? 'font-mono text-[9px]' : 'font-mono text-[10px]';
-  const wrapCls = compact ? 'flex flex-wrap items-center gap-0.5' : 'mt-1.5 flex flex-wrap items-center gap-1';
+  const countCls = 'font-mono text-[10px]';
+  const wrapCls = compact ? 'flex flex-wrap items-center gap-1' : 'mt-1.5 flex flex-wrap items-center gap-1';
+  // compact 의 + 버튼은 데스크탑에선 기본 숨김 — 부모(.group) hover/focus 시에만 표시.
+  // 모바일은 항상 표시 (hover 가 없으므로). lg: prefix 가 데스크탑 분기.
   const addCls = compact
-    ? 'rounded-full border border-dashed border-border px-1.5 py-px text-[10px] text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50'
+    ? 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs leading-tight text-fg-muted transition-opacity hover:border-fg/40 hover:text-fg disabled:opacity-50 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100'
     : 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50';
 
   return (
