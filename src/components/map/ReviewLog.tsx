@@ -127,7 +127,8 @@ export function ReviewLog({
           'id, restaurant_id, author_id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, edited_at, ' +
             'author:users!reviews_author_id_fkey ( id, name, avatar_color, avatar_emoji ), ' +
             // D79: reactions join — 한 commit 의 모든 reaction. 사용자 이름까지 같이 가져옴 (호버 popover 용).
-            'reactions:review_reactions ( emoji, user_id, user:users!review_reactions_user_id_fkey ( name ) )',
+            // constraint 이름 명시하지 않고 PostgREST 자동 추론 — review_reactions 의 user_id FK 가 user 하나뿐이라 안전.
+            'reactions:review_reactions ( emoji, user_id, user:users ( name ) )',
         )
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false });

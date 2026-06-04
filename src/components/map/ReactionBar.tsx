@@ -28,7 +28,9 @@ export default function ReactionBar({ reviewId, reactions, currentUserId, onChan
   // emoji 별로 그룹화 — count, 내가 눌렀는지, 누른 사람 이름들
   const grouped = useMemo(() => {
     const map = new Map<string, { count: number; mine: boolean; names: string[] }>();
-    for (const r of reactions) {
+    // 방어적: reactions 가 array 가 아닐 경우 (마이그레이션 안 됐거나 stale cache) 빈 배열로
+    const rows = Array.isArray(reactions) ? reactions : [];
+    for (const r of rows) {
       const cur = map.get(r.emoji) ?? { count: 0, mine: false, names: [] };
       cur.count++;
       if (r.user_id === currentUserId) cur.mine = true;
