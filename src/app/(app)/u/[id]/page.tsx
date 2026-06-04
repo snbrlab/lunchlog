@@ -6,7 +6,10 @@ import { formatRelativeTime } from '@/lib/format-time';
 import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { BadgeGrid } from '@/components/badges/BadgeGrid';
 import { RegionCrowns } from '@/components/badges/RegionCrown';
+import { CuisineLanguageBar, buildCuisineSlices } from '@/components/CuisineLanguageBar';
 import { aggregateCounts } from '@/lib/heatmap';
+import { findCuisineGroup } from '@/lib/cuisine';
+import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -54,12 +57,15 @@ export default async function UserProfilePage({ params }: PageProps) {
   oneYearAgo.setFullYear(oneYearAgo.getFullYear() - 1);
 
   const [
+    cuisineItems,
     { data: reviews },
     { data: favorites },
     { data: heatmapRows },
     { data: badgeRows },
     { data: crownRows },
+    { data: cuisineReviews },
   ] = await Promise.all([
+    getCachedCuisineItems(),
     supabase
       .from('reviews')
       .select(
@@ -87,6 +93,12 @@ export default async function UserProfilePage({ params }: PageProps) {
       .from('region_champions')
       .select('office_id, since_at, office:offices ( name )')
       .eq('user_id', profile.id),
+    // D78: 입맛 분포 — 이 사람 전체 (revert 안 한) commit 의 식당 cuisine_types
+    supabase
+      .from('reviews')
+      .select('restaurant:restaurants!reviews_restaurant_id_fkey ( cuisine_types )')
+      .eq('author_id', profile.id)
+      .eq('reverted', false),
   ]);
   const badgeCodes = ((badgeRows ?? []) as { code: string }[]).map((b) => b.code);
   const crowns = (
@@ -128,6 +140,16 @@ export default async function UserProfilePage({ params }: PageProps) {
       commit_count: number;
     } | null;
   }>;
+
+  // D78: 입맛 분포 — 첫 cuisine_type 만 추출해서 그룹 카운트
+  const cuisineRows = ((cuisineReviews ?? []) as unknown) as Array<{
+    restaurant: { cuisine_types: string[] | null } | null;
+  }>;
+  const primaryCuisines = cuisineRows.map((r) => r.restaurant?.cuisine_types?.[0] ?? null);
+  const { slices: cuisineSlices, total: cuisineTotal } = buildCuisineSlices(
+    primaryCuisines,
+    (v) => findCuisineGroup(v, cuisineItems),
+  );
 
   return (
     <main className="mx-auto w-full max-w-xl flex-1 px-5 py-8">
@@ -181,6 +203,16 @@ export default async function UserProfilePage({ params }: PageProps) {
       <section className="mb-6 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-3 text-sm font-medium text-fg">🌱 활동</h2>
         <ActivityHeatmap counts={heatmapCounts} />
+      </section>
+
+      {/* D78: 입맛 분포 */}
+      <section className="mb-6 rounded-lg border border-border bg-surface p-4">
+        <h2 className="mb-3 text-sm font-medium text-fg">🥢 입맛 분포</h2>
+        <CuisineLanguageBar
+          slices={cuisineSlices}
+          total={cuisineTotal}
+          caption={cuisineTotal > 0 ? `전체 ${cuisineTotal}개 commit 기준 (revert 제외)` : undefined}
+        />
       </section>
 
       {/* D70: 받은 뱃지 (잠긴 거 X) */}
