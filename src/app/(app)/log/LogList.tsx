@@ -311,6 +311,7 @@ function LogItem({
             currentUserId={currentUserId}
             onChanged={refetchReactions}
             compact
+            hideAddByDefault
             forceShowAdd={active}
           />
           <span className="ml-auto whitespace-nowrap">{formatRelativeTime(created)}</span>

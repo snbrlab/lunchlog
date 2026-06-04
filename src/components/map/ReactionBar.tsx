@@ -18,9 +18,12 @@ interface Props {
   currentUserId: string;
   // 토글 후 부모에 알려서 refetch 트리거.
   onChanged: () => void;
-  // /log 처럼 공간 절약이 필요한 곳: 칩 작게, 우측정렬은 부모가 처리.
+  // 칩/버튼 크기 축소.
   compact?: boolean;
-  // 모바일에서 + 버튼을 강제 표시 (tap 으로 active 됐을 때).
+  // 평소엔 + 버튼 숨기고, 데스크탑 hover 또는 forceShowAdd (모바일 tap 활성화) 시에만 표시.
+  // 평소에도 보이게 하려면 false. /log 는 true, 디테일 패널은 false 권장.
+  hideAddByDefault?: boolean;
+  // hideAddByDefault 와 함께 — 모바일에서 강제 표시 (tap active 시).
   forceShowAdd?: boolean;
 }
 
@@ -30,6 +33,7 @@ export default function ReactionBar({
   currentUserId,
   onChanged,
   compact = false,
+  hideAddByDefault = false,
   forceShowAdd = false,
 }: Props) {
   const [pending, startTransition] = useTransition();
@@ -85,9 +89,9 @@ export default function ReactionBar({
   const addBase = compact
     ? 'inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-sm leading-none text-fg-muted transition-opacity hover:border-fg/40 hover:text-fg disabled:opacity-50'
     : 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50';
-  const addVisibility = compact
+  const addVisibility = hideAddByDefault
     ? forceShowAdd
-      ? '' // 강제 표시
+      ? '' // 강제 표시 (모바일 tap 활성화)
       : 'hidden lg:inline-block lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100'
     : '';
   const addCls = `${addBase} ${addVisibility}`;

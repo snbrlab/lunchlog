@@ -456,6 +456,14 @@ function ReviewRow({
               👥{review.party_size}
             </span>
           )}
+          {/* D79: reaction 을 meta 줄 인원수 뒤 inline 으로 배치 (자체 줄 차지 X). compact 칩. */}
+          <ReactionBar
+            reviewId={review.id}
+            reactions={review.reactions}
+            currentUserId={currentUserId}
+            onChanged={onReactionChanged}
+            compact
+          />
           {review.reverted && (
             <span className="rounded bg-fg/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-fg-muted">
               REVERTED
@@ -504,12 +512,6 @@ function ReviewRow({
         >
           {renderMessageWithMentions(review.message)}
         </p>
-        <ReactionBar
-          reviewId={review.id}
-          reactions={review.reactions}
-          currentUserId={currentUserId}
-          onChanged={onReactionChanged}
-        />
       </div>
     </div>
   );
