@@ -29,6 +29,8 @@ export interface LogReviewRow {
   } | null;
   // 답글일 때 부모 commit 의 hash + 작성자 (별도 select)
   parent: { hash: string; author: { name: string } | null } | null;
+  // D79: commit 에 달린 reaction 목록 + 누른 사람 이름
+  reactions: { emoji: string; user_id: string; user: { name: string } | null }[];
 }
 
 export const LOG_PAGE_SIZE = 100;
@@ -45,7 +47,9 @@ export async function fetchReviewLogPage(
     .select(
       'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
         'author:users!reviews_author_id_fkey ( id, name, avatar_emoji, avatar_color, office_id, primary_badge_code ), ' +
-        'restaurant:restaurants ( id, name, cuisine_types, is_closed, office_id )',
+        'restaurant:restaurants ( id, name, cuisine_types, is_closed, office_id ), ' +
+        // D79: reactions + 누른 사람 이름
+        'reactions:review_reactions ( emoji, user_id, user:users ( name ) )',
     )
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -80,5 +84,7 @@ export async function fetchReviewLogPage(
           author: parentMap.get(r.parent_review_id)!.author,
         }
       : null,
+    // D79: reactions 배열 보장 (null/undefined → 빈 배열)
+    reactions: Array.isArray(r.reactions) ? r.reactions : [],
   }));
 }

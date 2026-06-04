@@ -7,6 +7,8 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
 import { loadMoreReviewLog } from './actions';
 import { BadgeChip } from '@/components/badges/BadgeChip';
+import ReactionBar from '@/components/map/ReactionBar';
+import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { Office } from '@/types/db';
 
 type MealFilter = 'all' | 'lunch' | 'dinner';
@@ -15,9 +17,11 @@ type DateRange = 'all' | '7d' | '30d';
 export default function LogList({
   initialRows,
   offices,
+  currentUserId,
 }: {
   initialRows: LogReviewRow[];
   offices: Office[];
+  currentUserId: string;
 }) {
   const [meal, setMeal] = useState<MealFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange>('all');
@@ -179,7 +183,7 @@ export default function LogList({
           <li className="px-4 py-10 text-center text-sm text-fg-muted">조건에 맞는 commit 이 없어요</li>
         )}
         {filtered.map((r) => (
-          <LogItem key={r.id} row={r} />
+          <LogItem key={r.id} row={r} currentUserId={currentUserId} />
         ))}
       </ol>
 
@@ -205,8 +209,19 @@ export default function LogList({
   );
 }
 
-function LogItem({ row }: { row: LogReviewRow }) {
+function LogItem({ row, currentUserId }: { row: LogReviewRow; currentUserId: string }) {
   const created = new Date(row.created_at);
+  // D79: 이 row 의 reactions 만 local state — 다른 row 갱신 없이 단일 row refetch 가능
+  const [reactions, setReactions] = useState(row.reactions);
+
+  async function refetchReactions() {
+    const supabase = createSupabaseBrowserClient();
+    const { data } = await supabase
+      .from('review_reactions')
+      .select('emoji, user_id, user:users ( name )')
+      .eq('review_id', row.id);
+    setReactions(((data ?? []) as unknown) as typeof row.reactions);
+  }
   const authorName = row.author?.name ?? '(알수없음)';
   const authorEmoji = resolveAvatarEmoji(row.author?.avatar_emoji ?? null, authorName + row.id);
   const authorColor = row.author?.avatar_color ?? '#fde68a';
@@ -279,6 +294,12 @@ function LogItem({ row }: { row: LogReviewRow }) {
             {row.parent.author?.name && <> · {row.parent.author.name}</>} 의 commit 에 답글
           </p>
         )}
+        <ReactionBar
+          reviewId={row.id}
+          reactions={reactions}
+          currentUserId={currentUserId}
+          onChanged={refetchReactions}
+        />
       </div>
     </li>
   );
