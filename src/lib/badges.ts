@@ -34,9 +34,9 @@ export const BADGES: readonly BadgeMeta[] = [
   { code: 'streak_100', emoji: '🐻', label: '마늘 대신 커밋 먹고 사람 됨',   axis: 'streak', tier: 4, threshold: 100, unit: '일 streak', description: '쑥과 마늘 대신 commit 100일' },
 
   // C. 개척
-  { code: 'pioneer_3',  emoji: '🗺️', label: '탐험가',                       axis: 'pioneer', tier: 1, threshold: 3,  unit: '곳', description: '혼자만 깃발 꽂은 곳 3개 — 발자국' },
+  { code: 'pioneer_3',  emoji: '🚩', label: '탐험가',                       axis: 'pioneer', tier: 1, threshold: 3,  unit: '곳', description: '혼자만 깃발 꽂은 곳 3개 — 발자국' },
   { code: 'pioneer_10', emoji: '🧭', label: '개척자',                       axis: 'pioneer', tier: 2, threshold: 10, unit: '곳', description: '아무도 모르는 곳 10개 발견' },
-  { code: 'pioneer_50', emoji: '👑', label: '맛집 영주 (이 구역은 내 땅)',  axis: 'pioneer', tier: 3, threshold: 50, unit: '곳', description: '50곳 단독 깃발 — 이 구역은 내 땅' },
+  { code: 'pioneer_50', emoji: '👑', label: '이 구역은 내 땅',               axis: 'pioneer', tier: 3, threshold: 50, unit: '곳', description: '50곳 단독 깃발 — 이 구역은 내 땅' },
 
   // E. 다양성
   { code: 'cuisines_5',  emoji: '🗺️', label: '편식은 안 해요',             axis: 'cuisines', tier: 1, threshold: 5,  unit: '그룹', description: '5개 cuisine 그룹 경험 — 편식 X' },
