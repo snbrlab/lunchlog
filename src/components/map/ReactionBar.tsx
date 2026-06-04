@@ -18,9 +18,17 @@ interface Props {
   currentUserId: string;
   // 토글 후 부모에 알려서 refetch 트리거.
   onChanged: () => void;
+  // /log 처럼 공간 절약이 필요한 곳: 칩 작게, 우측정렬은 부모가 처리.
+  compact?: boolean;
 }
 
-export default function ReactionBar({ reviewId, reactions, currentUserId, onChanged }: Props) {
+export default function ReactionBar({
+  reviewId,
+  reactions,
+  currentUserId,
+  onChanged,
+  compact = false,
+}: Props) {
   const [pending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
   // 어떤 emoji 의 popover 가 열려있는지 (누른 사람 목록)
@@ -62,8 +70,18 @@ export default function ReactionBar({ reviewId, reactions, currentUserId, onChan
     });
   }
 
+  // compact: 칩 작게, 마진 작게 (우측 정렬은 부모가 처리)
+  const chipCls = compact
+    ? 'flex items-center gap-0.5 rounded-full border px-1.5 py-px text-[10px] transition disabled:opacity-50'
+    : 'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition disabled:opacity-50';
+  const countCls = compact ? 'font-mono text-[9px]' : 'font-mono text-[10px]';
+  const wrapCls = compact ? 'flex flex-wrap items-center gap-0.5' : 'mt-1.5 flex flex-wrap items-center gap-1';
+  const addCls = compact
+    ? 'rounded-full border border-dashed border-border px-1.5 py-px text-[10px] text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50'
+    : 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50';
+
   return (
-    <div className="mt-1.5 flex flex-wrap items-center gap-1">
+    <div className={wrapCls}>
       {grouped.map(({ emoji, info }) => (
         <div key={emoji} className="relative">
           <button
@@ -73,14 +91,14 @@ export default function ReactionBar({ reviewId, reactions, currentUserId, onChan
             onMouseLeave={() => setOpenPopover(null)}
             disabled={pending}
             title={info.mine ? '클릭하면 취소' : '클릭하면 추가'}
-            className={`flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition disabled:opacity-50 ${
+            className={`${chipCls} ${
               info.mine
                 ? 'border-amber-400 bg-amber-50 text-amber-900'
                 : 'border-border bg-surface text-fg-muted hover:border-fg/40 hover:text-fg'
             }`}
           >
             <span aria-hidden>{emoji}</span>
-            <span className="font-mono text-[10px]">{info.count}</span>
+            <span className={countCls}>{info.count}</span>
           </button>
           {/* 호버 시 누른 사람 목록 popover */}
           {openPopover === emoji && info.names.length > 0 && (
@@ -99,7 +117,7 @@ export default function ReactionBar({ reviewId, reactions, currentUserId, onChan
           onClick={() => setPickerOpen((o) => !o)}
           disabled={pending}
           aria-label="반응 추가"
-          className="rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50"
+          className={addCls}
         >
           😊+
         </button>

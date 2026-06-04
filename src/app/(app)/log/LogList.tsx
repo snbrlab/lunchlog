@@ -294,12 +294,16 @@ function LogItem({ row, currentUserId }: { row: LogReviewRow; currentUserId: str
             {row.parent.author?.name && <> · {row.parent.author.name}</>} 의 commit 에 답글
           </p>
         )}
-        <ReactionBar
-          reviewId={row.id}
-          reactions={reactions}
-          currentUserId={currentUserId}
-          onChanged={refetchReactions}
-        />
+        {/* D79: /log 는 공간 절약 — 우측 정렬 + compact 칩 */}
+        <div className="mt-1 flex justify-end">
+          <ReactionBar
+            reviewId={row.id}
+            reactions={reactions}
+            currentUserId={currentUserId}
+            onChanged={refetchReactions}
+            compact
+          />
+        </div>
       </div>
     </li>
   );
