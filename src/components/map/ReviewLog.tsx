@@ -89,6 +89,8 @@ export function ReviewLog({
   const [filter, setFilter] = useState<'all' | MealMode>('all');
   const [pendingMutateId, setPendingMutateId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
+  // D79: 모바일 reaction + 버튼 활성화 row (hover 가 없으니 tap 으로 active)
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   // D55: refreshKey 가 증가한 사이클이면 해당 식당의 캐시 무효화 (mutate 후 fresh)
   const lastRefreshKeyRef = useRef(refreshKey);
@@ -285,6 +287,8 @@ export function ReviewLog({
             onToggleMeal={onToggleMeal}
             onReply={onReply}
             onReactionChanged={onMutated}
+            activeId={activeId}
+            onActivate={(id) => setActiveId((cur) => (cur === id ? null : id))}
           />
         ))}
       </ol>
@@ -303,6 +307,8 @@ function ReviewItem({
   onToggleMeal,
   onReply,
   onReactionChanged,
+  activeId,
+  onActivate,
 }: {
   root: EnrichedReview;
   replies: EnrichedReview[];
@@ -314,6 +320,8 @@ function ReviewItem({
   onToggleMeal: (id: string, current: MealMode) => void;
   onReply?: (review: { id: string; hash: string; authorName: string }) => void;
   onReactionChanged: () => void;
+  activeId: string | null;
+  onActivate: (id: string) => void;
 }) {
   return (
     <li>
@@ -339,6 +347,8 @@ function ReviewItem({
               : undefined
           }
           onReactionChanged={onReactionChanged}
+          active={activeId === root.id}
+          onActivate={() => onActivate(root.id)}
         />
         {replies.map((reply) => (
           <ReviewRow
@@ -354,6 +364,8 @@ function ReviewItem({
             // 1-level 만 허용 — branch 에는 답글 못 다는 게 정책
             onReply={undefined}
             onReactionChanged={onReactionChanged}
+            active={activeId === reply.id}
+            onActivate={() => onActivate(reply.id)}
           />
         ))}
       </div>
@@ -372,6 +384,8 @@ function ReviewRow({
   onToggleMeal,
   onReply,
   onReactionChanged,
+  active,
+  onActivate,
 }: {
   review: EnrichedReview;
   isBranch: boolean;
@@ -383,7 +397,15 @@ function ReviewRow({
   onToggleMeal: () => void;
   onReply?: () => void;
   onReactionChanged: () => void;
+  active: boolean;
+  onActivate: () => void;
 }) {
+  // 모바일: row 의 non-link 영역 탭 시 + 버튼 활성화
+  function onRowClick(e: React.MouseEvent<HTMLDivElement>) {
+    const t = e.target as HTMLElement;
+    if (t.closest('a, button, [role="button"]')) return;
+    onActivate();
+  }
   const created = new Date(review.created_at);
   const ageDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
   const dotColor = ageDays <= FRESH_DAYS ? 'bg-fresh' : 'bg-stale';
@@ -399,7 +421,10 @@ function ReviewRow({
   const authorColor = review.author?.avatar_color ?? '#fde68a';
 
   return (
-    <div className={`relative flex gap-2.5 py-2 ${isBranch ? 'pl-6' : ''}`}>
+    <div
+      onClick={onRowClick}
+      className={`group relative flex cursor-default gap-2.5 py-2 ${isBranch ? 'pl-6' : ''}`}
+    >
       {isBranch && (
         <span
           aria-hidden
@@ -456,13 +481,15 @@ function ReviewRow({
               👥{review.party_size}
             </span>
           )}
-          {/* D79: reaction 을 meta 줄 인원수 뒤 inline 으로 배치 (자체 줄 차지 X). compact 칩. */}
+          {/* D79: reaction 인라인. + 는 평소 숨김, 데스크탑 hover or 모바일 tap 활성화 시 표시. */}
           <ReactionBar
             reviewId={review.id}
             reactions={review.reactions}
             currentUserId={currentUserId}
             onChanged={onReactionChanged}
             compact
+            hideAddByDefault
+            forceShowAdd={active}
           />
           {review.reverted && (
             <span className="rounded bg-fg/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-fg-muted">
