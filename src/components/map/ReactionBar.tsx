@@ -1,7 +1,8 @@
 'use client';
 
 import { useMemo, useState, useTransition } from 'react';
-import { REACTION_EMOJIS, toggleReaction } from '@/lib/reviews/reactions';
+import { REACTION_EMOJIS } from '@/lib/reviews/reactions-meta';
+import { toggleReaction } from '@/lib/reviews/reactions';
 
 // review 에 달린 reaction 한 row (DB select 결과 그대로).
 export interface ReactionRow {

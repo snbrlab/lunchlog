@@ -1,10 +1,7 @@
 'use server';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-
-// D79: review reactions — 화이트리스트 6개. DB check 와 일치 유지.
-export const REACTION_EMOJIS = ['❤️', '🤤', '🔥', '😋', '👀', '💯'] as const;
-export type ReactionEmoji = (typeof REACTION_EMOJIS)[number];
+import { REACTION_EMOJIS } from './reactions-meta';
 
 export type ToggleReactionResult =
   | { ok: true; action: 'added' | 'removed' }
