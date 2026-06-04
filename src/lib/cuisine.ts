@@ -6,25 +6,27 @@ export interface CuisineGroupMeta {
   label: string;
   emoji: string;
   order: number;
+  // D78: GitHub languages bar 스타일 차트용 색. 그룹별 명확히 구분되는 톤.
+  color: string;
 }
 
 // 그룹 정의는 코드에 고정. admin 은 아이템만 추가/수정 가능 (D61).
 // order 는 display 순서. 표시할 그룹 자체는 cuisine_items 의 group_label 과 매칭되는 것만.
 export const CUISINE_GROUP_META: readonly CuisineGroupMeta[] = [
-  { label: '한식', emoji: '🍚', order: 1 },
-  { label: '일식', emoji: '🍣', order: 2 },
-  { label: '중식', emoji: '🥢', order: 3 },
-  { label: '양식', emoji: '🍝', order: 4 },
-  { label: '아시아', emoji: '🍜', order: 5 },
-  { label: '고기', emoji: '🥩', order: 6 },
-  { label: '해산물', emoji: '🐟', order: 7 },
-  { label: '치킨', emoji: '🍗', order: 8 },
-  { label: '피자', emoji: '🍕', order: 9 },
-  { label: '버거', emoji: '🍔', order: 10 },
-  { label: '카페/디저트', emoji: '☕', order: 11 },
-  { label: '술집', emoji: '🍺', order: 12 },
-  { label: '뷔페', emoji: '🍽️', order: 13 },
-  { label: '기타', emoji: '🍱', order: 99 },
+  { label: '한식', emoji: '🍚', order: 1, color: '#e76f51' }, // 따뜻한 빨강
+  { label: '일식', emoji: '🍣', order: 2, color: '#f4a8a8' }, // 사쿠라 핑크
+  { label: '중식', emoji: '🥢', order: 3, color: '#d62828' }, // 진한 빨강
+  { label: '양식', emoji: '🍝', order: 4, color: '#e9c46a' }, // 파스타 노랑
+  { label: '아시아', emoji: '🍜', order: 5, color: '#f4a261' }, // 오렌지
+  { label: '고기', emoji: '🥩', order: 6, color: '#8b3a3a' }, // 짙은 와인
+  { label: '해산물', emoji: '🐟', order: 7, color: '#4cb5ae' }, // 청록
+  { label: '치킨', emoji: '🍗', order: 8, color: '#f6c54a' }, // 황금색
+  { label: '피자', emoji: '🍕', order: 9, color: '#c44536' }, // 토마토
+  { label: '버거', emoji: '🍔', order: 10, color: '#b48a3d' }, // 번 갈색
+  { label: '카페/디저트', emoji: '☕', order: 11, color: '#6f4e37' }, // 커피
+  { label: '술집', emoji: '🍺', order: 12, color: '#7d5ba6' }, // 보라
+  { label: '뷔페', emoji: '🍽️', order: 13, color: '#52796f' }, // 짙은 녹색
+  { label: '기타', emoji: '🍱', order: 99, color: '#94a3b8' }, // 회색
 ] as const;
 
 // DB 의 cuisine_items 한 row 와 1:1

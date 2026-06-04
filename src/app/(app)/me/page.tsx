@@ -7,6 +7,9 @@ import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { aggregateCounts } from '@/lib/heatmap';
 import { BadgeCollection } from '@/components/badges/BadgeCollection';
 import { RegionCrowns } from '@/components/badges/RegionCrown';
+import { CuisineLanguageBar, buildCuisineSlices } from '@/components/CuisineLanguageBar';
+import { findCuisineGroup } from '@/lib/cuisine';
+import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import ChangePasswordForm from './ChangePasswordForm';
 import ProfileEditForm from './ProfileEditForm';
 
@@ -59,14 +62,17 @@ export default async function MePage() {
   const [
     offices,
     buildings,
+    cuisineItems,
     { data: myReviews },
     { data: myFavorites },
     { data: heatmapRows },
     { data: myBadgeRows },
     { data: myCrownRows },
+    { data: myCuisineReviews },
   ] = await Promise.all([
     getCachedOffices(),
     getCachedBuildings(),
+    getCachedCuisineItems(),
     supabase
       .from('reviews')
       .select(
@@ -97,6 +103,13 @@ export default async function MePage() {
       .from('region_champions')
       .select('office_id, since_at, office:offices ( name )')
       .eq('user_id', user.id),
+    // D78: language bar 용 — 내 모든 (revert 안 한) commit 의 식당 cuisine_types 만.
+    // restaurant join 후 첫 cuisine_type 으로 그룹 매핑.
+    supabase
+      .from('reviews')
+      .select('restaurant:restaurants!reviews_restaurant_id_fkey ( cuisine_types )')
+      .eq('author_id', user.id)
+      .eq('reverted', false),
   ]);
 
   const heatmapCounts = aggregateCounts(
@@ -137,6 +150,16 @@ export default async function MePage() {
       commit_count: number;
     } | null;
   }>;
+
+  // D78: 첫 cuisine_type 만 추출해서 그룹 카운트
+  const myCuisineRows = ((myCuisineReviews ?? []) as unknown) as Array<{
+    restaurant: { cuisine_types: string[] | null } | null;
+  }>;
+  const primaryCuisines = myCuisineRows.map((r) => r.restaurant?.cuisine_types?.[0] ?? null);
+  const { slices: cuisineSlices, total: cuisineTotal } = buildCuisineSlices(
+    primaryCuisines,
+    (v) => findCuisineGroup(v, cuisineItems),
+  );
 
   return (
     <main className="mx-auto w-full max-w-xl flex-1 px-6 py-10">
@@ -215,6 +238,16 @@ export default async function MePage() {
       <section className="mb-8 rounded-lg border border-border bg-surface p-4">
         <h2 className="mb-3 text-sm font-medium text-fg">🌱 활동</h2>
         <ActivityHeatmap counts={heatmapCounts} />
+      </section>
+
+      {/* D78: cuisine languages bar — 어떤 음식 그룹에 얼마나 commit 했는지 */}
+      <section className="mb-8 rounded-lg border border-border bg-surface p-4">
+        <h2 className="mb-3 text-sm font-medium text-fg">📊 음식 분포</h2>
+        <CuisineLanguageBar
+          slices={cuisineSlices}
+          total={cuisineTotal}
+          caption={cuisineTotal > 0 ? `전체 ${cuisineTotal}개 commit 기준 (revert 제외)` : undefined}
+        />
       </section>
 
       {/* D70: 뱃지 도감 */}
