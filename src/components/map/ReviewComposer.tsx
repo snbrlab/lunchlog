@@ -96,13 +96,15 @@ export function ReviewComposer({ restaurantId, onCreated, replyTo, onCancelReply
     if (!mention) return;
     const before = message.slice(0, mention.start);
     const after = message.slice(mention.start + 1 + mention.query.length);
-    // 닉네임에 공백 있으면 underscore 로 join — 트리거 정규식이 공백 없는 chunk 만 매칭하므로
-    const safe = name.replace(/\s+/g, '_');
-    const newValue = `${before}@${safe} ${after}`;
+    // 닉네임에 \w/한글 외 문자 (공백, /, -, . 등) 있으면 @[Name] 형태로 명시적 경계.
+    // simple 이름이면 그대로 @Name. 둘 다 ReviewLog 렌더링 + DB 트리거가 인식.
+    const needsBrackets = /[^\w가-힣]/.test(name);
+    const inserted = needsBrackets ? `[${name}]` : name;
+    const newValue = `${before}@${inserted} ${after}`;
     setMessage(newValue);
     setMention(null);
     // cursor 를 멘션 직후로 이동
-    const newCaret = before.length + 1 + safe.length + 1;
+    const newCaret = before.length + 1 + inserted.length + 1;
     setTimeout(() => {
       inputRef.current?.setSelectionRange(newCaret, newCaret);
       inputRef.current?.focus();

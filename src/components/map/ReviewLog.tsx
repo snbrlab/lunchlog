@@ -8,21 +8,24 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { deleteReview, revertReview, setReviewMealTime } from '@/lib/reviews/actions';
 import type { MealMode, Review } from '@/types/db';
 
-// D75: @nickname 패턴을 chip 형태로 렌더. 트리거 정규식과 동일한 [\w가-힣]+ 매칭.
+// D75: @nickname 패턴 chip 렌더. 두 가지 형태 지원 — DB 트리거 / composer 와 동일.
+//   1) @[Name with /, space, etc.]  — 특수문자 포함 닉네임용 (Composer 가 자동 wrap)
+//   2) @simpleName                  — 영문/숫자/_/한글만 있는 닉네임용 (기존 호환)
 function renderMessageWithMentions(text: string): React.ReactNode[] {
   const parts: React.ReactNode[] = [];
-  const re = /@([\w가-힣]+)/g;
+  const re = /@(?:\[([^\]\n]+)\]|([\w가-힣]+))/g;
   let last = 0;
   let m: RegExpExecArray | null;
   let i = 0;
   while ((m = re.exec(text)) !== null) {
     if (m.index > last) parts.push(text.slice(last, m.index));
+    const name = m[1] ?? m[2] ?? '';
     parts.push(
       <span
         key={`mention-${i++}`}
         className="rounded bg-sky-100 px-1 py-0.5 text-[0.95em] font-medium text-sky-800"
       >
-        @{m[1]}
+        @{name}
       </span>,
     );
     last = m.index + m[0].length;
