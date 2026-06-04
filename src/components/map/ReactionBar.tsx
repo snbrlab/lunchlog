@@ -73,15 +73,17 @@ export default function ReactionBar({
     });
   }
 
-  // compact: 칩 크기 적당히 (너무 작으면 모바일에서 emoji 잘림). leading-tight 으로 vertical 여유.
+  // compact: 칩 자체엔 text-size 안 박고, 안 내용물(emoji / count) 이 각자 명시.
+  // leading-tight 같은 좁은 line-height 면 iOS 에서 emoji glyph 위/아래 잘림. py 도 1px → 2px 로 늘림.
   const chipCls = compact
-    ? 'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs leading-tight transition disabled:opacity-50'
+    ? 'inline-flex items-center gap-1 rounded-full border px-2 py-0.5 transition disabled:opacity-50'
     : 'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition disabled:opacity-50';
-  const countCls = 'font-mono text-[10px]';
+  const emojiCls = compact ? 'text-sm leading-none' : '';
+  const countCls = compact ? 'font-mono text-[10px] leading-none' : 'font-mono text-[10px]';
   const wrapCls = compact ? 'flex flex-wrap items-center gap-1' : 'mt-1.5 flex flex-wrap items-center gap-1';
   // compact 의 + 버튼은 평소 숨김 — 데스크탑은 hover/focus 시, 모바일은 forceShowAdd (탭 활성화) 시 표시.
   const addBase = compact
-    ? 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs leading-tight text-fg-muted transition-opacity hover:border-fg/40 hover:text-fg disabled:opacity-50'
+    ? 'inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-sm leading-none text-fg-muted transition-opacity hover:border-fg/40 hover:text-fg disabled:opacity-50'
     : 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50';
   const addVisibility = compact
     ? forceShowAdd
@@ -107,7 +109,7 @@ export default function ReactionBar({
                 : 'border-border bg-surface text-fg-muted hover:border-fg/40 hover:text-fg'
             }`}
           >
-            <span aria-hidden>{emoji}</span>
+            <span aria-hidden className={emojiCls}>{emoji}</span>
             <span className={countCls}>{info.count}</span>
           </button>
           {/* 호버 시 누른 사람 목록 popover */}
