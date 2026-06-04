@@ -269,7 +269,12 @@ function LogItem({ row, currentUserId }: { row: LogReviewRow; currentUserId: str
           )}
           <span>가</span>
           {restaurantNode}
-          {/* D79: reaction 을 식당명 옆 (meta 줄) 으로 — 자체 줄 안 차지하게. flex-wrap 으로 자연 wrap. */}
+          <span>에</span>
+          <span title={row.meal_time === 'lunch' ? '점심' : '저녁'} aria-hidden>
+            {row.meal_time === 'lunch' ? '☀' : '☾'}
+          </span>
+          {row.party_size != null && <span>👥{row.party_size}</span>}
+          {/* D79: reaction 은 meta 줄 가장 뒤 (인원수 뒤). 자체 줄 없이 inline. */}
           <ReactionBar
             reviewId={row.id}
             reactions={reactions}
@@ -277,11 +282,6 @@ function LogItem({ row, currentUserId }: { row: LogReviewRow; currentUserId: str
             onChanged={refetchReactions}
             compact
           />
-          <span>에</span>
-          <span title={row.meal_time === 'lunch' ? '점심' : '저녁'} aria-hidden>
-            {row.meal_time === 'lunch' ? '☀' : '☾'}
-          </span>
-          {row.party_size != null && <span>👥{row.party_size}</span>}
           <span className="ml-auto whitespace-nowrap">{formatRelativeTime(created)}</span>
         </div>
         <p
