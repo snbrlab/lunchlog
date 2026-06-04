@@ -34,6 +34,8 @@ export default function LogList({
   const [rows, setRows] = useState<LogReviewRow[]>(initialRows);
   const [hasMore, setHasMore] = useState(initialRows.length === LOG_PAGE_SIZE);
   const [loadingMore, startLoadMore] = useTransition();
+  // D79: 모바일에서 reaction + 버튼 활성화된 row id (hover 가 없으니 tap 으로 active)
+  const [activeId, setActiveId] = useState<string | null>(null);
 
   function loadMore() {
     const last = rows[rows.length - 1];
@@ -183,7 +185,13 @@ export default function LogList({
           <li className="px-4 py-10 text-center text-sm text-fg-muted">조건에 맞는 commit 이 없어요</li>
         )}
         {filtered.map((r) => (
-          <LogItem key={r.id} row={r} currentUserId={currentUserId} />
+          <LogItem
+            key={r.id}
+            row={r}
+            currentUserId={currentUserId}
+            active={activeId === r.id}
+            onActivate={() => setActiveId((cur) => (cur === r.id ? null : r.id))}
+          />
         ))}
       </ol>
 
@@ -209,7 +217,17 @@ export default function LogList({
   );
 }
 
-function LogItem({ row, currentUserId }: { row: LogReviewRow; currentUserId: string }) {
+function LogItem({
+  row,
+  currentUserId,
+  active,
+  onActivate,
+}: {
+  row: LogReviewRow;
+  currentUserId: string;
+  active: boolean;
+  onActivate: () => void;
+}) {
   const created = new Date(row.created_at);
   // D79: 이 row 의 reactions 만 local state — 다른 row 갱신 없이 단일 row refetch 가능
   const [reactions, setReactions] = useState(row.reactions);
@@ -221,6 +239,14 @@ function LogItem({ row, currentUserId }: { row: LogReviewRow; currentUserId: str
       .select('emoji, user_id, user:users ( name )')
       .eq('review_id', row.id);
     setReactions(((data ?? []) as unknown) as typeof row.reactions);
+  }
+
+  // 모바일: row 의 'non-link' 영역 탭 시 + 버튼 표시 토글.
+  // Link/button 클릭은 closest 로 감지해 무시 (네비/토글 우선).
+  function onRowClick(e: React.MouseEvent<HTMLLIElement>) {
+    const t = e.target as HTMLElement;
+    if (t.closest('a, button, [role="button"]')) return;
+    onActivate();
   }
   const authorName = row.author?.name ?? '(알수없음)';
   const authorEmoji = resolveAvatarEmoji(row.author?.avatar_emoji ?? null, authorName + row.id);
@@ -240,7 +266,10 @@ function LogItem({ row, currentUserId }: { row: LogReviewRow; currentUserId: str
   );
 
   return (
-    <li className={`group flex gap-3 border-t border-border px-4 py-3 first:border-t-0 ${row.reverted ? 'opacity-60' : ''}`}>
+    <li
+      onClick={onRowClick}
+      className={`group flex cursor-default gap-3 border-t border-border px-4 py-3 first:border-t-0 ${row.reverted ? 'opacity-60' : ''}`}
+    >
       <span
         className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-sm"
         style={{ background: authorColor }}
@@ -274,13 +303,15 @@ function LogItem({ row, currentUserId }: { row: LogReviewRow; currentUserId: str
             {row.meal_time === 'lunch' ? '☀' : '☾'}
           </span>
           {row.party_size != null && <span>👥{row.party_size}</span>}
-          {/* D79: reaction 은 meta 줄 가장 뒤 (인원수 뒤). 자체 줄 없이 inline. */}
+          {/* D79: reaction 은 meta 줄 가장 뒤 (인원수 뒤). 자체 줄 없이 inline.
+              모바일은 active 시에만 + 보임 (LogItem tap 으로 active). 데스크탑은 hover 로. */}
           <ReactionBar
             reviewId={row.id}
             reactions={reactions}
             currentUserId={currentUserId}
             onChanged={refetchReactions}
             compact
+            forceShowAdd={active}
           />
           <span className="ml-auto whitespace-nowrap">{formatRelativeTime(created)}</span>
         </div>

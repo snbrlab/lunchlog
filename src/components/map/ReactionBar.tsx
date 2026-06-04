@@ -20,6 +20,8 @@ interface Props {
   onChanged: () => void;
   // /log 처럼 공간 절약이 필요한 곳: 칩 작게, 우측정렬은 부모가 처리.
   compact?: boolean;
+  // 모바일에서 + 버튼을 강제 표시 (tap 으로 active 됐을 때).
+  forceShowAdd?: boolean;
 }
 
 export default function ReactionBar({
@@ -28,6 +30,7 @@ export default function ReactionBar({
   currentUserId,
   onChanged,
   compact = false,
+  forceShowAdd = false,
 }: Props) {
   const [pending, startTransition] = useTransition();
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -76,11 +79,16 @@ export default function ReactionBar({
     : 'flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs transition disabled:opacity-50';
   const countCls = 'font-mono text-[10px]';
   const wrapCls = compact ? 'flex flex-wrap items-center gap-1' : 'mt-1.5 flex flex-wrap items-center gap-1';
-  // compact 의 + 버튼은 데스크탑에선 기본 숨김 — 부모(.group) hover/focus 시에만 표시.
-  // 모바일은 항상 표시 (hover 가 없으므로). lg: prefix 가 데스크탑 분기.
-  const addCls = compact
-    ? 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs leading-tight text-fg-muted transition-opacity hover:border-fg/40 hover:text-fg disabled:opacity-50 lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100'
+  // compact 의 + 버튼은 평소 숨김 — 데스크탑은 hover/focus 시, 모바일은 forceShowAdd (탭 활성화) 시 표시.
+  const addBase = compact
+    ? 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs leading-tight text-fg-muted transition-opacity hover:border-fg/40 hover:text-fg disabled:opacity-50'
     : 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50';
+  const addVisibility = compact
+    ? forceShowAdd
+      ? '' // 강제 표시
+      : 'hidden lg:inline-block lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100'
+    : '';
+  const addCls = `${addBase} ${addVisibility}`;
 
   return (
     <div className={wrapCls}>
