@@ -6,6 +6,7 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { deleteReview, revertReview, setReviewMealTime } from '@/lib/reviews/actions';
+import ReactionBar from './ReactionBar';
 import type { MealMode, Review } from '@/types/db';
 
 // D75: @nickname 패턴 chip 렌더. 두 가지 형태 지원 — DB 트리거 / composer 와 동일.
@@ -41,7 +42,17 @@ type AuthorMeta = {
   avatar_emoji: string | null;
 };
 
-type EnrichedReview = Review & { author: AuthorMeta | null };
+// D79: reactions 한 row (review 의 reactions 배열 원소)
+type ReactionRow = {
+  emoji: string;
+  user_id: string;
+  user: { name: string } | null;
+};
+
+type EnrichedReview = Review & {
+  author: AuthorMeta | null;
+  reactions: ReactionRow[];
+};
 
 const FRESH_DAYS = 7;
 
@@ -114,7 +125,9 @@ export function ReviewLog({
         .from('reviews')
         .select(
           'id, restaurant_id, author_id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, edited_at, ' +
-            'author:users!reviews_author_id_fkey ( id, name, avatar_color, avatar_emoji )',
+            'author:users!reviews_author_id_fkey ( id, name, avatar_color, avatar_emoji ), ' +
+            // D79: reactions join — 한 commit 의 모든 reaction. 사용자 이름까지 같이 가져옴 (호버 popover 용).
+            'reactions:review_reactions ( emoji, user_id, user:users!review_reactions_user_id_fkey ( name ) )',
         )
         .eq('restaurant_id', restaurantId)
         .order('created_at', { ascending: false });
@@ -127,6 +140,8 @@ export function ReviewLog({
         const items: EnrichedReview[] = (data ?? []).map((r) => ({
           ...(r as unknown as Review),
           author: (r as unknown as { author: AuthorMeta | null }).author,
+          reactions:
+            (r as unknown as { reactions: ReactionRow[] | null }).reactions ?? [],
         }));
         REVIEWS_CACHE.set(restaurantId, { data: items, at: Date.now() });
         setReviews(items);
@@ -268,6 +283,7 @@ export function ReviewLog({
             onRevert={onRevert}
             onToggleMeal={onToggleMeal}
             onReply={onReply}
+            onReactionChanged={onMutated}
           />
         ))}
       </ol>
@@ -285,6 +301,7 @@ function ReviewItem({
   onRevert,
   onToggleMeal,
   onReply,
+  onReactionChanged,
 }: {
   root: EnrichedReview;
   replies: EnrichedReview[];
@@ -295,6 +312,7 @@ function ReviewItem({
   onRevert: (id: string) => void;
   onToggleMeal: (id: string, current: MealMode) => void;
   onReply?: (review: { id: string; hash: string; authorName: string }) => void;
+  onReactionChanged: () => void;
 }) {
   return (
     <li>
@@ -319,6 +337,7 @@ function ReviewItem({
                   })
               : undefined
           }
+          onReactionChanged={onReactionChanged}
         />
         {replies.map((reply) => (
           <ReviewRow
@@ -333,6 +352,7 @@ function ReviewItem({
             onToggleMeal={() => onToggleMeal(reply.id, reply.meal_time)}
             // 1-level 만 허용 — branch 에는 답글 못 다는 게 정책
             onReply={undefined}
+            onReactionChanged={onReactionChanged}
           />
         ))}
       </div>
@@ -350,6 +370,7 @@ function ReviewRow({
   onRevert,
   onToggleMeal,
   onReply,
+  onReactionChanged,
 }: {
   review: EnrichedReview;
   isBranch: boolean;
@@ -360,6 +381,7 @@ function ReviewRow({
   onRevert: () => void;
   onToggleMeal: () => void;
   onReply?: () => void;
+  onReactionChanged: () => void;
 }) {
   const created = new Date(review.created_at);
   const ageDays = (Date.now() - created.getTime()) / (1000 * 60 * 60 * 24);
@@ -481,6 +503,12 @@ function ReviewRow({
         >
           {renderMessageWithMentions(review.message)}
         </p>
+        <ReactionBar
+          reviewId={review.id}
+          reactions={review.reactions}
+          currentUserId={currentUserId}
+          onChanged={onReactionChanged}
+        />
       </div>
     </div>
   );
