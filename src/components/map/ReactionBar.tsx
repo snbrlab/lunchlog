@@ -86,15 +86,16 @@ export default function ReactionBar({
   const countCls = compact ? 'font-mono text-[10px] leading-none' : 'font-mono text-[10px]';
   const wrapCls = compact ? 'flex flex-wrap items-center gap-1' : 'mt-1.5 flex flex-wrap items-center gap-1';
   // compact 의 + 버튼은 평소 숨김 — 데스크탑은 hover/focus 시, 모바일은 forceShowAdd (탭 활성화) 시 표시.
+  // display 유틸은 한 곳에서만 정의 (Tailwind specificity 충돌 방지). addBase 에는 display 안 둠.
   const addBase = compact
-    ? 'inline-flex items-center rounded-full border border-dashed border-border px-2 py-0.5 text-sm leading-none text-fg-muted transition-opacity hover:border-fg/40 hover:text-fg disabled:opacity-50'
+    ? 'items-center rounded-full border border-dashed border-border px-2 py-0.5 text-sm leading-none text-fg-muted transition-opacity hover:border-fg/40 hover:text-fg disabled:opacity-50'
     : 'rounded-full border border-dashed border-border px-2 py-0.5 text-xs text-fg-muted hover:border-fg/40 hover:text-fg disabled:opacity-50';
-  const addVisibility = hideAddByDefault
-    ? forceShowAdd
-      ? '' // 강제 표시 (모바일 tap 활성화)
-      : 'hidden lg:inline-block lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100'
-    : '';
-  const addCls = `${addBase} ${addVisibility}`;
+  const addDisplay = !hideAddByDefault
+    ? 'inline-flex'
+    : forceShowAdd
+      ? 'inline-flex'
+      : 'hidden lg:inline-flex lg:opacity-0 lg:group-hover:opacity-100 lg:focus-visible:opacity-100';
+  const addCls = `${addBase} ${addDisplay}`;
 
   return (
     <div className={wrapCls}>
