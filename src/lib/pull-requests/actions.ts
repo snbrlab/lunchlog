@@ -5,8 +5,23 @@
 // - mergePullRequest / closePullRequest: admin 만
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { requireAdmin } from '@/lib/auth/require-admin';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
+
+// admin check helper — admin/actions.ts 의 requireAdmin 과 같은 로직 (private 라 import 못함)
+async function requireAdmin() {
+  const supabase = await createSupabaseServerClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) throw new Error('로그인이 필요해요');
+  const { data: profile } = await supabase
+    .from('users')
+    .select('role')
+    .eq('id', user.id)
+    .maybeSingle();
+  if (profile?.role !== 'admin') throw new Error('관리자만 가능해요');
+  return { supabase, userId: user.id };
+}
 
 export type CreatePRResult =
   | { ok: true; id: string }
@@ -87,7 +102,7 @@ export async function mergePullRequest(prId: string): Promise<ResolvePRResult> {
     .from('pull_requests')
     .update({
       status: 'merged',
-      reviewed_by: admin.user.id,
+      reviewed_by: admin.userId,
       reviewed_at: new Date().toISOString(),
     })
     .eq('id', prId);
@@ -108,7 +123,7 @@ export async function closePullRequest(prId: string): Promise<ResolvePRResult> {
     .from('pull_requests')
     .update({
       status: 'closed',
-      reviewed_by: admin.user.id,
+      reviewed_by: admin.userId,
       reviewed_at: new Date().toISOString(),
     })
     .eq('id', prId)
