@@ -5,6 +5,7 @@ import { useMemo, useState, useTransition } from 'react';
 import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
+import type { LogPREvent } from '@/lib/pull-requests/events';
 import { loadMoreReviewLog } from './actions';
 import { BadgeChip } from '@/components/badges/BadgeChip';
 import ReactionBar from '@/components/map/ReactionBar';
@@ -16,10 +17,12 @@ type DateRange = 'all' | '7d' | '30d';
 
 export default function LogList({
   initialRows,
+  prEvents,
   offices,
   currentUserId,
 }: {
   initialRows: LogReviewRow[];
+  prEvents: LogPREvent[];
   offices: Office[];
   currentUserId: string;
 }) {
@@ -51,14 +54,17 @@ export default function LogList({
     });
   }
 
-  const filtered = useMemo(() => {
+  // 시간 cutoff (date range filter)
+  const cutoff = useMemo(() => {
     const now = Date.now();
-    const cutoff =
-      dateRange === '7d'
-        ? now - 7 * 24 * 60 * 60 * 1000
-        : dateRange === '30d'
-          ? now - 30 * 24 * 60 * 60 * 1000
-          : 0;
+    return dateRange === '7d'
+      ? now - 7 * 24 * 60 * 60 * 1000
+      : dateRange === '30d'
+        ? now - 30 * 24 * 60 * 60 * 1000
+        : 0;
+  }, [dateRange]);
+
+  const filteredReviews = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((r) => {
       if (!showReverted && r.reverted) return false;
@@ -79,7 +85,40 @@ export default function LogList({
       }
       return true;
     });
-  }, [rows, meal, dateRange, showReverted, query, officeFilter]);
+  }, [rows, meal, cutoff, showReverted, query, officeFilter]);
+
+  // D78: PR 이벤트는 review 필터 (meal/reverted/office) 무관, date + query 만 적용.
+  // meal/region 등 식당 단위 필터가 켜져있어도 activity 흐름은 끊기지 않게.
+  const filteredPrs = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return prEvents.filter((p) => {
+      if (cutoff > 0 && new Date(p.at).getTime() < cutoff) return false;
+      if (q) {
+        const hay = [p.source_name, p.target_name, p.actor?.name ?? '', p.reason ?? '']
+          .join('|')
+          .toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [prEvents, cutoff, query]);
+
+  // review + PR 이벤트 시간순 merge
+  type Activity =
+    | (LogReviewRow & { kind: 'review' })
+    | (LogPREvent & { kind: 'pr' });
+  const activities = useMemo<Activity[]>(() => {
+    const a: Activity[] = [
+      ...filteredReviews.map((r) => ({ ...r, kind: 'review' as const })),
+      ...filteredPrs.map((p) => ({ ...p, kind: 'pr' as const })),
+    ];
+    a.sort((x, y) => {
+      const xt = x.kind === 'review' ? x.created_at : x.at;
+      const yt = y.kind === 'review' ? y.created_at : y.at;
+      return new Date(yt).getTime() - new Date(xt).getTime();
+    });
+    return a;
+  }, [filteredReviews, filteredPrs]);
 
   return (
     <div className="space-y-3">
@@ -176,23 +215,29 @@ export default function LogList({
       </div>
 
       <div className="text-xs text-fg-muted">
-        {filtered.length} 건{' '}
-        <span className="text-fg-muted/60">/ 불러온 {rows.length}건 중</span>
+        {activities.length} 건{' '}
+        <span className="text-fg-muted/60">
+          / 불러온 commit {rows.length}건 + PR {prEvents.length}건 중
+        </span>
       </div>
 
       <ol className="rounded-lg border border-border bg-surface">
-        {filtered.length === 0 && (
-          <li className="px-4 py-10 text-center text-sm text-fg-muted">조건에 맞는 commit 이 없어요</li>
+        {activities.length === 0 && (
+          <li className="px-4 py-10 text-center text-sm text-fg-muted">조건에 맞는 활동이 없어요</li>
         )}
-        {filtered.map((r) => (
-          <LogItem
-            key={r.id}
-            row={r}
-            currentUserId={currentUserId}
-            active={activeId === r.id}
-            onActivate={() => setActiveId((cur) => (cur === r.id ? null : r.id))}
-          />
-        ))}
+        {activities.map((a) =>
+          a.kind === 'pr' ? (
+            <PREventItem key={a.id} ev={a} />
+          ) : (
+            <LogItem
+              key={a.id}
+              row={a}
+              currentUserId={currentUserId}
+              active={activeId === a.id}
+              onActivate={() => setActiveId((cur) => (cur === a.id ? null : a.id))}
+            />
+          ),
+        )}
       </ol>
 
       {/* D64: 더 보기 — keyset 페이지네이션. 검색은 불러온 범위 안에서만 동작 */}
@@ -214,6 +259,56 @@ export default function LogList({
         </p>
       </div>
     </div>
+  );
+}
+
+// D78: PR 이벤트 카드. review 와 시각적으로 살짝 구분 — 옅은 sky 배경 + 🔀 아이콘.
+function PREventItem({ ev }: { ev: LogPREvent }) {
+  const eventLabel =
+    ev.event === 'open' ? 'PR 열림' : ev.event === 'merged' ? 'merged' : 'closed';
+  const eventIcon = ev.event === 'open' ? '🔀' : ev.event === 'merged' ? '✅' : '🚫';
+  const statusCls =
+    ev.event === 'open'
+      ? 'bg-emerald-100 text-emerald-800'
+      : ev.event === 'merged'
+        ? 'bg-sky-100 text-sky-800'
+        : 'bg-fg/10 text-fg-muted';
+  const actorName = ev.actor?.name ?? '?';
+  return (
+    <li className="border-b border-border bg-sky-50/40 px-4 py-2.5 text-xs last:border-b-0">
+      <div className="flex items-center gap-2">
+        <span aria-hidden className="text-sm">{eventIcon}</span>
+        <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${statusCls}`}>
+          {eventLabel}
+        </span>
+        <span className="font-medium text-fg">{actorName}</span>
+        <span className="text-fg-muted">
+          {ev.event === 'open' ? '님이 제안' : '님이 처리'}
+        </span>
+        <span className="ml-auto text-[10px] text-fg-muted">{formatRelativeTime(ev.at)}</span>
+      </div>
+      <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-7 text-[11px]">
+        <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-800">
+          {ev.source_name}
+        </span>
+        <span aria-hidden className="text-fg-muted">→</span>
+        {ev.target_id ? (
+          <a
+            href={`/map?focus=${ev.target_id}`}
+            className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-800 hover:border-emerald-400"
+          >
+            {ev.target_name}
+          </a>
+        ) : (
+          <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-800">
+            {ev.target_name}
+          </span>
+        )}
+      </div>
+      {ev.event === 'open' && ev.reason && (
+        <p className="mt-1 line-clamp-2 pl-7 text-[11px] text-fg-muted">💬 {ev.reason}</p>
+      )}
+    </li>
   );
 }
 
