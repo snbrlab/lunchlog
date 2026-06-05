@@ -6,6 +6,7 @@ import { useMemo, useState, useTransition } from 'react';
 import {
   autoFillKakaoPlaceUrlsForRestaurants,
   deleteRestaurant,
+  mergeRestaurants,
   type AutoFillPlaceUrlsResult,
 } from '@/lib/admin/actions';
 import { toggleRestaurantClosed } from '@/lib/restaurants/actions';
@@ -27,6 +28,9 @@ export default function RestaurantsAdminTable({
   const [, startTransition] = useTransition();
   // region 필터: 'all' | office.id | 'none' (office_id NULL)
   const [region, setRegion] = useState<string>('all');
+  // D77: 병합 picker — source row id 가 열려있는 것 (한 번에 하나만)
+  const [mergeOpenId, setMergeOpenId] = useState<string | null>(null);
+  const [mergeQuery, setMergeQuery] = useState('');
 
   const missingUrlCount = rows.filter((r) => !r.kakao_place_url).length;
 
@@ -69,6 +73,28 @@ export default function RestaurantsAdminTable({
     startTransition(async () => {
       const r = await toggleRestaurantClosed(row.id, next);
       setPendingId(null);
+      if (!r.ok) {
+        alert(r.message);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function onMerge(source: Row, target: Row) {
+    if (
+      !confirm(
+        `"${source.name}" (commit ${source.commit_count}) → "${target.name}" (commit ${target.commit_count}) 로 병합할까요?\n` +
+          `source 의 리뷰/찜이 모두 target 으로 이전되고 source 는 삭제돼요.`,
+      )
+    )
+      return;
+    setPendingId(source.id);
+    startTransition(async () => {
+      const r = await mergeRestaurants(source.id, target.id);
+      setPendingId(null);
+      setMergeOpenId(null);
+      setMergeQuery('');
       if (!r.ok) {
         alert(r.message);
         return;
@@ -231,7 +257,7 @@ export default function RestaurantsAdminTable({
                 )}
               </td>
               <td className="px-3 py-2">
-                <div className="flex gap-1.5">
+                <div className="flex flex-wrap gap-1.5">
                   <button
                     type="button"
                     onClick={() => onToggleClosed(r)}
@@ -242,6 +268,18 @@ export default function RestaurantsAdminTable({
                   </button>
                   <button
                     type="button"
+                    onClick={() => {
+                      setMergeOpenId(mergeOpenId === r.id ? null : r.id);
+                      setMergeQuery('');
+                    }}
+                    disabled={pendingId === r.id}
+                    title="이 식당의 리뷰/찜을 다른 식당으로 옮기고 이 식당은 삭제"
+                    className="rounded border border-sky-300 px-2 py-1 text-[11px] text-sky-700 transition hover:bg-sky-50 disabled:opacity-50"
+                  >
+                    🔀 병합
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => onDelete(r)}
                     disabled={pendingId === r.id}
                     className="rounded border border-red-300 px-2 py-1 text-[11px] text-red-600 transition hover:bg-red-50 disabled:opacity-50"
@@ -249,6 +287,46 @@ export default function RestaurantsAdminTable({
                     삭제
                   </button>
                 </div>
+                {mergeOpenId === r.id && (
+                  <div className="mt-2 rounded-md border border-sky-200 bg-sky-50 p-2">
+                    <p className="mb-1 text-[10px] text-sky-900">
+                      📥 병합 대상 (target) 선택 — "{r.name}" 이 target 으로 흡수됨
+                    </p>
+                    <input
+                      type="search"
+                      autoFocus
+                      placeholder="식당 이름 검색…"
+                      value={mergeQuery}
+                      onChange={(e) => setMergeQuery(e.target.value)}
+                      className="mb-1.5 w-full rounded border border-sky-200 bg-bg px-2 py-1 text-xs outline-none focus:border-sky-500"
+                    />
+                    <ul className="max-h-40 space-y-0.5 overflow-y-auto">
+                      {rows
+                        .filter((t) => t.id !== r.id)
+                        .filter((t) =>
+                          mergeQuery
+                            ? t.name.toLowerCase().includes(mergeQuery.toLowerCase())
+                            : true,
+                        )
+                        .slice(0, 10)
+                        .map((t) => (
+                          <li key={t.id}>
+                            <button
+                              type="button"
+                              onClick={() => onMerge(r, t)}
+                              disabled={pendingId === r.id}
+                              className="block w-full rounded px-2 py-1 text-left text-[11px] text-fg hover:bg-sky-100 disabled:opacity-50"
+                            >
+                              <span className="font-medium">{t.name}</span>
+                              <span className="ml-2 text-fg-muted">
+                                ({t.office?.name ?? '미분류'} · commit {t.commit_count})
+                              </span>
+                            </button>
+                          </li>
+                        ))}
+                    </ul>
+                  </div>
+                )}
               </td>
             </tr>
           ))}

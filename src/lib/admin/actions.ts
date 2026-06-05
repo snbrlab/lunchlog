@@ -392,6 +392,34 @@ export async function deleteRestaurant(restaurantId: string): Promise<DeleteRest
   return { ok: true };
 }
 
+// D77: 식당 병합 — source 의 리뷰/찜을 target 으로 옮기고 source 삭제.
+// RPC merge_restaurants 호출. region_champions 재계산까지 함수 안에서 처리.
+export type MergeRestaurantsResult =
+  | { ok: true }
+  | { ok: false; message: string };
+
+export async function mergeRestaurants(
+  sourceId: string,
+  targetId: string,
+): Promise<MergeRestaurantsResult> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+  if (sourceId === targetId) {
+    return { ok: false, message: 'source 와 target 이 같을 수 없어요' };
+  }
+  const { error } = await admin.supabase.rpc('merge_restaurants', {
+    p_source: sourceId,
+    p_target: targetId,
+  });
+  if (error) return { ok: false, message: error.message };
+  invalidateRestaurantsCache();
+  return { ok: true };
+}
+
 export type SetUserRoleResult =
   | { ok: true }
   | { ok: false; message: string };
