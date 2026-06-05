@@ -301,11 +301,17 @@ export function RestaurantDetailPanel({
         onCancelReply={() => setReplyTo(null)}
       />
 
-      {/* D78: PR 열기 모달 */}
+      {/* D78/D80: PR 열기 모달 (병합 + 정보 수정) */}
       {prOpen && (
         <OpenPullRequestModal
-          sourceId={restaurant.id}
-          sourceName={restaurant.name}
+          restaurant={{
+            id: restaurant.id,
+            name: restaurant.name,
+            price_level: restaurant.price_level,
+            cuisine_types: restaurant.cuisine_types,
+            address: detail?.address ?? '',
+            has_alcohol: restaurant.has_alcohol,
+          }}
           onClose={() => setPrOpen(false)}
         />
       )}

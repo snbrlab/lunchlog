@@ -2,8 +2,28 @@
 
 import { useRouter } from 'next/navigation';
 import { useState, useTransition } from 'react';
-import { closePullRequest, mergePullRequest } from '@/lib/pull-requests/actions';
+import {
+  applyEditPullRequest,
+  closePullRequest,
+  mergePullRequest,
+} from '@/lib/pull-requests/actions';
 import type { AdminPRRow } from './page';
+
+const FIELD_LABEL: Record<string, string> = {
+  name: '이름',
+  price_level: '가격대',
+  cuisine_types: 'cuisine',
+  address: '주소',
+  has_alcohol: '술 가능 여부',
+};
+
+function fmtVal(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '(없음)';
+  if (typeof v === 'boolean') return v ? '가능' : '불가';
+  if (Array.isArray(v)) return v.join(' / ');
+  if (typeof v === 'number') return '₩'.repeat(v);
+  return String(v);
+}
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   open: { label: 'OPEN', cls: 'bg-emerald-100 text-emerald-800' },
@@ -40,6 +60,27 @@ export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
     setPendingId(pr.id);
     startTransition(async () => {
       const r = await mergePullRequest(pr.id);
+      setPendingId(null);
+      if (!r.ok) {
+        alert(r.message);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
+  function onApplyEdit(pr: AdminPRRow) {
+    if (!pr.edit_payload) return;
+    const label = FIELD_LABEL[pr.edit_payload.field] ?? pr.edit_payload.field;
+    if (
+      !confirm(
+        `"${pr.target?.name}" 의 ${label} 을 "${fmtVal(pr.edit_payload.current)}" → "${fmtVal(pr.edit_payload.new)}" 으로 변경할까요?`,
+      )
+    )
+      return;
+    setPendingId(pr.id);
+    startTransition(async () => {
+      const r = await applyEditPullRequest(pr.id);
       setPendingId(null);
       if (!r.ok) {
         alert(r.message);
@@ -103,6 +144,9 @@ export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
                   >
                     {status.label}
                   </span>
+                  <span className="rounded bg-fg/5 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-fg-muted">
+                    {pr.kind === 'edit' ? '✏️ 수정' : '🔀 병합'}
+                  </span>
                   <span className="font-medium text-fg">{pr.opener?.name ?? '?'}</span>
                   <span className="text-fg-muted">제안 · {timeAgo(pr.created_at)}</span>
                   {pr.reviewed_at && (
@@ -112,33 +156,55 @@ export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
                   )}
                 </header>
 
-                <div className="flex flex-wrap items-center gap-2 text-sm">
-                  <span className="rounded border border-rose-300 bg-rose-50 px-2 py-1 text-xs">
-                    <span className="text-rose-700">source:</span>{' '}
-                    <span className="font-medium text-fg">
-                      {pr.source?.name ?? '(삭제됨)'}
-                    </span>
-                    {pr.source && (
-                      <span className="ml-1 text-fg-muted">
-                        commit {pr.source.commit_count}
+                {pr.kind === 'edit' && pr.edit_payload ? (
+                  <div className="space-y-1.5 text-sm">
+                    <p className="text-xs">
+                      <span className="text-fg-muted">식당:</span>{' '}
+                      <span className="font-medium text-fg">{pr.target?.name ?? '(삭제됨)'}</span>{' '}
+                      <span className="text-fg-muted">·</span>{' '}
+                      <span className="font-semibold text-fg">
+                        {FIELD_LABEL[pr.edit_payload.field] ?? pr.edit_payload.field}
                       </span>
-                    )}
-                  </span>
-                  <span aria-hidden className="text-fg-muted">
-                    →
-                  </span>
-                  <span className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs">
-                    <span className="text-emerald-700">target:</span>{' '}
-                    <span className="font-medium text-fg">
-                      {pr.target?.name ?? '(삭제됨)'}
-                    </span>
-                    {pr.target && (
-                      <span className="ml-1 text-fg-muted">
-                        commit {pr.target.commit_count}
+                    </p>
+                    <p className="text-xs">
+                      <span className="rounded bg-fg/5 px-2 py-0.5 text-fg-muted line-through">
+                        {fmtVal(pr.edit_payload.current)}
                       </span>
-                    )}
-                  </span>
-                </div>
+                      <span aria-hidden className="mx-2 text-fg-muted">→</span>
+                      <span className="rounded bg-sky-100 px-2 py-0.5 font-medium text-sky-900">
+                        {fmtVal(pr.edit_payload.new)}
+                      </span>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="rounded border border-rose-300 bg-rose-50 px-2 py-1 text-xs">
+                      <span className="text-rose-700">source:</span>{' '}
+                      <span className="font-medium text-fg">
+                        {pr.source?.name ?? '(삭제됨)'}
+                      </span>
+                      {pr.source && (
+                        <span className="ml-1 text-fg-muted">
+                          commit {pr.source.commit_count}
+                        </span>
+                      )}
+                    </span>
+                    <span aria-hidden className="text-fg-muted">
+                      →
+                    </span>
+                    <span className="rounded border border-emerald-300 bg-emerald-50 px-2 py-1 text-xs">
+                      <span className="text-emerald-700">target:</span>{' '}
+                      <span className="font-medium text-fg">
+                        {pr.target?.name ?? '(삭제됨)'}
+                      </span>
+                      {pr.target && (
+                        <span className="ml-1 text-fg-muted">
+                          commit {pr.target.commit_count}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
 
                 {pr.reason && (
                   <p className="mt-2 whitespace-pre-wrap rounded-md border border-border bg-bg px-3 py-2 text-xs text-fg">
@@ -148,14 +214,25 @@ export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
 
                 {pr.status === 'open' && (
                   <div className="mt-3 flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => onMerge(pr)}
-                      disabled={pendingId === pr.id || !pr.source || !pr.target}
-                      className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:opacity-40"
-                    >
-                      {pendingId === pr.id ? '실행 중…' : '🔀 merge'}
-                    </button>
+                    {pr.kind === 'edit' ? (
+                      <button
+                        type="button"
+                        onClick={() => onApplyEdit(pr)}
+                        disabled={pendingId === pr.id || !pr.target || !pr.edit_payload}
+                        className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:opacity-40"
+                      >
+                        {pendingId === pr.id ? '실행 중…' : '✅ 적용'}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => onMerge(pr)}
+                        disabled={pendingId === pr.id || !pr.source || !pr.target}
+                        className="rounded-md bg-sky-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-sky-700 disabled:opacity-40"
+                      >
+                        {pendingId === pr.id ? '실행 중…' : '🔀 merge'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => onClose(pr)}

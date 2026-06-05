@@ -310,13 +310,18 @@ function NotificationItem({ note, onClick }: { note: NotificationRow; onClick: (
 
   if (note.type === 'pull_request_new') {
     const p = note.payload as PullRequestNewPayload;
+    const isEdit = p.kind === 'edit';
     return (
       <Link href="/admin/pull-requests" onClick={onClick} className={itemClass}>
-        <span aria-hidden className="text-base leading-none">🔀</span>
+        <span aria-hidden className="text-base leading-none">{isEdit ? '✏️' : '🔀'}</span>
         <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-fg">새 PR — {p.opener_name}</p>
+          <p className="text-xs font-medium text-fg">
+            새 {isEdit ? '수정' : '병합'} PR — {p.opener_name}
+          </p>
           <p className="mt-0.5 truncate text-[11px] text-fg-muted">
-            {p.source_name} → {p.target_name}
+            {isEdit
+              ? `${p.target_name ?? '?'} · ${p.edit_payload?.field ?? ''}`
+              : `${p.source_name ?? '?'} → ${p.target_name ?? '?'}`}
           </p>
         </div>
         {time}
@@ -327,15 +332,22 @@ function NotificationItem({ note, onClick }: { note: NotificationRow; onClick: (
   if (note.type === 'pull_request_resolved') {
     const p = note.payload as PullRequestResolvedPayload;
     const merged = p.status === 'merged';
+    const isEdit = p.kind === 'edit';
     return (
       <Link href="/map" onClick={onClick} className={itemClass}>
         <span aria-hidden className="text-base leading-none">{merged ? '✅' : '🚫'}</span>
         <div className="min-w-0 flex-1">
           <p className="text-xs font-medium text-fg">
-            PR {merged ? 'merged 됐어요' : '거부됐어요'}
+            {isEdit
+              ? merged
+                ? '수정 적용됐어요'
+                : '수정 거부됐어요'
+              : merged
+                ? 'PR merged 됐어요'
+                : 'PR 거부됐어요'}
           </p>
           <p className="mt-0.5 truncate text-[11px] text-fg-muted">
-            {p.source_name} → {p.target_name}
+            {isEdit ? p.target_name : `${p.source_name} → ${p.target_name}`}
           </p>
         </div>
         {time}

@@ -1,11 +1,12 @@
 'use server';
 
-// D78: PR (식당 중복 병합 제안) server actions.
-// - createPullRequest: 누구나 (로그인 필수)
-// - mergePullRequest / closePullRequest: admin 만
+// D78/D80: PR (식당 중복 병합 + 정보 수정 제안) server actions.
+// - createPullRequest: 누구나 (로그인 필수) — merge 또는 edit kind
+// - mergePullRequest / applyEditPullRequest / closePullRequest: admin 만
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
+import type { EditPayload } from '@/types/db';
 
 // admin check helper — admin/actions.ts 의 requireAdmin 과 같은 로직 (private 라 import 못함)
 async function requireAdmin() {
@@ -27,45 +28,70 @@ export type CreatePRResult =
   | { ok: true; id: string }
   | { ok: false; message: string };
 
-export async function createPullRequest(input: {
-  sourceId: string;
-  targetId: string;
-  reason: string | null;
-}): Promise<CreatePRResult> {
-  if (input.sourceId === input.targetId) {
-    return { ok: false, message: 'source 와 target 이 같아요' };
-  }
+export type CreatePRInput =
+  | {
+      kind: 'merge';
+      sourceId: string;
+      targetId: string;
+      reason: string | null;
+    }
+  | {
+      kind: 'edit';
+      targetId: string;
+      editPayload: EditPayload;
+      reason: string | null;
+    };
+
+export async function createPullRequest(input: CreatePRInput): Promise<CreatePRResult> {
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, message: '로그인이 필요해요' };
 
-  // 같은 source/target 의 open PR 이 이미 있으면 중복 방지
-  const { data: existing } = await supabase
-    .from('pull_requests')
-    .select('id')
-    .eq('source_id', input.sourceId)
-    .eq('target_id', input.targetId)
-    .eq('status', 'open')
-    .maybeSingle();
-  if (existing) {
-    return { ok: false, message: '이미 동일한 PR 이 열려있어요' };
+  if (input.kind === 'merge') {
+    if (input.sourceId === input.targetId) {
+      return { ok: false, message: 'source 와 target 이 같아요' };
+    }
+    const { data: existing } = await supabase
+      .from('pull_requests')
+      .select('id')
+      .eq('source_id', input.sourceId)
+      .eq('target_id', input.targetId)
+      .eq('kind', 'merge')
+      .eq('status', 'open')
+      .maybeSingle();
+    if (existing) return { ok: false, message: '이미 동일한 병합 PR 이 열려있어요' };
+
+    const { data, error } = await supabase
+      .from('pull_requests')
+      .insert({
+        kind: 'merge',
+        source_id: input.sourceId,
+        target_id: input.targetId,
+        opened_by: user.id,
+        reason: input.reason?.trim() || null,
+      })
+      .select('id')
+      .single();
+    if (error || !data) return { ok: false, message: error?.message ?? '제출 실패' };
+    return { ok: true, id: data.id };
   }
 
+  // edit PR
   const { data, error } = await supabase
     .from('pull_requests')
     .insert({
-      source_id: input.sourceId,
+      kind: 'edit',
+      source_id: null,
       target_id: input.targetId,
       opened_by: user.id,
       reason: input.reason?.trim() || null,
+      edit_payload: input.editPayload,
     })
     .select('id')
     .single();
-  if (error || !data) {
-    return { ok: false, message: error?.message ?? '제출 실패' };
-  }
+  if (error || !data) return { ok: false, message: error?.message ?? '제출 실패' };
   return { ok: true, id: data.id };
 }
 
@@ -107,6 +133,53 @@ export async function mergePullRequest(prId: string): Promise<ResolvePRResult> {
     })
     .eq('id', prId);
   if (updErr) return { ok: false, message: updErr.message };
+
+  invalidateRestaurantsCache();
+  return { ok: true };
+}
+
+// D80: edit PR 적용 — payload 의 field/new 값을 restaurants 에 UPDATE.
+export async function applyEditPullRequest(prId: string): Promise<ResolvePRResult> {
+  let admin;
+  try {
+    admin = await requireAdmin();
+  } catch (e) {
+    return { ok: false, message: (e as Error).message };
+  }
+
+  const { data: pr, error: prErr } = await admin.supabase
+    .from('pull_requests')
+    .select('id, kind, target_id, status, edit_payload')
+    .eq('id', prId)
+    .single();
+  if (prErr || !pr) return { ok: false, message: prErr?.message ?? 'PR 없음' };
+  if (pr.status !== 'open') return { ok: false, message: '이미 처리된 PR 입니다' };
+  if (pr.kind !== 'edit') return { ok: false, message: 'edit PR 이 아니에요' };
+  if (!pr.target_id) return { ok: false, message: '대상 식당이 없어요 (삭제됨)' };
+  const payload = pr.edit_payload as EditPayload | null;
+  if (!payload) return { ok: false, message: 'edit_payload 가 비어있어요' };
+
+  // 허용된 field 만 update — SQL injection / 임의 컬럼 변경 방지
+  const allowed = new Set(['name', 'price_level', 'cuisine_types', 'address', 'has_alcohol']);
+  if (!allowed.has(payload.field)) {
+    return { ok: false, message: `허용되지 않은 field: ${payload.field}` };
+  }
+
+  const { error: updErr } = await admin.supabase
+    .from('restaurants')
+    .update({ [payload.field]: payload.new })
+    .eq('id', pr.target_id);
+  if (updErr) return { ok: false, message: updErr.message };
+
+  const { error: prUpdErr } = await admin.supabase
+    .from('pull_requests')
+    .update({
+      status: 'merged',
+      reviewed_by: admin.userId,
+      reviewed_at: new Date().toISOString(),
+    })
+    .eq('id', prId);
+  if (prUpdErr) return { ok: false, message: prUpdErr.message };
 
   invalidateRestaurantsCache();
   return { ok: true };

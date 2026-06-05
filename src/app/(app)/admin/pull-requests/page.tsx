@@ -3,12 +3,16 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { PRAdminList } from './PRAdminList';
 
+import type { EditPayload } from '@/types/db';
+
 export interface AdminPRRow {
   id: string;
-  source_id: string;
-  target_id: string;
+  kind: 'merge' | 'edit';
+  source_id: string | null;
+  target_id: string | null;
   opened_by: string;
   reason: string | null;
+  edit_payload: EditPayload | null;
   status: 'open' | 'merged' | 'closed';
   reviewed_by: string | null;
   reviewed_at: string | null;
@@ -24,7 +28,7 @@ export default async function AdminPullRequestsPage() {
   const { data } = await supabase
     .from('pull_requests')
     .select(
-      'id, source_id, target_id, opened_by, reason, status, reviewed_by, reviewed_at, created_at, ' +
+      'id, kind, source_id, target_id, opened_by, reason, edit_payload, status, reviewed_by, reviewed_at, created_at, ' +
         'source:restaurants!pull_requests_source_id_fkey ( id, name, commit_count, is_closed ), ' +
         'target:restaurants!pull_requests_target_id_fkey ( id, name, commit_count, is_closed ), ' +
         'opener:users!pull_requests_opened_by_fkey ( name ), ' +

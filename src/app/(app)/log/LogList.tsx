@@ -262,11 +262,12 @@ export default function LogList({
   );
 }
 
-// D78: PR 이벤트 카드. review 와 시각적으로 살짝 구분 — 옅은 sky 배경 + 🔀 아이콘.
+// D78/D80: PR 이벤트 카드. merge / edit 분기.
 function PREventItem({ ev }: { ev: LogPREvent }) {
+  const isEdit = ev.pr_kind === 'edit';
   const eventLabel =
-    ev.event === 'open' ? 'PR 열림' : ev.event === 'merged' ? 'merged' : 'closed';
-  const eventIcon = ev.event === 'open' ? '🔀' : ev.event === 'merged' ? '✅' : '🚫';
+    ev.event === 'open' ? 'PR 열림' : ev.event === 'merged' ? (isEdit ? '적용됨' : 'merged') : 'closed';
+  const eventIcon = ev.event === 'open' ? (isEdit ? '✏️' : '🔀') : ev.event === 'merged' ? '✅' : '🚫';
   const statusCls =
     ev.event === 'open'
       ? 'bg-emerald-100 text-emerald-800'
@@ -283,33 +284,79 @@ function PREventItem({ ev }: { ev: LogPREvent }) {
         </span>
         <span className="font-medium text-fg">{actorName}</span>
         <span className="text-fg-muted">
-          {ev.event === 'open' ? '님이 제안' : '님이 처리'}
+          {ev.event === 'open' ? (isEdit ? '님이 수정 제안' : '님이 병합 제안') : '님이 처리'}
         </span>
         <span className="ml-auto text-[10px] text-fg-muted">{formatRelativeTime(new Date(ev.at))}</span>
       </div>
-      <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-7 text-[11px]">
-        <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-800">
-          {ev.source_name}
-        </span>
-        <span aria-hidden className="text-fg-muted">→</span>
-        {ev.target_id ? (
-          <a
-            href={`/map?focus=${ev.target_id}`}
-            className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-800 hover:border-emerald-400"
-          >
-            {ev.target_name}
-          </a>
-        ) : (
-          <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-800">
-            {ev.target_name}
+      {isEdit && ev.edit_payload ? (
+        <div className="mt-1 pl-7 text-[11px]">
+          <p className="text-fg-muted">
+            {ev.target_id ? (
+              <a
+                href={`/map?focus=${ev.target_id}`}
+                className="font-medium text-fg underline-offset-2 hover:underline"
+              >
+                {ev.target_name}
+              </a>
+            ) : (
+              <span className="font-medium text-fg">{ev.target_name}</span>
+            )}
+            {' '}의{' '}
+            <span className="font-semibold text-fg">
+              {FIELD_LABEL[ev.edit_payload.field] ?? ev.edit_payload.field}
+            </span>
+          </p>
+          <p className="mt-0.5">
+            <span className="rounded bg-fg/5 px-1.5 py-0.5 text-fg-muted line-through">
+              {fmtVal(ev.edit_payload.current)}
+            </span>
+            <span aria-hidden className="mx-1.5 text-fg-muted">→</span>
+            <span className="rounded bg-sky-100 px-1.5 py-0.5 font-medium text-sky-900">
+              {fmtVal(ev.edit_payload.new)}
+            </span>
+          </p>
+        </div>
+      ) : (
+        <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-7 text-[11px]">
+          <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-800">
+            {ev.source_name}
           </span>
-        )}
-      </div>
+          <span aria-hidden className="text-fg-muted">→</span>
+          {ev.target_id ? (
+            <a
+              href={`/map?focus=${ev.target_id}`}
+              className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-800 hover:border-emerald-400"
+            >
+              {ev.target_name}
+            </a>
+          ) : (
+            <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-emerald-800">
+              {ev.target_name}
+            </span>
+          )}
+        </div>
+      )}
       {ev.event === 'open' && ev.reason && (
         <p className="mt-1 line-clamp-2 pl-7 text-[11px] text-fg-muted">💬 {ev.reason}</p>
       )}
     </li>
   );
+}
+
+const FIELD_LABEL: Record<string, string> = {
+  name: '이름',
+  price_level: '가격대',
+  cuisine_types: 'cuisine',
+  address: '주소',
+  has_alcohol: '술 가능 여부',
+};
+
+function fmtVal(v: unknown): string {
+  if (v === null || v === undefined || v === '') return '(없음)';
+  if (typeof v === 'boolean') return v ? '가능' : '불가';
+  if (Array.isArray(v)) return v.join(' / ');
+  if (typeof v === 'number') return '₩'.repeat(v);
+  return String(v);
 }
 
 function LogItem({
