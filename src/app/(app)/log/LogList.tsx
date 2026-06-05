@@ -6,6 +6,7 @@ import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
 import type { LogPREvent } from '@/lib/pull-requests/events';
+import { fieldLabel, fmtFieldValue } from '@/lib/pull-requests/fields';
 import { loadMoreReviewLog } from './actions';
 import { BadgeChip } from '@/components/badges/BadgeChip';
 import ReactionBar from '@/components/map/ReactionBar';
@@ -302,17 +303,15 @@ function PREventItem({ ev }: { ev: LogPREvent }) {
               <span className="font-medium text-fg">{ev.target_name}</span>
             )}
             {' '}의{' '}
-            <span className="font-semibold text-fg">
-              {FIELD_LABEL[ev.edit_payload.field] ?? ev.edit_payload.field}
-            </span>
+            <span className="font-semibold text-fg">{fieldLabel(ev.edit_payload.field)}</span>
           </p>
           <p className="mt-0.5">
             <span className="rounded bg-fg/5 px-1.5 py-0.5 text-fg-muted line-through">
-              {fmtVal(ev.edit_payload.current)}
+              {fmtFieldValue(ev.edit_payload.field, ev.edit_payload.current)}
             </span>
             <span aria-hidden className="mx-1.5 text-fg-muted">→</span>
             <span className="rounded bg-sky-100 px-1.5 py-0.5 font-medium text-sky-900">
-              {fmtVal(ev.edit_payload.new)}
+              {fmtFieldValue(ev.edit_payload.field, ev.edit_payload.new)}
             </span>
           </p>
         </div>
@@ -341,22 +340,6 @@ function PREventItem({ ev }: { ev: LogPREvent }) {
       )}
     </li>
   );
-}
-
-const FIELD_LABEL: Record<string, string> = {
-  name: '이름',
-  price_level: '가격대',
-  cuisine_types: 'cuisine',
-  address: '주소',
-  has_alcohol: '술 가능 여부',
-};
-
-function fmtVal(v: unknown): string {
-  if (v === null || v === undefined || v === '') return '(없음)';
-  if (typeof v === 'boolean') return v ? '가능' : '불가';
-  if (Array.isArray(v)) return v.join(' / ');
-  if (typeof v === 'number') return '₩'.repeat(v);
-  return String(v);
 }
 
 function LogItem({

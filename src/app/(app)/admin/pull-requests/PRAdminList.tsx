@@ -7,40 +7,15 @@ import {
   closePullRequest,
   mergePullRequest,
 } from '@/lib/pull-requests/actions';
+import { fieldLabel, fmtFieldValue } from '@/lib/pull-requests/fields';
+import { formatRelativeTime } from '@/lib/format-time';
 import type { AdminPRRow } from './page';
-
-const FIELD_LABEL: Record<string, string> = {
-  name: '이름',
-  price_level: '가격대',
-  cuisine_types: 'cuisine',
-  address: '주소',
-  has_alcohol: '술 가능 여부',
-};
-
-function fmtVal(v: unknown): string {
-  if (v === null || v === undefined || v === '') return '(없음)';
-  if (typeof v === 'boolean') return v ? '가능' : '불가';
-  if (Array.isArray(v)) return v.join(' / ');
-  if (typeof v === 'number') return '₩'.repeat(v);
-  return String(v);
-}
 
 const STATUS_LABEL: Record<string, { label: string; cls: string }> = {
   open: { label: 'OPEN', cls: 'bg-emerald-100 text-emerald-800' },
   merged: { label: 'MERGED', cls: 'bg-sky-100 text-sky-800' },
   closed: { label: 'CLOSED', cls: 'bg-fg/10 text-fg-muted' },
 };
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const m = Math.floor(diff / 60_000);
-  if (m < 1) return '방금';
-  if (m < 60) return `${m}분 전`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}시간 전`;
-  const d = Math.floor(h / 24);
-  return `${d}일 전`;
-}
 
 export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
   const router = useRouter();
@@ -50,6 +25,20 @@ export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
 
   const filtered = filter === 'all' ? rows : rows.filter((r) => r.status === filter);
 
+  // 모든 PR 처리 액션의 공통 패턴 — pending state + transition + 에러 alert + refresh
+  function runAction(pr: AdminPRRow, action: () => Promise<{ ok: boolean; message?: string }>) {
+    setPendingId(pr.id);
+    startTransition(async () => {
+      const r = await action();
+      setPendingId(null);
+      if (!r.ok) {
+        alert(r.message);
+        return;
+      }
+      router.refresh();
+    });
+  }
+
   function onMerge(pr: AdminPRRow) {
     if (
       !confirm(
@@ -57,51 +46,24 @@ export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
       )
     )
       return;
-    setPendingId(pr.id);
-    startTransition(async () => {
-      const r = await mergePullRequest(pr.id);
-      setPendingId(null);
-      if (!r.ok) {
-        alert(r.message);
-        return;
-      }
-      router.refresh();
-    });
+    runAction(pr, () => mergePullRequest(pr.id));
   }
 
   function onApplyEdit(pr: AdminPRRow) {
     if (!pr.edit_payload) return;
-    const label = FIELD_LABEL[pr.edit_payload.field] ?? pr.edit_payload.field;
+    const ep = pr.edit_payload;
     if (
       !confirm(
-        `"${pr.target?.name}" 의 ${label} 을 "${fmtVal(pr.edit_payload.current)}" → "${fmtVal(pr.edit_payload.new)}" 으로 변경할까요?`,
+        `"${pr.target?.name}" 의 ${fieldLabel(ep.field)} 을 "${fmtFieldValue(ep.field, ep.current)}" → "${fmtFieldValue(ep.field, ep.new)}" 으로 변경할까요?`,
       )
     )
       return;
-    setPendingId(pr.id);
-    startTransition(async () => {
-      const r = await applyEditPullRequest(pr.id);
-      setPendingId(null);
-      if (!r.ok) {
-        alert(r.message);
-        return;
-      }
-      router.refresh();
-    });
+    runAction(pr, () => applyEditPullRequest(pr.id));
   }
 
   function onClose(pr: AdminPRRow) {
     if (!confirm('이 PR 을 거부하시겠어요?')) return;
-    setPendingId(pr.id);
-    startTransition(async () => {
-      const r = await closePullRequest(pr.id);
-      setPendingId(null);
-      if (!r.ok) {
-        alert(r.message);
-        return;
-      }
-      router.refresh();
-    });
+    runAction(pr, () => closePullRequest(pr.id));
   }
 
   return (
@@ -148,10 +110,10 @@ export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
                     {pr.kind === 'edit' ? '✏️ 수정' : '🔀 병합'}
                   </span>
                   <span className="font-medium text-fg">{pr.opener?.name ?? '?'}</span>
-                  <span className="text-fg-muted">제안 · {timeAgo(pr.created_at)}</span>
+                  <span className="text-fg-muted">제안 · {formatRelativeTime(new Date(pr.created_at))}</span>
                   {pr.reviewed_at && (
                     <span className="text-fg-muted/70">
-                      · {pr.reviewer?.name ?? '?'} 처리 {timeAgo(pr.reviewed_at)}
+                      · {pr.reviewer?.name ?? '?'} 처리 {formatRelativeTime(new Date(pr.reviewed_at))}
                     </span>
                   )}
                 </header>
@@ -162,17 +124,15 @@ export function PRAdminList({ rows }: { rows: AdminPRRow[] }) {
                       <span className="text-fg-muted">식당:</span>{' '}
                       <span className="font-medium text-fg">{pr.target?.name ?? '(삭제됨)'}</span>{' '}
                       <span className="text-fg-muted">·</span>{' '}
-                      <span className="font-semibold text-fg">
-                        {FIELD_LABEL[pr.edit_payload.field] ?? pr.edit_payload.field}
-                      </span>
+                      <span className="font-semibold text-fg">{fieldLabel(pr.edit_payload.field)}</span>
                     </p>
                     <p className="text-xs">
                       <span className="rounded bg-fg/5 px-2 py-0.5 text-fg-muted line-through">
-                        {fmtVal(pr.edit_payload.current)}
+                        {fmtFieldValue(pr.edit_payload.field, pr.edit_payload.current)}
                       </span>
                       <span aria-hidden className="mx-2 text-fg-muted">→</span>
                       <span className="rounded bg-sky-100 px-2 py-0.5 font-medium text-sky-900">
-                        {fmtVal(pr.edit_payload.new)}
+                        {fmtFieldValue(pr.edit_payload.field, pr.edit_payload.new)}
                       </span>
                     </p>
                   </div>

@@ -6,23 +6,11 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
-import type { EditPayload } from '@/types/db';
+import { requireAdmin } from '@/lib/auth/require-admin';
+import { EDIT_FIELDS } from '@/lib/pull-requests/fields';
+import type { EditField, EditPayload } from '@/types/db';
 
-// admin check helper — admin/actions.ts 의 requireAdmin 과 같은 로직 (private 라 import 못함)
-async function requireAdmin() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('로그인이 필요해요');
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (profile?.role !== 'admin') throw new Error('관리자만 가능해요');
-  return { supabase, userId: user.id };
-}
+const ALLOWED_EDIT_FIELDS: Set<EditField> = new Set(EDIT_FIELDS);
 
 export type CreatePRResult =
   | { ok: true; id: string }
@@ -160,8 +148,7 @@ export async function applyEditPullRequest(prId: string): Promise<ResolvePRResul
   if (!payload) return { ok: false, message: 'edit_payload 가 비어있어요' };
 
   // 허용된 field 만 update — SQL injection / 임의 컬럼 변경 방지
-  const allowed = new Set(['name', 'price_level', 'cuisine_types', 'address', 'has_alcohol']);
-  if (!allowed.has(payload.field)) {
+  if (!ALLOWED_EDIT_FIELDS.has(payload.field)) {
     return { ok: false, message: `허용되지 않은 field: ${payload.field}` };
   }
 

@@ -7,21 +7,7 @@ import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
 import { getServerEnv } from '@/lib/env';
 import { avatarColorFor } from '@/lib/avatar-color';
 import { isNicknameTaken, validateNicknameShape } from '@/lib/auth/nickname';
-
-async function requireAdmin() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) throw new Error('로그인이 필요해요');
-  const { data: profile } = await supabase
-    .from('users')
-    .select('role')
-    .eq('id', user.id)
-    .maybeSingle();
-  if (profile?.role !== 'admin') throw new Error('관리자만 가능해요');
-  return { supabase, userId: user.id };
-}
+import { requireAdmin } from '@/lib/auth/require-admin';
 
 export type UpdateBuildingResult =
   | { ok: true }

@@ -7,32 +7,23 @@ import { useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import { createPullRequest } from '@/lib/pull-requests/actions';
-import type { EditField, EditPayload } from '@/types/db';
-
-interface RestaurantSnapshot {
-  id: string;
-  name: string;
-  price_level: 1 | 2 | 3;
-  cuisine_types: string[];
-  address: string;
-  has_alcohol: boolean;
-}
+import {
+  EDIT_FIELDS,
+  buildEditPayload,
+  fieldCurrentDisplay,
+  fieldLabel,
+  initialEditValue,
+  type RestaurantSnapshot,
+} from '@/lib/pull-requests/fields';
+import type { EditField } from '@/types/db';
 
 interface Props {
-  restaurant: RestaurantSnapshot;
+  restaurant: RestaurantSnapshot & { id: string };
   onClose: () => void;
 }
 
 type Step = 'choose' | 'edit' | 'merge';
 type TargetCandidate = { id: string; name: string };
-
-const EDIT_FIELDS: { value: EditField; label: string; hint?: string }[] = [
-  { value: 'name', label: '이름', hint: '오타 / 정식 명칭 등' },
-  { value: 'price_level', label: '가격대' },
-  { value: 'cuisine_types', label: 'cuisine', hint: '쉼표로 구분: 칼국수, 소바' },
-  { value: 'address', label: '주소' },
-  { value: 'has_alcohol', label: '술 가능 여부' },
-];
 
 export function OpenPullRequestModal({ restaurant, onClose }: Props) {
   const router = useRouter();
@@ -71,70 +62,14 @@ export function OpenPullRequestModal({ restaurant, onClose }: Props) {
     };
   }, [step, restaurant.id, candidates.length]);
 
-  // edit field 바뀔 때 입력값 초기화
+  // edit field 바뀔 때 입력값 초기화 — fields.ts 의 initialEditValue 위임
   function selectField(f: EditField) {
     setField(f);
-    if (f === 'price_level') setEditValue(String(restaurant.price_level));
-    else if (f === 'has_alcohol') setEditValue(restaurant.has_alcohol ? 'true' : 'false');
-    else if (f === 'cuisine_types') setEditValue(restaurant.cuisine_types.join(', '));
-    else if (f === 'name') setEditValue(restaurant.name);
-    else if (f === 'address') setEditValue(restaurant.address);
-  }
-
-  function currentDisplay(f: EditField): string {
-    switch (f) {
-      case 'name':
-        return restaurant.name;
-      case 'price_level':
-        return '₩'.repeat(restaurant.price_level);
-      case 'cuisine_types':
-        return restaurant.cuisine_types.join(' / ') || '(없음)';
-      case 'address':
-        return restaurant.address || '(없음)';
-      case 'has_alcohol':
-        return restaurant.has_alcohol ? '가능' : '불가';
-    }
-  }
-
-  function buildEditPayload(): EditPayload | null {
-    if (field === 'name') {
-      const v = editValue.trim();
-      if (!v || v === restaurant.name) return null;
-      return { field: 'name', current: restaurant.name, new: v };
-    }
-    if (field === 'address') {
-      const v = editValue.trim();
-      if (!v || v === restaurant.address) return null;
-      return { field: 'address', current: restaurant.address, new: v };
-    }
-    if (field === 'price_level') {
-      const n = Number(editValue);
-      if (![1, 2, 3].includes(n)) return null;
-      if (n === restaurant.price_level) return null;
-      return { field: 'price_level', current: restaurant.price_level, new: n };
-    }
-    if (field === 'has_alcohol') {
-      const b = editValue === 'true';
-      if (b === restaurant.has_alcohol) return null;
-      return { field: 'has_alcohol', current: restaurant.has_alcohol, new: b };
-    }
-    if (field === 'cuisine_types') {
-      const arr = editValue
-        .split(/[,\/]/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-      if (arr.length === 0) return null;
-      const same =
-        arr.length === restaurant.cuisine_types.length &&
-        arr.every((v, i) => v === restaurant.cuisine_types[i]);
-      if (same) return null;
-      return { field: 'cuisine_types', current: restaurant.cuisine_types, new: arr };
-    }
-    return null;
+    setEditValue(initialEditValue(f, restaurant));
   }
 
   function submitEdit() {
-    const payload = buildEditPayload();
+    const payload = buildEditPayload(field, editValue, restaurant);
     if (!payload) {
       alert('변경된 값이 없어요');
       return;
@@ -260,16 +195,16 @@ export function OpenPullRequestModal({ restaurant, onClose }: Props) {
                 <div className="flex flex-wrap gap-1.5">
                   {EDIT_FIELDS.map((f) => (
                     <button
-                      key={f.value}
+                      key={f}
                       type="button"
-                      onClick={() => selectField(f.value)}
+                      onClick={() => selectField(f)}
                       className={`rounded-full border px-2 py-0.5 text-[11px] transition ${
-                        field === f.value
+                        field === f
                           ? 'border-fg bg-fg text-bg'
                           : 'border-border bg-bg text-fg-muted hover:bg-fg/5'
                       }`}
                     >
-                      {f.label}
+                      {fieldLabel(f)}
                     </button>
                   ))}
                 </div>
@@ -277,10 +212,10 @@ export function OpenPullRequestModal({ restaurant, onClose }: Props) {
 
               <div>
                 <label className="mb-1 block text-xs font-medium text-fg">
-                  {EDIT_FIELDS.find((f) => f.value === field)?.label} 변경
+                  {fieldLabel(field)} 변경
                 </label>
                 <p className="mb-1 text-[10px] text-fg-muted">
-                  현재: <span className="font-medium text-fg">{currentDisplay(field)}</span>
+                  현재: <span className="font-medium text-fg">{fieldCurrentDisplay(field, restaurant)}</span>
                 </p>
 
                 {field === 'name' && (
