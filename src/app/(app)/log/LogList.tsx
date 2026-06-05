@@ -285,7 +285,7 @@ function PREventItem({ ev }: { ev: LogPREvent }) {
         <span className="text-fg-muted">
           {ev.event === 'open' ? '님이 제안' : '님이 처리'}
         </span>
-        <span className="ml-auto text-[10px] text-fg-muted">{formatRelativeTime(ev.at)}</span>
+        <span className="ml-auto text-[10px] text-fg-muted">{formatRelativeTime(new Date(ev.at))}</span>
       </div>
       <div className="mt-1 flex flex-wrap items-center gap-1.5 pl-7 text-[11px]">
         <span className="rounded border border-rose-200 bg-rose-50 px-1.5 py-0.5 text-rose-800">
