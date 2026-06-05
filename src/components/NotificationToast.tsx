@@ -7,6 +7,8 @@ import type {
   BadgeEarnedPayload,
   MentionPayload,
   NotificationRow,
+  PullRequestNewPayload,
+  PullRequestResolvedPayload,
   RegionChampionPayload,
   ReportCommentPayload,
   ReportNewPayload,
@@ -297,6 +299,75 @@ function ToastCard({
             </p>
             <p className="mt-1.5 line-clamp-2 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-fg">
               {p.message}
+            </p>
+          </div>
+          <DismissButton
+            onDismiss={(e) => {
+              e?.preventDefault();
+              e?.stopPropagation();
+              onDismiss();
+            }}
+          />
+        </div>
+      </Link>
+    );
+  }
+
+  if (note.type === 'pull_request_new') {
+    const p = note.payload as PullRequestNewPayload;
+    return (
+      <Link
+        href="/admin/pull-requests"
+        onClick={onDismiss}
+        className="block rounded-lg border border-border bg-surface p-3 shadow-lg ring-1 ring-black/5 transition hover:border-fg/40"
+      >
+        <div className="flex items-start gap-2">
+          <span aria-hidden className="text-base">🔀</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-fg">새 PR 이 들어왔어요</p>
+            <p className="mt-0.5 text-[11px] text-fg-muted">
+              <span className="font-medium text-fg">{p.opener_name}</span> · {p.source_name} →{' '}
+              {p.target_name}
+            </p>
+            {p.reason && (
+              <p className="mt-1.5 line-clamp-2 rounded-md border border-border bg-bg px-2 py-1.5 text-xs text-fg">
+                {p.reason}
+              </p>
+            )}
+          </div>
+          <DismissButton
+            onDismiss={(e) => {
+              e?.preventDefault();
+              e?.stopPropagation();
+              onDismiss();
+            }}
+          />
+        </div>
+      </Link>
+    );
+  }
+
+  if (note.type === 'pull_request_resolved') {
+    const p = note.payload as PullRequestResolvedPayload;
+    const merged = p.status === 'merged';
+    return (
+      <Link
+        href="/map"
+        onClick={onDismiss}
+        className={`block rounded-lg border p-3 shadow-lg ring-1 ring-black/5 transition ${
+          merged
+            ? 'border-sky-300 bg-sky-50 hover:border-sky-400'
+            : 'border-border bg-surface hover:border-fg/40'
+        }`}
+      >
+        <div className="flex items-start gap-2">
+          <span aria-hidden className="text-base">{merged ? '✅' : '🚫'}</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-medium text-fg">
+              PR 이 {merged ? 'merged 됐어요' : '거부됐어요'}
+            </p>
+            <p className="mt-0.5 text-[11px] text-fg-muted">
+              {p.source_name} → {p.target_name}
             </p>
           </div>
           <DismissButton

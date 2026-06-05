@@ -11,6 +11,8 @@ import type {
   BadgeEarnedPayload,
   MentionPayload,
   NotificationRow,
+  PullRequestNewPayload,
+  PullRequestResolvedPayload,
   RegionChampionPayload,
   ReportCommentPayload,
   ReportNewPayload,
@@ -300,6 +302,41 @@ function NotificationItem({ note, onClick }: { note: NotificationRow; onClick: (
             <span className="font-medium">{p.author_name}</span> 님이 멘션
           </p>
           <p className="mt-0.5 truncate text-[11px] text-fg-muted">📍 {p.restaurant_name}</p>
+        </div>
+        {time}
+      </Link>
+    );
+  }
+
+  if (note.type === 'pull_request_new') {
+    const p = note.payload as PullRequestNewPayload;
+    return (
+      <Link href="/admin/pull-requests" onClick={onClick} className={itemClass}>
+        <span aria-hidden className="text-base leading-none">🔀</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-fg">새 PR — {p.opener_name}</p>
+          <p className="mt-0.5 truncate text-[11px] text-fg-muted">
+            {p.source_name} → {p.target_name}
+          </p>
+        </div>
+        {time}
+      </Link>
+    );
+  }
+
+  if (note.type === 'pull_request_resolved') {
+    const p = note.payload as PullRequestResolvedPayload;
+    const merged = p.status === 'merged';
+    return (
+      <Link href="/map" onClick={onClick} className={itemClass}>
+        <span aria-hidden className="text-base leading-none">{merged ? '✅' : '🚫'}</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs font-medium text-fg">
+            PR {merged ? 'merged 됐어요' : '거부됐어요'}
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-fg-muted">
+            {p.source_name} → {p.target_name}
+          </p>
         </div>
         {time}
       </Link>

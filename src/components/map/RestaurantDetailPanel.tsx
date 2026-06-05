@@ -9,6 +9,7 @@ import { toggleFavorite } from '@/lib/favorites/actions';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { ReviewLog } from './ReviewLog';
 import { ReviewComposer, type ReplyTarget } from './ReviewComposer';
+import { OpenPullRequestModal } from './OpenPullRequestModal';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import {
   fetchRestaurantDetail,
@@ -43,6 +44,8 @@ export function RestaurantDetailPanel({
   const [replyTo, setReplyTo] = useState<ReplyTarget | null>(null);
   // D55: 디테일 전용 컬럼 — 패널 열릴 때 단건 fetch
   const [detail, setDetail] = useState<RestaurantDetailExtra | null>(null);
+  // D78: PR 모달 열림 여부
+  const [prOpen, setPrOpen] = useState(false);
 
   // 다른 식당으로 전환되면 답글 상태 초기화 (잘못된 식당의 commit 에 답글 가는 것 방지)
   useEffect(() => {
@@ -194,6 +197,14 @@ export function RestaurantDetailPanel({
           )}
           <button
             type="button"
+            onClick={() => setPrOpen(true)}
+            className="rounded border border-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-fg-muted transition hover:border-sky-400 hover:text-sky-700"
+            title="다른 식당과 중복인 거 같으면 PR 열기 (관리자가 검토)"
+          >
+            🔀 PR
+          </button>
+          <button
+            type="button"
             onClick={onClose}
             className="text-xs text-fg-muted hover:text-fg"
             aria-label="닫기"
@@ -289,6 +300,15 @@ export function RestaurantDetailPanel({
         replyTo={replyTo}
         onCancelReply={() => setReplyTo(null)}
       />
+
+      {/* D78: PR 열기 모달 */}
+      {prOpen && (
+        <OpenPullRequestModal
+          sourceId={restaurant.id}
+          sourceName={restaurant.name}
+          onClose={() => setPrOpen(false)}
+        />
+      )}
     </section>
   );
 }

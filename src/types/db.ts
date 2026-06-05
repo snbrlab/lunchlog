@@ -126,7 +126,9 @@ export type NotificationType =
   | 'report_comment'
   | 'badge_earned'
   | 'region_champion'
-  | 'mention';
+  | 'mention'
+  | 'pull_request_new'
+  | 'pull_request_resolved';
 
 export interface ReportUpdatePayload {
   report_id: string;
@@ -193,6 +195,36 @@ export interface MentionPayload {
   message: string;
 }
 
+// D78: PR 제안 (admin 에게)
+export interface PullRequestNewPayload {
+  pr_id: string;
+  opener_name: string;
+  source_name: string;
+  target_name: string;
+  reason: string | null;
+}
+
+// D78: PR 처리됨 (작성자에게)
+export interface PullRequestResolvedPayload {
+  pr_id: string;
+  status: 'merged' | 'closed';
+  source_name: string;
+  target_name: string;
+}
+
+// D78: pull_requests row (admin 페이지 + 사용자 자기 PR 조회)
+export interface PullRequest {
+  id: string;
+  source_id: string;
+  target_id: string;
+  opened_by: string;
+  reason: string | null;
+  status: 'open' | 'merged' | 'closed';
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  created_at: string;
+}
+
 export interface NotificationRow {
   id: string;
   user_id: string;
@@ -205,7 +237,9 @@ export interface NotificationRow {
     | ReportCommentPayload
     | BadgeEarnedPayload
     | RegionChampionPayload
-    | MentionPayload;
+    | MentionPayload
+    | PullRequestNewPayload
+    | PullRequestResolvedPayload;
   read_at: string | null;
   created_at: string;
 }
