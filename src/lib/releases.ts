@@ -12,6 +12,18 @@ export interface ReleaseItem {
 
 export const RELEASES: ReleaseItem[] = [
   {
+    version: 'D79',
+    hash: 'e569ae3',
+    date: '2026-06-03',
+    title: 'commit 에 이모지 reaction 🎉',
+    bullets: [
+      'GitHub 이슈 reaction 처럼 commit 마다 이모지로 가볍게 반응 (👍 ❤️ 😋 😲 🎉 등)',
+      'reaction 누른 사람 hover 로 확인',
+      '/log + /map 디테일 패널 둘 다 지원',
+      '모바일은 commit tap 으로 + 버튼 활성화',
+    ],
+  },
+  {
     version: 'D74',
     hash: 'fb886fb',
     date: '2026-06-02',
