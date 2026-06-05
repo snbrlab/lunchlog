@@ -12,6 +12,19 @@ export interface ReleaseItem {
 
 export const RELEASES: ReleaseItem[] = [
   {
+    version: 'D78',
+    hash: '9c8ef76',
+    date: '2026-06-05',
+    title: '🔀 Pull Request — 중복 병합 + 정보 수정 제안',
+    bullets: [
+      '식당 상세에 [🔀 PR] 버튼 — git PR 처럼 동료들과 식당 정보 정리',
+      '🔀 중복 병합 — "이 식당과 ○○ 가 같은 곳이에요" 제안 → admin 검토 후 병합',
+      '✏️ 정보 수정 — 이름 / 가격대 / cuisine / 주소 / 술 가능 여부 변경 제안',
+      'PR 활동이 /log 에 함께 표시 — git activity feed 느낌 (열림 / 적용 / 거부)',
+      'PR 처리되면 작성자에게 알림 (✅ 적용됐어요 / 🚫 거부됐어요)',
+    ],
+  },
+  {
     version: 'D79',
     hash: 'e569ae3',
     date: '2026-06-03',
