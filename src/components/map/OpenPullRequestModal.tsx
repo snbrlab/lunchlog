@@ -284,6 +284,20 @@ export function OpenPullRequestModal({ restaurant, onClose }: Props) {
                     className="w-full rounded-md border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-fg"
                   />
                 )}
+                {field === 'kakao_place_url' && (
+                  <>
+                    <input
+                      type="url"
+                      value={editValue}
+                      onChange={(e) => setEditValue(e.target.value)}
+                      placeholder="https://place.map.kakao.com/…"
+                      className="w-full rounded-md border border-border bg-surface px-3 py-2 text-xs outline-none focus:border-fg"
+                    />
+                    <p className="mt-1 text-[10px] text-fg-muted">
+                      💡 카카오맵에서 해당 식당 검색 → 상세 페이지 URL 복사. *.kakao.com 도메인만 허용.
+                    </p>
+                  </>
+                )}
               </div>
 
               <div>

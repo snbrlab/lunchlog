@@ -222,7 +222,8 @@ export type EditField =
   | 'price_level'
   | 'cuisine_types'
   | 'address'
-  | 'has_alcohol';
+  | 'has_alcohol'
+  | 'kakao_place_url';
 
 export interface EditPayload {
   field: EditField;

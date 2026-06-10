@@ -10,6 +10,17 @@ export interface RestaurantSnapshot {
   cuisine_types: string[];
   address: string;
   has_alcohol: boolean;
+  kakao_place_url: string | null;
+}
+
+// 카카오 도메인 화이트리스트 — restaurants/actions.ts 의 isAllowedKakaoUrl 과 동일 규칙
+function isAllowedKakaoUrl(url: string): boolean {
+  try {
+    const u = new URL(url);
+    return u.hostname === 'place.map.kakao.com' || u.hostname.endsWith('.kakao.com');
+  } catch {
+    return false;
+  }
 }
 
 interface FieldDescriptor {
@@ -81,6 +92,18 @@ const FIELD_DESCRIPTORS: Record<EditField, FieldDescriptor> = {
     },
     formatValue: (v) => (typeof v === 'boolean' ? (v ? '가능' : '불가') : '(없음)'),
   },
+  kakao_place_url: {
+    label: '카카오맵 링크',
+    currentDisplay: (r) => r.kakao_place_url ?? '(없음)',
+    parseEdit: (raw, r) => {
+      const v = raw.trim();
+      if (!v) return null;
+      if (!isAllowedKakaoUrl(v)) return null; // 카카오 도메인 외 거부 (보안)
+      if (v === r.kakao_place_url) return null;
+      return v;
+    },
+    formatValue: (v) => (typeof v === 'string' && v ? v : '(없음)'),
+  },
 };
 
 export const EDIT_FIELDS = Object.keys(FIELD_DESCRIPTORS) as EditField[];
@@ -100,6 +123,7 @@ const CURRENT_OF: Record<EditField, (r: RestaurantSnapshot) => EditPayload['curr
   cuisine_types: (r) => r.cuisine_types,
   address: (r) => r.address,
   has_alcohol: (r) => r.has_alcohol,
+  kakao_place_url: (r) => r.kakao_place_url,
 };
 
 export function buildEditPayload(
@@ -118,17 +142,15 @@ export function fmtFieldValue(field: EditField, v: unknown): string {
 }
 
 // 입력값 초기화 — modal 에서 새 필드 선택했을 때 input 의 기본값
+const INITIAL_EDIT_VALUE: Record<EditField, (r: RestaurantSnapshot) => string> = {
+  name: (r) => r.name,
+  price_level: (r) => String(r.price_level),
+  cuisine_types: (r) => r.cuisine_types.join(', '),
+  address: (r) => r.address,
+  has_alcohol: (r) => (r.has_alcohol ? 'true' : 'false'),
+  kakao_place_url: (r) => r.kakao_place_url ?? '',
+};
+
 export function initialEditValue(field: EditField, r: RestaurantSnapshot): string {
-  switch (field) {
-    case 'name':
-      return r.name;
-    case 'price_level':
-      return String(r.price_level);
-    case 'cuisine_types':
-      return r.cuisine_types.join(', ');
-    case 'address':
-      return r.address;
-    case 'has_alcohol':
-      return r.has_alcohol ? 'true' : 'false';
-  }
+  return INITIAL_EDIT_VALUE[field](r);
 }
