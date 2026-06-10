@@ -31,14 +31,18 @@ export default function RestaurantsAdminTable({
   // D77: 병합 picker — source row id 가 열려있는 것 (한 번에 하나만)
   const [mergeOpenId, setMergeOpenId] = useState<string | null>(null);
   const [mergeQuery, setMergeQuery] = useState('');
+  // D80: 카카오 URL 누락 식당만 필터 — PR 로 채우기 좋은 후보 발굴용
+  const [missingUrlOnly, setMissingUrlOnly] = useState(false);
 
   const missingUrlCount = rows.filter((r) => !r.kakao_place_url).length;
 
   const filtered = useMemo(() => {
-    if (region === 'all') return rows;
-    if (region === 'none') return rows.filter((r) => !r.office_id);
-    return rows.filter((r) => r.office_id === region);
-  }, [rows, region]);
+    let r = rows;
+    if (region === 'none') r = r.filter((x) => !x.office_id);
+    else if (region !== 'all') r = r.filter((x) => x.office_id === region);
+    if (missingUrlOnly) r = r.filter((x) => !x.kakao_place_url);
+    return r;
+  }, [rows, region, missingUrlOnly]);
 
   // office 별 카운트 (chip 옆 표시)
   const countByOffice = useMemo(() => {
@@ -204,6 +208,19 @@ export default function RestaurantsAdminTable({
         >
           미분류 ({countByOffice.get('__none__') ?? 0})
         </button>
+        <span className="mx-1 h-3 w-px bg-border" aria-hidden />
+        <button
+          type="button"
+          onClick={() => setMissingUrlOnly((v) => !v)}
+          title="카카오 link 누락된 식당만 — PR 로 채우기 좋은 후보"
+          className={`rounded-full px-2 py-0.5 transition ${
+            missingUrlOnly
+              ? 'bg-rose-600 text-white'
+              : 'bg-bg text-fg-muted hover:bg-fg/5'
+          }`}
+        >
+          🗺️ URL 누락 ({missingUrlCount})
+        </button>
         <span className="ml-auto text-fg-muted/60">
           {filtered.length}개 표시
         </span>
@@ -245,13 +262,13 @@ export default function RestaurantsAdminTable({
               <td className="px-3 py-2 text-xs text-fg-muted">{r.cuisine_types.join(' / ')}</td>
               <td className="px-3 py-2 text-xs text-fg-muted">{r.creator?.name ?? '—'}</td>
               <td className="px-3 py-2 text-right font-mono text-xs">{r.commit_count}</td>
-              <td className="px-3 py-2">
+              <td className="whitespace-nowrap px-3 py-2">
                 {r.is_closed ? (
-                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">
+                  <span className="inline-block whitespace-nowrap rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-800">
                     폐업
                   </span>
                 ) : (
-                  <span className="rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-800">
+                  <span className="inline-block whitespace-nowrap rounded bg-emerald-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-emerald-800">
                     영업
                   </span>
                 )}
