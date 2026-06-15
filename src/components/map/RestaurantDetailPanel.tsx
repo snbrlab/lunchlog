@@ -10,6 +10,7 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { ReviewLog } from './ReviewLog';
 import { ReviewComposer, type ReplyTarget } from './ReviewComposer';
 import { OpenPullRequestModal } from './OpenPullRequestModal';
+import { ShareButton } from '@/components/ShareButton';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import {
   fetchRestaurantDetail,
@@ -203,6 +204,15 @@ export function RestaurantDetailPanel({
           >
             🔀 PR
           </button>
+          <ShareButton
+            title={`🍱 ${restaurant.name}`}
+            text={`🍱 ${restaurant.name} 어때? — ${restaurant.cuisine_types.join(' / ')}\n런치로그에서 한 줄 리뷰 보기 👇`}
+            url={typeof window !== 'undefined' ? `${window.location.origin}/map?focus=${restaurant.id}` : ''}
+            className="rounded border border-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-fg-muted transition hover:border-emerald-400 hover:text-emerald-700"
+            copiedMessage="식당 링크 복사됐어요"
+          >
+            📤 공유
+          </ShareButton>
           <button
             type="button"
             onClick={onClose}

@@ -7,6 +7,7 @@ import { ActivityHeatmap } from '@/components/ActivityHeatmap';
 import { aggregateCounts } from '@/lib/heatmap';
 import { BadgeCollection } from '@/components/badges/BadgeCollection';
 import { RegionCrowns } from '@/components/badges/RegionCrown';
+import { InviteFriendButton } from '@/components/InviteFriendButton';
 import { CuisineLanguageBar, buildCuisineSlices } from '@/components/CuisineLanguageBar';
 import { findCuisineGroup } from '@/lib/cuisine';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
@@ -200,6 +201,7 @@ export default async function MePage() {
             </div>
           )}
         </div>
+        <InviteFriendButton inviterName={name} />
       </section>
 
       {/* D52: 설정 — 자주 안 여니까 collapse */}
