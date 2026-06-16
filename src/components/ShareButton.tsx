@@ -24,11 +24,21 @@ export function ShareButton({
   const [copied, setCopied] = useState(false);
 
   async function onShare() {
-    const shareData: ShareData = { title, text, url };
+    // 데스크탑에선 navigator.share 가 Windows 공유 시트 OS panel 을 띄워 1-2초 버퍼링이
+    // 발생하는 케이스가 있음. 터치 디바이스 (pointer: coarse) 만 native share 시도하고,
+    // 데스크탑은 곧장 클립보드 복사 — 즉시 + 깔끔.
+    const isTouch =
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(pointer: coarse)').matches;
 
-    if (typeof navigator !== 'undefined' && typeof navigator.share === 'function') {
+    if (
+      isTouch &&
+      typeof navigator !== 'undefined' &&
+      typeof navigator.share === 'function'
+    ) {
       try {
-        await navigator.share(shareData);
+        await navigator.share({ title, text, url });
         return;
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
