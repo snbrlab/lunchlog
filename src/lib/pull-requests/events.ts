@@ -15,6 +15,8 @@ export type LogPREvent = {
   source_id: string | null;
   target_name: string;
   target_id: string | null;
+  // /log region 필터용 — target 식당의 office_id. target 삭제됐거나 미분류면 null.
+  target_office_id: string | null;
   edit_payload: EditPayload | null;
   actor: {
     name: string;
@@ -35,7 +37,7 @@ export async function fetchRecentPullRequestEvents(
     .select(
       'id, kind, source_id, target_id, status, reason, edit_payload, created_at, reviewed_at, ' +
         'source:restaurants!pull_requests_source_id_fkey ( id, name ), ' +
-        'target:restaurants!pull_requests_target_id_fkey ( id, name ), ' +
+        'target:restaurants!pull_requests_target_id_fkey ( id, name, office_id ), ' +
         'opener:users!pull_requests_opened_by_fkey ( name, avatar_color, avatar_emoji ), ' +
         'reviewer:users!pull_requests_reviewed_by_fkey ( name, avatar_color, avatar_emoji )',
     )
@@ -53,7 +55,7 @@ export async function fetchRecentPullRequestEvents(
     created_at: string;
     reviewed_at: string | null;
     source: { id: string; name: string } | null;
-    target: { id: string; name: string } | null;
+    target: { id: string; name: string; office_id: string | null } | null;
     opener: { name: string; avatar_color: string; avatar_emoji: string | null } | null;
     reviewer: { name: string; avatar_color: string; avatar_emoji: string | null } | null;
   };
@@ -68,6 +70,7 @@ export async function fetchRecentPullRequestEvents(
       source_id: pr.source?.id ?? null,
       target_name: pr.target?.name ?? '(삭제됨)',
       target_id: pr.target?.id ?? null,
+      target_office_id: pr.target?.office_id ?? null,
       edit_payload: pr.edit_payload,
       reason: pr.reason,
     };

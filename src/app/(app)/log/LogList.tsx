@@ -88,12 +88,14 @@ export default function LogList({
     });
   }, [rows, meal, cutoff, showReverted, query, officeFilter]);
 
-  // D78: PR 이벤트는 review 필터 (meal/reverted/office) 무관, date + query 만 적용.
-  // meal/region 등 식당 단위 필터가 켜져있어도 activity 흐름은 끊기지 않게.
+  // PR 이벤트: meal/reverted 는 무관 (review 전용 개념), date + query + region 적용.
+  // region 은 PR 의 target 식당 office_id 기준.
   const filteredPrs = useMemo(() => {
     const q = query.trim().toLowerCase();
     return prEvents.filter((p) => {
       if (cutoff > 0 && new Date(p.at).getTime() < cutoff) return false;
+      if (officeFilter === 'none') { if (p.target_office_id) return false; }
+      else if (officeFilter !== 'all' && p.target_office_id !== officeFilter) return false;
       if (q) {
         const hay = [p.source_name, p.target_name, p.actor?.name ?? '', p.reason ?? '']
           .join('|')
@@ -102,7 +104,7 @@ export default function LogList({
       }
       return true;
     });
-  }, [prEvents, cutoff, query]);
+  }, [prEvents, cutoff, query, officeFilter]);
 
   // review + PR 이벤트 시간순 merge
   type Activity =
