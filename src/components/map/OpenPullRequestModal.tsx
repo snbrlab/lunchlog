@@ -298,6 +298,39 @@ export function OpenPullRequestModal({ restaurant, onClose }: Props) {
                     </p>
                   </>
                 )}
+                {field === 'categories' && (
+                  <div className="flex gap-1.5">
+                    {(
+                      [
+                        { v: 'lunch', label: '☀ 점심' },
+                        { v: 'dinner', label: '🌙 저녁' },
+                      ] as const
+                    ).map((o) => {
+                      const set = new Set(editValue.split(',').filter(Boolean));
+                      const active = set.has(o.v);
+                      return (
+                        <button
+                          key={o.v}
+                          type="button"
+                          onClick={() => {
+                            if (active) set.delete(o.v);
+                            else set.add(o.v);
+                            // 정렬 (lunch 먼저)
+                            const next = (['lunch', 'dinner'] as const).filter((c) => set.has(c));
+                            setEditValue(next.join(','));
+                          }}
+                          className={`rounded-md border px-3 py-1.5 text-xs transition ${
+                            active
+                              ? 'border-fg bg-fg text-bg'
+                              : 'border-border bg-bg text-fg-muted hover:bg-fg/5'
+                          }`}
+                        >
+                          {o.label}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               <div>

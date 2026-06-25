@@ -11,6 +11,12 @@ export interface RestaurantSnapshot {
   address: string;
   has_alcohol: boolean;
   kakao_place_url: string | null;
+  categories: string[]; // 'lunch' / 'dinner'
+}
+
+const CATEGORY_LABELS: Record<string, string> = { lunch: '☀ 점심', dinner: '🌙 저녁' };
+function fmtCategories(arr: string[]): string {
+  return arr.map((c) => CATEGORY_LABELS[c] ?? c).join(' / ');
 }
 
 // 카카오 도메인 화이트리스트 — restaurants/actions.ts 의 isAllowedKakaoUrl 과 동일 규칙
@@ -104,6 +110,25 @@ const FIELD_DESCRIPTORS: Record<EditField, FieldDescriptor> = {
     },
     formatValue: (v) => (typeof v === 'string' && v ? v : '(없음)'),
   },
+  categories: {
+    label: '점심/저녁',
+    currentDisplay: (r) => fmtCategories(r.categories) || '(없음)',
+    parseEdit: (raw, r) => {
+      // raw 는 콤마 구분 ('lunch', 'dinner', 'lunch,dinner')
+      const arr = raw
+        .split(',')
+        .map((s) => s.trim())
+        .filter((s): s is 'lunch' | 'dinner' => s === 'lunch' || s === 'dinner');
+      if (arr.length === 0) return null; // 최소 하나
+      // 같은지 비교 (순서 무관)
+      const setNew = new Set(arr);
+      const setCur = new Set(r.categories);
+      if (setNew.size === setCur.size && [...setNew].every((v) => setCur.has(v))) return null;
+      // 정규화 순서 (lunch 먼저)
+      return (['lunch', 'dinner'] as const).filter((c) => setNew.has(c));
+    },
+    formatValue: (v) => (Array.isArray(v) ? fmtCategories(v) : '(없음)'),
+  },
 };
 
 export const EDIT_FIELDS = Object.keys(FIELD_DESCRIPTORS) as EditField[];
@@ -124,6 +149,7 @@ const CURRENT_OF: Record<EditField, (r: RestaurantSnapshot) => EditPayload['curr
   address: (r) => r.address,
   has_alcohol: (r) => r.has_alcohol,
   kakao_place_url: (r) => r.kakao_place_url,
+  categories: (r) => r.categories,
 };
 
 export function buildEditPayload(
@@ -149,6 +175,7 @@ const INITIAL_EDIT_VALUE: Record<EditField, (r: RestaurantSnapshot) => string> =
   address: (r) => r.address,
   has_alcohol: (r) => (r.has_alcohol ? 'true' : 'false'),
   kakao_place_url: (r) => r.kakao_place_url ?? '',
+  categories: (r) => r.categories.join(','),
 };
 
 export function initialEditValue(field: EditField, r: RestaurantSnapshot): string {

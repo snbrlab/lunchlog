@@ -322,6 +322,7 @@ export function RestaurantDetailPanel({
             address: detail?.address ?? '',
             has_alcohol: restaurant.has_alcohol,
             kakao_place_url: detail?.kakao_place_url ?? null,
+            categories: restaurant.categories,
           }}
           onClose={() => setPrOpen(false)}
         />

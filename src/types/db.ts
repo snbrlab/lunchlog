@@ -223,7 +223,8 @@ export type EditField =
   | 'cuisine_types'
   | 'address'
   | 'has_alcohol'
-  | 'kakao_place_url';
+  | 'kakao_place_url'
+  | 'categories';
 
 export interface EditPayload {
   field: EditField;
