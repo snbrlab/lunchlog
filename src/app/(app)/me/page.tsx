@@ -11,6 +11,7 @@ import { InviteFriendButton } from '@/components/InviteFriendButton';
 import { CuisineLanguageBar, buildCuisineSlices } from '@/components/CuisineLanguageBar';
 import { findCuisineGroup } from '@/lib/cuisine';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
+import { EMPTY_PROGRESS, type BadgeProgress } from '@/lib/badges-progress';
 import ChangePasswordForm from './ChangePasswordForm';
 import ProfileEditForm from './ProfileEditForm';
 
@@ -70,6 +71,7 @@ export default async function MePage() {
     { data: myBadgeRows },
     { data: myCrownRows },
     { data: myCuisineReviews },
+    { data: badgeProgressData },
   ] = await Promise.all([
     getCachedOffices(),
     getCachedBuildings(),
@@ -111,6 +113,8 @@ export default async function MePage() {
       .select('restaurant:restaurants!reviews_restaurant_id_fkey ( cuisine_types )')
       .eq('author_id', user.id)
       .eq('reverted', false),
+    // D80: 뱃지 진행도 — 한 RPC 로 모든 axis 카운트
+    supabase.rpc('badge_progress', { p_user: user.id }),
   ]);
 
   const heatmapCounts = aggregateCounts(
@@ -151,6 +155,9 @@ export default async function MePage() {
       commit_count: number;
     } | null;
   }>;
+
+  // D80: badge progress — RPC 응답을 typed 로
+  const badgeProgress = (badgeProgressData ?? EMPTY_PROGRESS) as BadgeProgress;
 
   // D78: 첫 cuisine_type 만 추출해서 그룹 카운트
   const myCuisineRows = ((myCuisineReviews ?? []) as unknown) as Array<{
@@ -257,6 +264,7 @@ export default async function MePage() {
         <BadgeCollection
           earnedCodes={badgeCodes}
           primaryCode={profile?.primary_badge_code ?? null}
+          progress={badgeProgress}
         />
       </section>
 

@@ -11,14 +11,16 @@ import {
   BADGE_SECTIONS,
   type BadgeMeta,
 } from '@/lib/badges';
+import { remainingTextFor, type BadgeProgress } from '@/lib/badges-progress';
 import { setPrimaryBadge } from '@/app/(app)/me/actions';
 
 interface Props {
   earnedCodes: string[];
   primaryCode: string | null;
+  progress: BadgeProgress;
 }
 
-export function BadgeCollection({ earnedCodes, primaryCode }: Props) {
+export function BadgeCollection({ earnedCodes, primaryCode, progress }: Props) {
   const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [picker, setPicker] = useState(false);
@@ -122,7 +124,12 @@ export function BadgeCollection({ earnedCodes, primaryCode }: Props) {
               </h3>
               <ul className="flex flex-wrap gap-2">
                 {items.map((m) => (
-                  <BadgeCell key={m.code} meta={m} owned={earnedSet.has(m.code)} />
+                  <BadgeCell
+                    key={m.code}
+                    meta={m}
+                    owned={earnedSet.has(m.code)}
+                    progress={progress}
+                  />
                 ))}
               </ul>
             </div>
@@ -133,8 +140,16 @@ export function BadgeCollection({ earnedCodes, primaryCode }: Props) {
   );
 }
 
-function BadgeCell({ meta, owned }: { meta: BadgeMeta; owned: boolean }) {
-  // 모바일 탭 / 데스크탑 호버 둘 다 동작 — group-hover + focus-within
+function BadgeCell({
+  meta,
+  owned,
+  progress,
+}: {
+  meta: BadgeMeta;
+  owned: boolean;
+  progress: BadgeProgress;
+}) {
+  const remaining = remainingTextFor(meta, progress, owned);
   return (
     <li
       className={`group relative flex w-[88px] flex-col items-center gap-1 rounded-md border px-1.5 py-2 text-center ${
@@ -167,6 +182,9 @@ function BadgeCell({ meta, owned }: { meta: BadgeMeta; owned: boolean }) {
           {owned ? meta.label : '🔒 잠긴 뱃지'}
         </span>
         <span className="mt-0.5 block text-fg-muted">{meta.description}</span>
+        {remaining && (
+          <span className="mt-1 block text-amber-700">⏳ {remaining}</span>
+        )}
       </span>
     </li>
   );
