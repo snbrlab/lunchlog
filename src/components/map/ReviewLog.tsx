@@ -56,12 +56,10 @@ type EnrichedReview = Review & {
 
 const FRESH_DAYS = 7;
 
-// D55: 모듈 레벨 메모리 캐시. 식당 디테일 패널을 왔다갔다 할 때 매번 fetch 하던 걸 제거.
-// - TTL 60s 내 hit → 네트워크 skip, 즉시 표시
-// - mutation (refreshKey 증가) → 해당 식당 키 invalidate
-// 페이지 리로드 시 자연 소멸 → stale 위험 적음.
+// D55: 모듈 레벨 메모리 캐시 — 첫 표시 flash 방지용 (no-flash).
+// 캐시 freshness 는 무시. 항상 background refetch — reactions 같은 변경이 다른 surface 에서 들어와도 보임.
+// 페이지 리로드 시 자연 소멸.
 const REVIEWS_CACHE = new Map<string, { data: EnrichedReview[]; at: number }>();
-const REVIEWS_TTL_MS = 60 * 1000;
 
 interface Props {
   restaurantId: string;
@@ -105,15 +103,10 @@ export function ReviewLog({
       lastRefreshKeyRef.current = refreshKey;
     }
 
-    // 2) 캐시 hit + 신선 → 즉시 표시, 네트워크 skip
+    // 2) 캐시 hit 면 우선 즉시 표시 (no flash). 신선도 무관 — 항상 백그라운드 refetch.
+    // (이전엔 60초 내면 fetch skip 했는데, /log 등 외부 surface 에서 reaction 토글한 게
+    //  detail 패널 다시 열 때 안 보이는 문제 → 항상 fresh 받기)
     const cached = REVIEWS_CACHE.get(restaurantId);
-    if (cached && Date.now() - cached.at < REVIEWS_TTL_MS) {
-      setReviews(cached.data);
-      setLoading(false);
-      return;
-    }
-
-    // 3) stale 캐시라도 있으면 우선 보여주고 (no flash), 백그라운드에서 새로 받기
     if (cached) {
       setReviews(cached.data);
       setLoading(false);

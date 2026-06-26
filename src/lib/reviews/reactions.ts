@@ -1,6 +1,7 @@
 'use server';
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
 import { REACTION_EMOJIS } from './reactions-meta';
 
 export type ToggleReactionResult =
@@ -38,6 +39,8 @@ export async function toggleReaction(
       .eq('user_id', user.id)
       .eq('emoji', emoji);
     if (error) return { ok: false, message: error.message };
+    // /log 캐시 무효화 — 다른 surface 에서도 즉시 fresh 보이게
+    invalidateReviewsLogCache();
     return { ok: true, action: 'removed' };
   } else {
     const { error } = await supabase.from('review_reactions').insert({
@@ -46,6 +49,7 @@ export async function toggleReaction(
       emoji,
     });
     if (error) return { ok: false, message: error.message };
+    invalidateReviewsLogCache();
     return { ok: true, action: 'added' };
   }
 }
