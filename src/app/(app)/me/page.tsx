@@ -314,10 +314,14 @@ export default async function MePage() {
         )}
       </section>
 
-      {/* 내 리뷰 목록 */}
+      {/* 내 리뷰 목록 — count 는 active(revert 제외) 전체. 뱃지 진행도와 일치. */}
       <section>
         <h2 className="mb-3 text-sm font-medium text-fg">
-          내 commit ({reviewItems.length}개)
+          내 commit ({badgeProgress.commits}개
+          {reviewItems.length < badgeProgress.commits && (
+            <span className="text-fg-muted/60"> · 최근 {reviewItems.length}개 표시</span>
+          )}
+          )
         </h2>
         {reviewItems.length === 0 ? (
           <p className="rounded-lg border border-border bg-surface px-5 py-6 text-center text-xs text-fg-muted">
