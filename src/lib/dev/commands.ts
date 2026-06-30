@@ -245,12 +245,13 @@ function runGitShow(hash: string | undefined, ctx: CommandContext): CommandResul
   if (!hash) return errLine('git show: hash 인자 필요');
   const rv = ctx.reviews.find((r) => r.hash.startsWith(hash));
   if (!rv) return errLine(`git show: ${hash}: commit 없음`);
+  const restaurantId = rv.restaurant_id;
 
   // 식당 이름 찾기
   let restaurantName = '?';
   function findName(n: Node): void {
     if (n.type !== 'dir') return;
-    if (n.restaurant?.id === rv.restaurant_id) {
+    if (n.restaurant?.id === restaurantId) {
       restaurantName = n.restaurant.name;
       return;
     }
