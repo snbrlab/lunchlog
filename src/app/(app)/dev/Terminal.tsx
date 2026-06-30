@@ -58,6 +58,8 @@ interface Props {
   currentOfficeName: string | null;
   originLat: number;
   originLng: number;
+  badgesByUser: Record<string, string[]>;
+  crownsByUser: Record<string, string[]>;
 }
 
 const THEME_CLS: Record<Theme, string> = {
@@ -118,7 +120,7 @@ function relativeKo(iso: string): string {
   return iso.slice(0, 10);
 }
 
-export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems, currentUserName, currentOfficeName, originLat, originLng }: Props) {
+export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems, currentUserName, currentOfficeName, originLat, originLng, badgesByUser, crownsByUser }: Props) {
   const root = useMemo(
     () => buildVfs(restaurants, offices, cuisineItems),
     [restaurants, offices, cuisineItems],
@@ -180,6 +182,8 @@ export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems
       cwd,
       reviews,
       prEvents,
+      badgesByUser,
+      crownsByUser,
       cmdHistory: nextCmdHistory,
       currentUserName,
       originLat,

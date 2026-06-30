@@ -45,7 +45,7 @@ export default async function DevPage() {
   const originLng =
     profile?.custom_lng ?? building?.longitude ?? 126.8255;
 
-  const [{ data: rawRestaurants }, { data: rawReviews }, offices, cuisineItems, prRawEvents] = await Promise.all([
+  const [{ data: rawRestaurants }, { data: rawReviews }, offices, cuisineItems, prRawEvents, { data: badgeRows }, { data: championRows }] = await Promise.all([
     supabase
       .from('restaurants')
       .select(
@@ -66,7 +66,36 @@ export default async function DevPage() {
     getCachedOffices(),
     getCachedCuisineItems(),
     fetchRecentPullRequestEvents(supabase),
+    supabase
+      .from('user_badges')
+      .select('code, user:users!user_badges_user_id_fkey ( name )'),
+    supabase
+      .from('region_champions')
+      .select(
+        'user:users!region_champions_user_id_fkey ( name ), office:offices ( name )',
+      ),
   ]);
+
+  // 닉네임 → badge codes / champion offices
+  const badgesByUser: Record<string, string[]> = {};
+  for (const row of (badgeRows ?? []) as unknown as Array<{
+    code: string;
+    user: { name: string } | null;
+  }>) {
+    const n = row.user?.name;
+    if (!n) continue;
+    (badgesByUser[n] ??= []).push(row.code);
+  }
+  const crownsByUser: Record<string, string[]> = {};
+  for (const row of (championRows ?? []) as unknown as Array<{
+    user: { name: string } | null;
+    office: { name: string } | null;
+  }>) {
+    const n = row.user?.name;
+    const o = row.office?.name;
+    if (!n || !o) continue;
+    (crownsByUser[n] ??= []).push(o);
+  }
 
   // PR 이벤트를 dev mode shape 로 변환
   const prEvents: DevPREvent[] = prRawEvents.map((p) => ({
@@ -129,6 +158,8 @@ export default async function DevPage() {
         currentOfficeName={offices.find((o) => o.id === profile?.office_id)?.name ?? null}
         originLat={originLat}
         originLng={originLng}
+        badgesByUser={badgesByUser}
+        crownsByUser={crownsByUser}
       />
     </main>
   );

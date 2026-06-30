@@ -11,12 +11,15 @@ import {
   type Node,
 } from './fs';
 import { C, seg, type Line, type Segment } from './colors';
+import { BADGE_BY_CODE } from '@/lib/badges';
 
 export interface CommandContext {
   root: DirNode;
   cwd: string[];
   reviews: DevReview[]; // 전체 리뷰
   prEvents: DevPREvent[]; // PR 이벤트 (git log 에 interleave)
+  badgesByUser: Record<string, string[]>; // 닉네임 → badge code 들
+  crownsByUser: Record<string, string[]>; // 닉네임 → office 이름 들
   cmdHistory: string[]; // history 명령용
   currentUserName: string; // whoami 용
   originLat: number; // 본인 사옥/임시 위치 — near 명령용
@@ -361,17 +364,27 @@ function runGitCheckout(name: string | undefined, ctx: CommandContext): CommandR
   if (target !== '점심' && target !== '저녁') {
     return errLine(`git checkout: ${name}: 미지원 branch (점심 / 저녁만)`);
   }
-  // 현재 cwd 에서 점심/저녁 dir 부분만 바꿔치기
-  const idx = ctx.cwd.findIndex((p) => p === '점심' || p === '저녁');
-  if (idx === -1) {
-    return errLine('git checkout: 사옥 디렉토리에서 시작해야 함 (예: cd /광화문 후 checkout)');
+  if (ctx.cwd.length === 0) {
+    return errLine('git checkout: 사옥 먼저 선택하세요 (예: cd /광화문)');
   }
-  const newCwd = [...ctx.cwd];
-  newCwd[idx] = target;
-  const node = lookup(ctx.root, newCwd);
-  if (!node) return errLine(`git checkout: ${formatPath(newCwd)}: 경로 없음 (현재 cuisine/식당이 그 mode 에 없음)`);
-  ctx.setCwd(newCwd);
-  return { lines: [[seg(`Switched to branch '${target}'`, C.accent)]] };
+  // 사옥은 유지, 두번째 슬롯을 target meal 로
+  const newCwd: string[] = [ctx.cwd[0]!, target];
+  // 이후 cuisine/식당 부분이 새 mode 에 존재하면 유지
+  const rest = ctx.cwd.slice(2);
+  let cur: string[] = newCwd;
+  for (const p of rest) {
+    const tentative = [...cur, p];
+    if (lookup(ctx.root, tentative)) cur = tentative;
+    else break;
+  }
+  const node = lookup(ctx.root, cur);
+  if (!node) {
+    return errLine(
+      `git checkout: ${formatPath(cur)}: 경로 없음 (이 사옥에 ${target} 식당이 없음)`,
+    );
+  }
+  ctx.setCwd(cur);
+  return { lines: [[seg(`Switched to branch '${target}' (${formatPath(cur)})`, C.accent)]] };
 }
 
 function runGitLog(args: string[], ctx: CommandContext): CommandResult {
@@ -968,15 +981,48 @@ function runFinger(name: string | undefined, ctx: CommandContext): CommandResult
   walkR(ctx.root);
 
   const lastCommit = myCommits[0];
-  return {
-    lines: [
-      [seg('User:        ', C.dim), seg(name, C.author)],
-      [seg('Commits:     ', C.dim), seg(String(myCommits.length), C.accent)],
-      [seg('Top cuisine: ', C.dim), topCuisines || '(없음)'],
-      [seg('Last:        ', C.dim), lastCommit ? seg(lastCommit.created_at.slice(0, 10), C.date) : '(없음)'],
-      [seg('Registered:  ', C.dim), seg(String(registered.length) + ' 곳', C.accent), registered.length > 0 ? `  (${registered.slice(0, 3).join(', ')}${registered.length > 3 ? '...' : ''})` : ''],
+  const badgeCodes = ctx.badgesByUser[name] ?? [];
+  const crowns = ctx.crownsByUser[name] ?? [];
+
+  const lines: Line[] = [
+    [seg('User:        ', C.dim), seg(name, C.author)],
+    [seg('Commits:     ', C.dim), seg(String(myCommits.length), C.accent)],
+    [seg('Top cuisine: ', C.dim), topCuisines || '(없음)'],
+    [
+      seg('Last:        ', C.dim),
+      lastCommit ? seg(lastCommit.created_at.slice(0, 10), C.date) : '(없음)',
     ],
-  };
+    [
+      seg('Registered:  ', C.dim),
+      seg(String(registered.length) + ' 곳', C.accent),
+      registered.length > 0
+        ? `  (${registered.slice(0, 3).join(', ')}${registered.length > 3 ? '...' : ''})`
+        : '',
+    ],
+  ];
+
+  if (crowns.length > 0) {
+    lines.push([
+      seg('Crowns:      ', C.dim),
+      seg(crowns.map((o) => `👑 ${o} 대장`).join(' / '), C.warn),
+    ]);
+  }
+
+  if (badgeCodes.length > 0) {
+    const metas = badgeCodes
+      .map((c) => BADGE_BY_CODE.get(c))
+      .filter((m): m is NonNullable<typeof m> => !!m);
+    const emojis = metas.map((m) => m.emoji).join(' ');
+    const labels = metas.map((m) => m.label).join(' / ');
+    lines.push([
+      seg('Badges:      ', C.dim),
+      seg(`${emojis}  `, C.accent),
+      seg(`(${metas.length}) `, C.dim),
+      seg(labels, C.dim),
+    ]);
+  }
+
+  return { lines };
 }
 
 // ---------------- random / near / trending / leaderboard ----------------
@@ -1019,8 +1065,10 @@ function runRandom(cuisineArg: string | undefined, ctx: CommandContext): Command
 }
 
 function runNear(distArg: string | undefined, ctx: CommandContext): CommandResult {
-  const maxKm = distArg ? parseFloat(distArg) : 1;
-  if (!isFinite(maxKm) || maxKm <= 0) return errLine('near: 거리(km) 가 양수여야 함');
+  // 미터 단위 입력 (기본 500m)
+  const maxM = distArg ? parseFloat(distArg) : 500;
+  if (!isFinite(maxM) || maxM <= 0) return errLine('near: 거리(m) 가 양수여야 함');
+  const maxKm = maxM / 1000;
   const all: { dist: number; name: string; path: string[]; cuisine: string }[] = [];
   function walk(n: Node, path: string[]) {
     if (n.type !== 'dir') return;
@@ -1043,7 +1091,7 @@ function runNear(distArg: string | undefined, ctx: CommandContext): CommandResul
     for (const [k, c] of n.entries) walk(c, [...path, k]);
   }
   walk(ctx.root, []);
-  if (all.length === 0) return errLine(`near: ${maxKm}km 내 식당 없음`);
+  if (all.length === 0) return errLine(`near: ${maxM}m 내 식당 없음`);
   all.sort((a, b) => a.dist - b.dist);
   return {
     lines: all.slice(0, 20).map((r) => [
