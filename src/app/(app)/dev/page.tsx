@@ -7,7 +7,9 @@ import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { Terminal } from './Terminal';
 import type { DevRestaurant, DevReview } from '@/lib/dev/fs';
 
-const REVIEW_LIMIT = 500; // 가상 git log 용 — 최근 N건만
+// dev 모드는 power user 용 — 전체 리뷰 다 받음 (현재 약 2k 규모, ~400KB).
+// Supabase PostgREST 기본 1000 cap 회피 위해 명시적 큰 limit. 5천 넘으면 페이징 검토.
+const REVIEW_LIMIT = 5000;
 
 export default async function DevPage() {
   const supabase = await createSupabaseServerClient();
