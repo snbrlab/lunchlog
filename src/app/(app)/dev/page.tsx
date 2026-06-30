@@ -4,8 +4,10 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCachedOffices, getCachedBuildings } from '@/lib/cache/offices';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
+import { fetchRecentPullRequestEvents } from '@/lib/pull-requests/events';
 import { Terminal } from './Terminal';
 import type { DevRestaurant, DevReview } from '@/lib/dev/fs';
+import type { DevPREvent } from '@/lib/dev/commands';
 
 // dev 모드는 power user 용 — 전체 리뷰 다 받음 (현재 약 2k 규모, ~400KB).
 // Supabase PostgREST 기본 1000 cap 회피 위해 명시적 큰 limit. 5천 넘으면 페이징 검토.
@@ -37,7 +39,7 @@ export default async function DevPage() {
   const originLng =
     profile?.custom_lng ?? building?.longitude ?? 126.8255;
 
-  const [{ data: rawRestaurants }, { data: rawReviews }, offices, cuisineItems] = await Promise.all([
+  const [{ data: rawRestaurants }, { data: rawReviews }, offices, cuisineItems, prRawEvents] = await Promise.all([
     supabase
       .from('restaurants')
       .select(
@@ -57,7 +59,21 @@ export default async function DevPage() {
       .limit(REVIEW_LIMIT),
     getCachedOffices(),
     getCachedCuisineItems(),
+    fetchRecentPullRequestEvents(supabase),
   ]);
+
+  // PR 이벤트를 dev mode shape 로 변환
+  const prEvents: DevPREvent[] = prRawEvents.map((p) => ({
+    pr_id: p.pr_id,
+    pr_kind: p.pr_kind,
+    event: p.event,
+    source_name: p.source_name,
+    target_name: p.target_name,
+    target_id: p.target_id,
+    actor_name: p.actor?.name ?? null,
+    edit_field: p.edit_payload?.field ?? null,
+    at: p.at,
+  }));
 
   type RawR = Omit<DevRestaurant, 'creator_name'> & {
     creator: { name: string } | null;
@@ -100,6 +116,7 @@ export default async function DevPage() {
       <Terminal
         restaurants={restaurants}
         reviews={reviews}
+        prEvents={prEvents}
         offices={offices}
         cuisineItems={cuisineItems}
         currentUserName={currentUserName}

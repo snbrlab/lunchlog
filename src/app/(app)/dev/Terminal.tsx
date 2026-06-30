@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildVfs, formatPath, lookup, resolvePath, type DevRestaurant, type DevReview, type DirNode } from '@/lib/dev/fs';
-import { runCommand, type Theme } from '@/lib/dev/commands';
+import { runCommand, type Theme, type DevPREvent } from '@/lib/dev/commands';
 import { C, type Line } from '@/lib/dev/colors';
 import type { CuisineItem } from '@/lib/cuisine';
 import type { Office } from '@/types/db';
@@ -51,6 +51,7 @@ function pathCandidates(partial: string, root: DirNode, cwd: string[]): string[]
 interface Props {
   restaurants: DevRestaurant[];
   reviews: DevReview[];
+  prEvents: DevPREvent[];
   offices: Office[];
   cuisineItems: CuisineItem[];
   currentUserName: string;
@@ -80,7 +81,7 @@ const WELCOME: Line[] = [
   [''],
 ];
 
-export function Terminal({ restaurants, reviews, offices, cuisineItems, currentUserName, originLat, originLng }: Props) {
+export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems, currentUserName, originLat, originLng }: Props) {
   const root = useMemo(
     () => buildVfs(restaurants, offices, cuisineItems),
     [restaurants, offices, cuisineItems],
@@ -128,6 +129,7 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems, currentU
       root,
       cwd,
       reviews,
+      prEvents,
       cmdHistory: nextCmdHistory,
       currentUserName,
       originLat,

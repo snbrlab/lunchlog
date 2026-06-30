@@ -16,6 +16,7 @@ export interface CommandContext {
   root: DirNode;
   cwd: string[];
   reviews: DevReview[]; // 전체 리뷰
+  prEvents: DevPREvent[]; // PR 이벤트 (git log 에 interleave)
   cmdHistory: string[]; // history 명령용
   currentUserName: string; // whoami 용
   originLat: number; // 본인 사옥/임시 위치 — near 명령용
@@ -24,6 +25,18 @@ export interface CommandContext {
   setCwd: (parts: string[]) => void;
   clear: () => void;
   setTheme: (t: Theme) => void;
+}
+
+export interface DevPREvent {
+  pr_id: string;
+  pr_kind: 'merge' | 'edit';
+  event: 'open' | 'merged' | 'closed';
+  source_name: string;
+  target_name: string;
+  target_id: string | null;
+  actor_name: string | null;
+  edit_field: string | null;
+  at: string;
 }
 
 export type Theme = 'matrix' | 'amber' | 'classic';
@@ -384,13 +397,61 @@ function runGitLog(args: string[], ctx: CommandContext): CommandResult {
 
   if (restaurantIds.size === 0) return { lines: [[seg('(식당 없음)', C.dim)]] };
 
-  const commits = ctx.reviews
-    .filter((rv) => restaurantIds.has(rv.restaurant_id) && rv.parent_review_id === null)
-    .sort((a, b) => (a.created_at > b.created_at ? -1 : 1));
+  const commits = ctx.reviews.filter(
+    (rv) => restaurantIds.has(rv.restaurant_id) && rv.parent_review_id === null,
+  );
+  const prs = ctx.prEvents.filter(
+    (p) => p.target_id !== null && restaurantIds.has(p.target_id),
+  );
 
-  if (commits.length === 0) return { lines: [[seg('(아직 commit 없음)', C.dim)]] };
+  if (commits.length === 0 && prs.length === 0) {
+    return { lines: [[seg('(아직 commit 없음)', C.dim)]] };
+  }
 
-  return { lines: commits.map((rv) => commitLogLine(rv, showRestaurantName ? (nameById.get(rv.restaurant_id) ?? null) : null)) };
+  // 시간순 통합 (review.created_at vs pr.at)
+  type Entry = { at: string; kind: 'commit'; rv: DevReview } | { at: string; kind: 'pr'; pr: DevPREvent };
+  const entries: Entry[] = [
+    ...commits.map((rv) => ({ at: rv.created_at, kind: 'commit' as const, rv })),
+    ...prs.map((pr) => ({ at: pr.at, kind: 'pr' as const, pr })),
+  ];
+  entries.sort((a, b) => (a.at > b.at ? -1 : 1));
+
+  return {
+    lines: entries.map((e) =>
+      e.kind === 'commit'
+        ? commitLogLine(e.rv, showRestaurantName ? (nameById.get(e.rv.restaurant_id) ?? null) : null)
+        : prLogLine(e.pr, showRestaurantName),
+    ),
+  };
+}
+
+function prLogLine(p: DevPREvent, showName: boolean): Line {
+  const dateStr = p.at.slice(0, 10);
+  const icon = p.event === 'open' ? '🔀' : p.event === 'merged' ? '✅' : '🚫';
+  const eventCls =
+    p.event === 'open' ? C.warn : p.event === 'merged' ? C.accent : C.error;
+  const label =
+    p.event === 'open'
+      ? p.pr_kind === 'edit'
+        ? `PR open (edit:${p.edit_field ?? '?'})`
+        : 'PR open (merge)'
+      : p.event === 'merged'
+        ? p.pr_kind === 'edit'
+          ? 'PR applied'
+          : 'PR merged'
+        : 'PR closed';
+  const actor = p.actor_name ?? '?';
+  const restaurantTag = showName ? ` [${p.target_name}]` : '';
+  const detail = p.pr_kind === 'merge' && p.event === 'open' ? ` ${p.source_name} → ${p.target_name}` : '';
+  return [
+    `${icon} `,
+    seg(dateStr, C.date),
+    ' ',
+    seg(label, eventCls),
+    '  ',
+    seg(actor, C.author),
+    `${restaurantTag}${detail}`,
+  ];
 }
 
 function commitLogLine(rv: DevReview, restaurantName: string | null): Line {
