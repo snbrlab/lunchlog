@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildVfs, formatPath, lookup, resolvePath, type DevRestaurant, type DevReview, type DirNode } from '@/lib/dev/fs';
 import { runCommand, type Theme, type DevPREvent } from '@/lib/dev/commands';
-import { C, type Line } from '@/lib/dev/colors';
+import { C, seg, type Line } from '@/lib/dev/colors';
 import type { CuisineItem } from '@/lib/cuisine';
 import type { Office } from '@/types/db';
 
