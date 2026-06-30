@@ -388,7 +388,10 @@ function runGitCheckout(name: string | undefined, ctx: CommandContext): CommandR
 }
 
 function runGitLog(args: string[], ctx: CommandContext): CommandResult {
-  const target = args.length >= 1 ? resolvePath(ctx.cwd, args[0]!) : ctx.cwd;
+  // 실제 git log 처럼 한 페이지 (~20) 만 보여줌. --all 또는 -a 로 전체.
+  const showAll = args.includes('--all') || args.includes('-a');
+  const positional = args.filter((a) => !a.startsWith('-'));
+  const target = positional.length >= 1 ? resolvePath(ctx.cwd, positional[0]!) : ctx.cwd;
   const node = lookup(ctx.root, target);
   if (!node || node.type !== 'dir') {
     return errLine(`git log: ${formatPath(target)}: 디렉토리 없음`);
@@ -429,13 +432,20 @@ function runGitLog(args: string[], ctx: CommandContext): CommandResult {
   ];
   entries.sort((a, b) => (a.at > b.at ? -1 : 1));
 
-  return {
-    lines: entries.map((e) =>
-      e.kind === 'commit'
-        ? commitLogLine(e.rv, showRestaurantName ? (nameById.get(e.rv.restaurant_id) ?? null) : null)
-        : prLogLine(e.pr, showRestaurantName),
-    ),
-  };
+  const LIMIT = 20;
+  const shown = showAll ? entries : entries.slice(0, LIMIT);
+  const lines: Line[] = shown.map((e) =>
+    e.kind === 'commit'
+      ? commitLogLine(e.rv, showRestaurantName ? (nameById.get(e.rv.restaurant_id) ?? null) : null)
+      : prLogLine(e.pr, showRestaurantName),
+  );
+  if (!showAll && entries.length > LIMIT) {
+    lines.push([
+      seg(`... ${entries.length - LIMIT} more entries  `, C.dim),
+      seg('(use --all)', C.warn),
+    ]);
+  }
+  return { lines };
 }
 
 function prLogLine(p: DevPREvent, showName: boolean): Line {
