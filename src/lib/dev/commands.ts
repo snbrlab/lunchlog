@@ -12,6 +12,8 @@ import {
 } from './fs';
 import { C, seg, type Line, type Segment } from './colors';
 import { BADGE_BY_CODE } from '@/lib/badges';
+import { createReview } from '@/lib/reviews/actions';
+import { generateCommitHash } from '@/lib/hash';
 
 export interface CommandContext {
   root: DirNode;
@@ -74,7 +76,7 @@ const HELP: Line[] = [
   ['구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>'],
 ];
 
-export function runCommand(input: string, ctx: CommandContext): CommandResult {
+export async function runCommand(input: string, ctx: CommandContext): Promise<CommandResult> {
   const trimmed = input.trim();
   if (!trimmed) return { lines: [] };
 
@@ -321,7 +323,7 @@ function runCat(path: string | undefined, ctx: CommandContext): CommandResult {
 
 // ---------------- git ----------------
 
-function runGit(args: string[], ctx: CommandContext): CommandResult {
+function runGit(args: string[], ctx: CommandContext): CommandResult | Promise<CommandResult> {
   const sub = args[0];
   switch (sub) {
     case 'log':
@@ -336,11 +338,55 @@ function runGit(args: string[], ctx: CommandContext): CommandResult {
       return runGitBranch(ctx);
     case 'checkout':
       return runGitCheckout(args[1], ctx);
+    case 'commit':
+      return runGitCommit(args.slice(1), ctx);
+    case 'init':
+      return errLine('git init: 식당 등록은 + 새 맛집 (헤더) — 카카오 검색이 필요');
     default:
       return errLine(
-        `git: '${sub ?? ''}' 명령 미지원. log/show/contributors/stats/branch/checkout`,
+        `git: '${sub ?? ''}' 명령 미지원. log/show/contributors/stats/branch/checkout/commit`,
       );
   }
+}
+
+async function runGitCommit(args: string[], ctx: CommandContext): Promise<CommandResult> {
+  const node = lookup(ctx.root, ctx.cwd);
+  const restaurant = node && node.type === 'dir' ? node.restaurant : null;
+  if (!restaurant) {
+    return errLine('git commit: 식당 디렉토리에서 실행 (예: cd /광화문/점심/한식/계시)');
+  }
+  const mealSeg = ctx.cwd[1];
+  if (mealSeg !== '점심' && mealSeg !== '저녁') {
+    return errLine('git commit: 경로에 점심/저녁 segment 필요');
+  }
+  // -m 뒤 전부 메시지 (앞뒤 따옴표 제거)
+  const mIdx = args.indexOf('-m');
+  if (mIdx === -1 || mIdx === args.length - 1) {
+    return errLine('git commit: -m "메시지" 필요');
+  }
+  const message = args
+    .slice(mIdx + 1)
+    .join(' ')
+    .replace(/^["']|["']$/g, '')
+    .trim();
+  if (!message) return errLine('git commit: 빈 메시지');
+
+  const hash = generateCommitHash();
+  const r = await createReview({
+    restaurantId: restaurant.id,
+    message,
+    mealTime: mealSeg === '점심' ? 'lunch' : 'dinner',
+    partySize: null,
+    hash,
+    parentReviewId: null,
+  });
+  if (!r.ok) return errLine(`git commit: ${r.message}`);
+  return {
+    lines: [
+      [seg('✓ ', C.accent), seg(hash, C.hash), seg(' committed', C.dim)],
+      [seg('  (refresh page to see in git log)', C.dim)],
+    ],
+  };
 }
 
 function runGitBranch(ctx: CommandContext): CommandResult {

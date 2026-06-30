@@ -165,12 +165,13 @@ export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems
     ];
   }
 
-  function onSubmit(e: React.FormEvent) {
+  async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const cmd = input;
     setInput('');
+    const prompt = promptSegs();
     if (!cmd.trim()) {
-      setHistory((h) => [...h, { promptLine: [...promptSegs(), cmd], output: [] }]);
+      setHistory((h) => [...h, { promptLine: [...prompt, cmd], output: [] }]);
       return;
     }
     const nextCmdHistory = [...cmdHistory, cmd];
@@ -193,8 +194,8 @@ export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems
       clear: () => setHistory([]),
       setTheme,
     };
-    const result = runCommand(cmd, ctx);
-    setHistory((h) => [...h, { promptLine: [...promptSegs(), cmd], output: result.lines }]);
+    const result = await runCommand(cmd, ctx);
+    setHistory((h) => [...h, { promptLine: [...prompt, cmd], output: result.lines }]);
   }
 
   function handleTab() {
