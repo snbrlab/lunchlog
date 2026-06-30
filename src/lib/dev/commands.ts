@@ -435,7 +435,7 @@ function runGrep(args: string[], ctx: CommandContext): CommandResult {
     }
   }
   const rawPattern = positional[0];
-  let pathArg = positional[1];
+  let pathArg: string | undefined = positional[1];
   // shell glob '*' 같은 인자는 현재 디렉토리로 간주 (사용자 습관)
   if (pathArg === '*' || pathArg?.startsWith('*')) pathArg = undefined;
   if (!rawPattern) {
