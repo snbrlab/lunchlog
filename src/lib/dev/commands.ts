@@ -214,7 +214,7 @@ function runGitLog(args: string[], ctx: CommandContext): CommandResult {
 
   if (commits.length === 0) return { lines: [[seg('(아직 commit 없음)', C.dim)]] };
 
-  return { lines: commits.map((rv) => commitLogLine(rv, showRestaurantName ? nameById.get(rv.restaurant_id) : null)) };
+  return { lines: commits.map((rv) => commitLogLine(rv, showRestaurantName ? (nameById.get(rv.restaurant_id) ?? null) : null)) };
 }
 
 function commitLogLine(rv: DevReview, restaurantName: string | null): Line {
