@@ -391,14 +391,21 @@ function runGrep(args: string[], ctx: CommandContext): CommandResult {
   const flags = new Set<string>();
   const positional: string[] = [];
   for (const a of args) {
-    if (a.startsWith('-')) for (const c of a.slice(1)) flags.add(c);
-    else positional.push(a);
+    if (a.startsWith('--')) continue; // long flag (--color 등) 무시
+    if (a.startsWith('-')) {
+      for (const c of a.slice(1)) flags.add(c);
+    } else {
+      positional.push(a);
+    }
   }
-  const pattern = positional[0];
-  const pathArg = positional[1];
-  if (!pattern) {
+  const rawPattern = positional[0];
+  let pathArg = positional[1];
+  // shell glob '*' 같은 인자는 현재 디렉토리로 간주 (사용자 습관)
+  if (pathArg === '*' || pathArg?.startsWith('*')) pathArg = undefined;
+  if (!rawPattern) {
     return errLine('grep: pattern 필요  (예: grep "사장님" /)');
   }
+  const pattern = rawPattern.replace(/^["']|["']$/g, ''); // 따옴표 제거
   const caseInsensitive = flags.has('i');
   const needle = caseInsensitive ? pattern.toLowerCase() : pattern;
 
@@ -460,11 +467,15 @@ function runGrep(args: string[], ctx: CommandContext): CommandResult {
 
 function runFind(args: string[], ctx: CommandContext): CommandResult {
   // 단순 syntax: find <pattern>  또는 find -name <pattern>
+  // shell 습관 지원: 양쪽 따옴표 / 와일드카드 * 는 substring 매칭으로 무시
   const positional = args.filter((a) => !a.startsWith('-') && a !== 'name');
-  const pattern = positional[0];
-  if (!pattern) {
-    return errLine('find: 패턴 필요  (예: find 닭갈비)');
+  const raw = positional[0];
+  if (!raw) {
+    return errLine('find: 패턴 필요  (예: find 닭갈비  또는  find "*닭갈비*")');
   }
+  // 따옴표 + 양쪽 * 제거 (shell glob 흉내)
+  const pattern = raw.replace(/^["']|["']$/g, '').replace(/^\*+|\*+$/g, '');
+  if (!pattern) return errLine('find: 빈 패턴');
   const needle = pattern.toLowerCase();
   const matches: Line[] = [];
 
