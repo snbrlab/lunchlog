@@ -370,8 +370,9 @@ function runGitShow(hash: string | undefined, ctx: CommandContext): CommandResul
   let restaurantName = '?';
   function findName(n: Node): void {
     if (n.type !== 'dir') return;
-    if (n.restaurant?.id === restaurantId) {
-      restaurantName = n.restaurant.name;
+    const r = n.restaurant;
+    if (r && r.id === restaurantId) {
+      restaurantName = r.name;
       return;
     }
     for (const c of n.entries.values()) findName(c);
@@ -842,7 +843,8 @@ function runFinger(name: string | undefined, ctx: CommandContext): CommandResult
   const registered: string[] = [];
   function walkR(n: Node) {
     if (n.type !== 'dir') return;
-    if (n.restaurant?.creator_name === name) registered.push(n.restaurant.name);
+    const r = n.restaurant;
+    if (r && r.creator_name === name) registered.push(r.name);
     else for (const c of n.entries.values()) walkR(c);
   }
   walkR(ctx.root);
