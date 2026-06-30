@@ -229,9 +229,9 @@ function commitLogLine(rv: DevReview, restaurantName: string | null): Line {
   const msgCls = rv.reverted ? C.revert : '';
   return [
     seg(rv.hash, C.hash),
-    seg(' '),
+    ' ',
     seg(dateStr, C.date),
-    seg(' '),
+    ' ',
     `${meal} `,
     seg(author, C.author),
     `${party}`,
