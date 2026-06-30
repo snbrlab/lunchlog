@@ -137,7 +137,7 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems, currentU
           autoFocus
           spellCheck={false}
           autoComplete="off"
-          className="flex-1 bg-transparent text-emerald-300 outline-none"
+          className="flex-1 bg-transparent font-mono text-[12px] leading-tight text-emerald-300 outline-none sm:text-[13px]"
         />
       </form>
     </div>
