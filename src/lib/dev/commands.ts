@@ -62,7 +62,7 @@ export function runCommand(input: string, ctx: CommandContext): CommandResult {
     case 'pwd':
       return { lines: [[seg(formatPath(ctx.cwd), C.prompt_path)]] };
     case 'ls':
-      return runLs(rest[0], ctx);
+      return runLs(rest, ctx);
     case 'cd':
       return runCd(rest[0], ctx);
     case 'cat':
@@ -119,25 +119,61 @@ export function runCommand(input: string, ctx: CommandContext): CommandResult {
 
 // ---------------- ls / cd / cat ----------------
 
-function runLs(path: string | undefined, ctx: CommandContext): CommandResult {
+function runLs(args: string[], ctx: CommandContext): CommandResult {
+  // 플래그 파싱: -a (숨김 포함), -l (long format), -al / -la 결합 OK
+  const flags = new Set<string>();
+  const positional: string[] = [];
+  for (const a of args) {
+    if (a.startsWith('-')) for (const c of a.slice(1)) flags.add(c);
+    else positional.push(a);
+  }
+  const showHidden = flags.has('a');
+  const longFormat = flags.has('l');
+  const path = positional[0];
+
   const parts = path ? resolvePath(ctx.cwd, path) : ctx.cwd;
   const node = lookup(ctx.root, parts);
   if (!node) return errLine(`ls: ${path ?? formatPath(parts)}: 경로 없음`);
   if (node.type !== 'dir') return { lines: [[seg(node.name, C.dim)]] };
 
+  const entries = Array.from(node.entries.values())
+    .filter((e) => showHidden || !e.name.startsWith('.'))
+    .sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
+      return a.name.localeCompare(b.name, 'ko');
+    });
+
   const lines: Line[] = [];
-  const entries = Array.from(node.entries.values());
-  entries.sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
-    return a.name.localeCompare(b.name, 'ko');
-  });
   for (const e of entries) {
-    if (e.type === 'dir') {
-      const meta = e.restaurant ? `  (commit ${e.restaurant.commit_count})` : '';
-      lines.push([seg(e.name + '/', C.dir), seg(meta, C.dim)]);
-    } else {
+    if (longFormat) {
+      // 메타: restaurant 면 'commit N · 날짜', 일반 dir 면 child 수, file 면 byte 수
+      let meta = '';
+      if (e.type === 'dir') {
+        if (e.restaurant) {
+          const date = e.restaurant.last_commit_at
+            ? e.restaurant.last_commit_at.slice(0, 10)
+            : '         -';
+          meta = `commit ${String(e.restaurant.commit_count).padStart(3)}  ${date}`;
+        } else {
+          meta = `         ${String(e.entries.size).padStart(3)} entries`;
+        }
+      } else {
+        meta = `${String(e.content.length).padStart(8)} B`;
+      }
       const isHidden = e.name.startsWith('.');
-      lines.push([seg(e.name, isHidden ? C.hidden : '')]);
+      const nameSeg =
+        e.type === 'dir'
+          ? seg(e.name + '/', C.dir)
+          : seg(e.name, isHidden ? C.hidden : '');
+      lines.push([seg(meta, C.dim), '  ', nameSeg]);
+    } else {
+      // 기본 ls: 이름만
+      if (e.type === 'dir') {
+        lines.push([seg(e.name + '/', C.dir)]);
+      } else {
+        const isHidden = e.name.startsWith('.');
+        lines.push([seg(e.name, isHidden ? C.hidden : '')]);
+      }
     }
   }
   return { lines };
