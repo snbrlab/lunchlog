@@ -4,7 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildVfs, formatPath, type DevRestaurant, type DevReview } from '@/lib/dev/fs';
-import { runCommand } from '@/lib/dev/commands';
+import { runCommand, type Theme } from '@/lib/dev/commands';
 import { C, type Line } from '@/lib/dev/colors';
 import type { CuisineItem } from '@/lib/cuisine';
 import type { Office } from '@/types/db';
@@ -15,7 +15,15 @@ interface Props {
   offices: Office[];
   cuisineItems: CuisineItem[];
   currentUserName: string;
+  originLat: number;
+  originLng: number;
 }
+
+const THEME_CLS: Record<Theme, string> = {
+  matrix: 'border-emerald-700 bg-black text-emerald-300',
+  amber: 'border-amber-700 bg-stone-950 text-amber-300',
+  classic: 'border-neutral-600 bg-neutral-950 text-neutral-200',
+};
 
 interface HistoryEntry {
   promptLine: Line; // 입력 라인 (prompt + 명령)
@@ -23,16 +31,17 @@ interface HistoryEntry {
 }
 
 const WELCOME: Line[] = [
-  [{ text: '🖥️  lunchlog dev mode v0.2', cls: C.accent }],
+  [{ text: '🖥️  lunchlog dev mode v0.3', cls: C.accent }],
   [''],
   ['디렉토리 구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>'],
   [
-    '"help" 로 명령어 보기. "ls" 부터 시작해보세요. 화살표 ↑/↓ 로 history. Ctrl+L 로 clear.',
+    '"help" 로 전체 명령어. ↑/↓ history. Ctrl+L clear. theme matrix/amber/classic.',
   ],
+  ['"trending", "leaderboard", "near 0.5", "random 한식", "fortune" 등 시도해보세요.'],
   [''],
 ];
 
-export function Terminal({ restaurants, reviews, offices, cuisineItems, currentUserName }: Props) {
+export function Terminal({ restaurants, reviews, offices, cuisineItems, currentUserName, originLat, originLng }: Props) {
   const root = useMemo(
     () => buildVfs(restaurants, offices, cuisineItems),
     [restaurants, offices, cuisineItems],
@@ -45,6 +54,8 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems, currentU
   const [input, setInput] = useState('');
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState<number>(-1);
+  const [theme, setTheme] = useState<Theme>('matrix');
+  const startedAtRef = useRef<number>(Date.now());
 
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -80,8 +91,12 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems, currentU
       reviews,
       cmdHistory: nextCmdHistory,
       currentUserName,
+      originLat,
+      originLng,
+      startedAt: startedAtRef.current,
       setCwd,
       clear: () => setHistory([]),
+      setTheme,
     };
     const result = runCommand(cmd, ctx);
     setHistory((h) => [...h, { promptLine: [...promptSegs(), cmd], output: result.lines }]);
@@ -117,7 +132,7 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems, currentU
     <div
       ref={scrollRef}
       onClick={() => inputRef.current?.focus()}
-      className="flex flex-1 flex-col overflow-y-auto rounded-lg border border-emerald-700 bg-black px-3 py-2 font-mono text-[12px] leading-tight text-emerald-300 sm:text-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+      className={`flex flex-1 flex-col overflow-y-auto rounded-lg border px-3 py-2 font-mono text-[12px] leading-tight sm:text-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${THEME_CLS[theme]}`}
     >
       {history.map((h, i) => (
         <div key={i}>
@@ -137,7 +152,7 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems, currentU
           autoFocus
           spellCheck={false}
           autoComplete="off"
-          className="flex-1 bg-transparent font-mono text-[12px] leading-tight text-emerald-300 outline-none sm:text-[13px]"
+          className="flex-1 bg-transparent font-mono text-[12px] leading-tight outline-none sm:text-[13px] text-inherit"
         />
       </form>
     </div>

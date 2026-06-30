@@ -2,7 +2,7 @@
 // 사옥/meal/cuisine/식당 트리 + git log 등. 정체성 강화용 fun mode.
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
-import { getCachedOffices } from '@/lib/cache/offices';
+import { getCachedOffices, getCachedBuildings } from '@/lib/cache/offices';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { Terminal } from './Terminal';
 import type { DevRestaurant, DevReview } from '@/lib/dev/fs';
@@ -18,9 +18,24 @@ export default async function DevPage() {
     data: { user },
   } = await supabase.auth.getUser();
   const { data: meRow } = user
-    ? await supabase.from('users').select('name').eq('id', user.id).maybeSingle()
+    ? await supabase
+        .from('users')
+        .select('name, building_id, custom_lat, custom_lng')
+        .eq('id', user.id)
+        .maybeSingle()
     : { data: null };
-  const currentUserName = (meRow as { name: string } | null)?.name ?? '익명';
+  const profile = meRow as
+    | { name: string; building_id: string | null; custom_lat: number | null; custom_lng: number | null }
+    | null;
+  const currentUserName = profile?.name ?? '익명';
+
+  // origin: custom_lat/lng > building > fallback (서울)
+  const buildings = await getCachedBuildings();
+  const building = buildings.find((b) => b.id === profile?.building_id);
+  const originLat =
+    profile?.custom_lat ?? building?.latitude ?? 37.5604;
+  const originLng =
+    profile?.custom_lng ?? building?.longitude ?? 126.8255;
 
   const [{ data: rawRestaurants }, { data: rawReviews }, offices, cuisineItems] = await Promise.all([
     supabase
@@ -88,6 +103,8 @@ export default async function DevPage() {
         offices={offices}
         cuisineItems={cuisineItems}
         currentUserName={currentUserName}
+        originLat={originLat}
+        originLng={originLng}
       />
     </main>
   );
