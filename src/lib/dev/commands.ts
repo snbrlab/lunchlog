@@ -188,57 +188,97 @@ function runLs(args: string[], ctx: CommandContext): CommandResult {
       return a.name.localeCompare(b.name, 'ko');
     });
 
-  const lines: Line[] = [];
-  // long format 때 이름 폭 — 가장 긴 이름 기준 정렬 (Korean 은 monospace 에서 2칸 차지 가정)
+  // Korean 은 monospace 에서 2칸 차지 — 정렬용
   const displayWidth = (s: string) =>
     Array.from(s).reduce((w, ch) => w + (ch.charCodeAt(0) > 0x7f ? 2 : 1), 0);
-  const maxNameWidth = longFormat
-    ? Math.max(
-        ...entries.map((e) => displayWidth(e.type === 'dir' ? e.name + '/' : e.name)),
-        4,
-      )
-    : 0;
-  const padName = (name: string) =>
-    ' '.repeat(Math.max(0, maxNameWidth - displayWidth(name) + 2));
 
-  for (const e of entries) {
-    if (longFormat) {
+  if (longFormat) {
+    // Unix-style: perms  links  owner  group  size  date  name
+    const owner = 'user';
+    const group = 'lunchlog';
+    const rows = entries.map((e) => {
       const isHidden = e.name.startsWith('.');
-      const displayName = e.type === 'dir' ? e.name + '/' : e.name;
-      const nameSeg =
-        e.type === 'dir'
-          ? seg(displayName, C.dir)
-          : seg(displayName, isHidden ? C.hidden : '');
-      // 메타: restaurant 는 commit + 날짜, 일반 dir 는 child 수, file 은 byte
-      let meta: Line = [];
-      if (e.type === 'dir') {
-        if (e.restaurant) {
-          const date = e.restaurant.last_commit_at
-            ? e.restaurant.last_commit_at.slice(0, 10)
-            : '         -';
-          meta = [
-            seg(`commit ${String(e.restaurant.commit_count).padStart(3)}`, C.accent),
-            '  ',
-            seg(date, C.date),
-          ];
-        } else {
-          meta = [seg(`${e.entries.size}`, C.dim)];
-        }
-      } else {
-        meta = [seg(`${e.content.length} B`, C.dim)];
+      const isDir = e.type === 'dir';
+      const perms = isDir
+        ? 'drwxr-xr-x'
+        : isHidden
+          ? '-rw-------'
+          : '-rw-r--r--';
+      const links = isDir ? (e.entries.size + 2) : 1;
+      const size = isDir
+        ? 4096
+        : e.content.length;
+      // restaurant 면 last_commit_at, 아니면 N/A (fixed)
+      let dateStr = '         -';
+      if (isDir && e.restaurant?.last_commit_at) {
+        dateStr = formatLsDate(e.restaurant.last_commit_at);
       }
-      lines.push([nameSeg, padName(displayName), ...meta]);
-    } else {
-      // 기본 ls: 이름만
-      if (e.type === 'dir') {
-        lines.push([seg(e.name + '/', C.dir)]);
-      } else {
-        const isHidden = e.name.startsWith('.');
-        lines.push([seg(e.name, isHidden ? C.hidden : '')]);
+      const displayName = isDir ? e.name + '/' : e.name;
+      const nameCls = isDir ? C.dir : isHidden ? C.hidden : '';
+      return { perms, links, size, dateStr, displayName, nameCls };
+    });
+    // 정렬 폭 계산
+    const maxLinks = Math.max(...rows.map((r) => String(r.links).length), 1);
+    const maxSize = Math.max(...rows.map((r) => String(r.size).length), 1);
+    return {
+      lines: rows.map((r) => [
+        seg(r.perms, C.dim),
+        '  ',
+        seg(String(r.links).padStart(maxLinks), C.dim),
+        ' ',
+        seg(owner, C.author),
+        ' ',
+        seg(group, C.dim),
+        '  ',
+        seg(String(r.size).padStart(maxSize), C.accent),
+        '  ',
+        seg(r.dateStr, C.date),
+        '  ',
+        seg(r.displayName, r.nameCls),
+      ]),
+    };
+  }
+
+  // 기본 ls: 컬럼 그리드 (4컬럼 기본)
+  const COLS = 4;
+  const formatted = entries.map((e) => {
+    const isHidden = e.name.startsWith('.');
+    const isDir = e.type === 'dir';
+    const displayName = isDir ? e.name + '/' : e.name;
+    const cls = isDir ? C.dir : isHidden ? C.hidden : '';
+    return { displayName, cls };
+  });
+  const colWidth = Math.max(...formatted.map((f) => displayWidth(f.displayName)), 8) + 3;
+  const lines: Line[] = [];
+  for (let i = 0; i < formatted.length; i += COLS) {
+    const chunk = formatted.slice(i, i + COLS);
+    const segs: Line = [];
+    chunk.forEach((f, j) => {
+      segs.push(seg(f.displayName, f.cls));
+      if (j < chunk.length - 1) {
+        const pad = colWidth - displayWidth(f.displayName);
+        segs.push(' '.repeat(Math.max(1, pad)));
       }
-    }
+    });
+    lines.push(segs);
   }
   return { lines };
+}
+
+function formatLsDate(iso: string): string {
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '         -';
+  const now = new Date();
+  const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const month = months[d.getUTCMonth()] ?? '?';
+  const day = String(d.getUTCDate()).padStart(2, ' ');
+  const sameYear = d.getUTCFullYear() === now.getUTCFullYear();
+  if (sameYear) {
+    const h = String(d.getUTCHours()).padStart(2, '0');
+    const m = String(d.getUTCMinutes()).padStart(2, '0');
+    return `${month} ${day} ${h}:${m}`;
+  }
+  return `${month} ${day}  ${d.getUTCFullYear()}`;
 }
 
 function runCd(path: string | undefined, ctx: CommandContext): CommandResult {
