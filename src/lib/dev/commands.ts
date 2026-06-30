@@ -129,27 +129,46 @@ function runGit(args: string[], ctx: CommandContext): CommandResult {
     return { lines: [`git: '${sub ?? ''}' 명령은 v2 에서 지원. 현재는 'git log' 만`] };
   }
 
-  // cwd 또는 인자에서 식당 찾기
-  let target: string[];
-  if (args.length >= 2) {
-    target = resolvePath(ctx.cwd, args[1]!);
-  } else {
-    target = ctx.cwd;
-  }
-
+  // cwd 또는 인자에서 시작 노드 결정 — 식당이면 그 식당, 상위 디렉토리면 그 하위 모든 식당
+  const target = args.length >= 2 ? resolvePath(ctx.cwd, args[1]!) : ctx.cwd;
   const node = lookup(ctx.root, target);
-  if (!node || node.type !== 'dir' || !node.restaurant) {
-    return {
-      lines: [
-        `git log: 식당 디렉토리에서 실행하거나 식당 경로 인자 필요`,
-        `예: cd /광화문/점심/한식/계시 && git log`,
-      ],
-    };
+  if (!node || node.type !== 'dir') {
+    return { lines: [`git log: ${formatPath(target)}: 디렉토리 없음`] };
   }
 
-  const restaurantId = node.restaurant.id;
+  // 디렉토리 하위의 모든 식당 id 수집 (식당 자신이면 그 하나만)
+  const restaurantIds = new Set<string>();
+  const showRestaurantName = !node.restaurant; // 상위 디렉토리에서 실행 시엔 식당명도 표시
+  function collect(n: Node) {
+    if (n.type !== 'dir') return;
+    if (n.restaurant) {
+      restaurantIds.add(n.restaurant.id);
+      return; // 식당이면 더 들어갈 필요 없음
+    }
+    for (const child of n.entries.values()) collect(child);
+  }
+  collect(node);
+
+  if (restaurantIds.size === 0) {
+    return { lines: ['(이 디렉토리에 식당 없음)'] };
+  }
+
+  // 식당 id → 이름 lookup (상위 디렉토리 출력에 필요)
+  const nameById = new Map<string, string>();
+  if (showRestaurantName) {
+    function gatherNames(n: Node) {
+      if (n.type !== 'dir') return;
+      if (n.restaurant) {
+        nameById.set(n.restaurant.id, n.restaurant.name);
+        return;
+      }
+      for (const child of n.entries.values()) gatherNames(child);
+    }
+    gatherNames(node);
+  }
+
   const rootReviews = ctx.reviews
-    .filter((rv) => rv.restaurant_id === restaurantId && rv.parent_review_id === null)
+    .filter((rv) => restaurantIds.has(rv.restaurant_id) && rv.parent_review_id === null)
     .sort((a, b) => (a.created_at > b.created_at ? -1 : 1));
 
   if (rootReviews.length === 0) {
@@ -163,8 +182,11 @@ function runGit(args: string[], ctx: CommandContext): CommandResult {
     const party = rv.party_size ? ` (${rv.party_size}명)` : '';
     const revertMark = rv.reverted ? ' [REVERTED]' : '';
     const author = rv.author_name ?? '?';
+    const restaurantTag = showRestaurantName
+      ? ` [${nameById.get(rv.restaurant_id) ?? '?'}]`
+      : '';
     const msg = rv.message.replace(/\n/g, ' ').slice(0, 80);
-    lines.push(`${rv.hash} ${dateStr} ${meal} ${author}${party}${revertMark}: ${msg}`);
+    lines.push(`${rv.hash} ${dateStr} ${meal} ${author}${party}${revertMark}${restaurantTag}: ${msg}`);
   }
   return { lines };
 }
