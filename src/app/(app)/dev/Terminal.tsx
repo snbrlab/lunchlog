@@ -3,11 +3,50 @@
 // D82: 가상 터미널 UI. Line[] (Segment[][]) 렌더링.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { buildVfs, formatPath, type DevRestaurant, type DevReview } from '@/lib/dev/fs';
+import { buildVfs, formatPath, lookup, resolvePath, type DevRestaurant, type DevReview, type DirNode } from '@/lib/dev/fs';
 import { runCommand, type Theme } from '@/lib/dev/commands';
 import { C, type Line } from '@/lib/dev/colors';
 import type { CuisineItem } from '@/lib/cuisine';
 import type { Office } from '@/types/db';
+
+// D82 v4: Tab autocomplete — 명령어 + 경로
+const ALL_COMMANDS = [
+  'pwd', 'ls', 'cd', 'cat', 'git', 'grep', 'find', 'whoami', 'date',
+  'history', 'clear', 'help', 'tree', 'wc', 'head', 'tail', 'echo',
+  'uname', 'uptime', 'env', 'finger', 'myself', 'random', 'near',
+  'trending', 'leaderboard', 'fortune', 'lolcat', 'theme', 'cowsay',
+  'sudo', 'vim', 'nvim', 'emacs', 'nano', 'apt', 'brew', 'npm',
+];
+const PATH_COMMANDS = new Set(['cd', 'ls', 'cat', 'grep', 'find', 'wc', 'head', 'tail', 'tree']);
+
+function longestCommonPrefix(strs: string[]): string {
+  if (strs.length === 0) return '';
+  let prefix = strs[0]!;
+  for (const s of strs.slice(1)) {
+    while (!s.startsWith(prefix)) prefix = prefix.slice(0, -1);
+    if (!prefix) return '';
+  }
+  return prefix;
+}
+
+function pathCandidates(partial: string, root: DirNode, cwd: string[]): string[] {
+  const isAbsolute = partial.startsWith('/');
+  const segments = partial.split('/');
+  const lastSeg = segments[segments.length - 1] ?? '';
+  const dirSegs = segments.slice(0, -1);
+  let parentParts: string[];
+  if (isAbsolute) parentParts = dirSegs.filter(Boolean);
+  else parentParts = resolvePath(cwd, dirSegs.join('/') || '.');
+  const parent = lookup(root, parentParts);
+  if (!parent || parent.type !== 'dir') return [];
+  const prefix = (isAbsolute ? '/' : '') + (dirSegs.length > 0 ? dirSegs.filter(Boolean).join('/') + '/' : '');
+  const matches: string[] = [];
+  for (const c of parent.entries.values()) {
+    if (!c.name.startsWith(lastSeg)) continue;
+    matches.push(prefix + c.name + (c.type === 'dir' ? '/' : ''));
+  }
+  return matches.sort((a, b) => a.localeCompare(b, 'ko'));
+}
 
 interface Props {
   restaurants: DevRestaurant[];
@@ -102,10 +141,65 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems, currentU
     setHistory((h) => [...h, { promptLine: [...promptSegs(), cmd], output: result.lines }]);
   }
 
+  function handleTab() {
+    const parts = input.split(/\s+/);
+    const lastWord = parts[parts.length - 1] ?? '';
+    const isFirstWord = parts.length === 1;
+    const cmd = parts[0] ?? '';
+
+    let candidates: string[] = [];
+    if (isFirstWord) {
+      candidates = ALL_COMMANDS.filter((c) => c.startsWith(lastWord));
+    } else if (PATH_COMMANDS.has(cmd)) {
+      candidates = pathCandidates(lastWord, root, cwd);
+    }
+    // git subcommand
+    else if (cmd === 'git' && parts.length === 2) {
+      candidates = ['log', 'show', 'contributors', 'stats', 'branch', 'checkout']
+        .filter((c) => c.startsWith(lastWord));
+    } else if (cmd === 'git' && (parts[1] === 'log' || parts[1] === 'contributors')) {
+      candidates = pathCandidates(lastWord, root, cwd);
+    } else if (cmd === 'theme') {
+      candidates = ['matrix', 'amber', 'classic'].filter((c) => c.startsWith(lastWord));
+    }
+
+    if (candidates.length === 0) return;
+    if (candidates.length === 1) {
+      const completion = candidates[0]!;
+      const newInput = parts.slice(0, -1).concat([completion]).join(' ');
+      // dir 면 trailing slash 유지, 명령어/file 이면 공백 추가
+      const trailing = completion.endsWith('/') ? '' : ' ';
+      setInput(newInput + trailing);
+    } else {
+      // 공통 prefix 만큼 확장
+      const common = longestCommonPrefix(candidates);
+      if (common.length > lastWord.length) {
+        const newInput = parts.slice(0, -1).concat([common]).join(' ');
+        setInput(newInput);
+      } else {
+        // history 에 후보 목록 표시 (실제 입력은 그대로)
+        const segs: Line = [];
+        candidates.forEach((c, i) => {
+          segs.push({ text: c, cls: c.endsWith('/') ? C.dir : '' });
+          if (i < candidates.length - 1) segs.push('  ');
+        });
+        setHistory((h) => [
+          ...h,
+          { promptLine: [...promptSegs(), input], output: [segs] },
+        ]);
+      }
+    }
+  }
+
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
       e.preventDefault();
       setHistory([]);
+      return;
+    }
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      handleTab();
       return;
     }
     if (e.key === 'ArrowUp') {
