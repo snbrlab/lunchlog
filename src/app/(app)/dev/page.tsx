@@ -73,7 +73,7 @@ export default async function DevPage() {
   }));
 
   return (
-    <main className="flex flex-1 flex-col bg-black p-2 sm:p-4">
+    <main className="flex h-[calc(100dvh-5rem)] flex-col bg-black p-2 sm:p-4">
       <Terminal
         restaurants={restaurants}
         reviews={reviews}
