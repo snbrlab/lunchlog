@@ -359,12 +359,23 @@ async function runGitCommit(args: string[], ctx: CommandContext): Promise<Comman
   if (mealSeg !== '점심' && mealSeg !== '저녁') {
     return errLine('git commit: 경로에 점심/저녁 segment 필요');
   }
-  // -m 뒤 전부 메시지 (앞뒤 따옴표 제거)
-  const mIdx = args.indexOf('-m');
-  if (mIdx === -1 || mIdx === args.length - 1) {
-    return errLine('git commit: -m "메시지" 필요');
+  // -p N (party_size) 먼저 추출 — -m 뒤로 가면 메시지에 섞일 수 있어서.
+  let partySize: number | null = null;
+  let rest = args;
+  const pIdx = rest.indexOf('-p');
+  if (pIdx !== -1 && pIdx < rest.length - 1) {
+    const n = parseInt(rest[pIdx + 1]!, 10);
+    if (Number.isInteger(n) && n >= 1 && n <= 99) partySize = n;
+    else return errLine('git commit: -p 는 1~99 정수');
+    rest = rest.filter((_, i) => i !== pIdx && i !== pIdx + 1);
   }
-  const message = args
+
+  // -m 뒤 전부 메시지 (앞뒤 따옴표 제거)
+  const mIdx = rest.indexOf('-m');
+  if (mIdx === -1 || mIdx === rest.length - 1) {
+    return errLine('git commit: -m "메시지" 필요  (인원: -p N)');
+  }
+  const message = rest
     .slice(mIdx + 1)
     .join(' ')
     .replace(/^["']|["']$/g, '')
@@ -376,7 +387,7 @@ async function runGitCommit(args: string[], ctx: CommandContext): Promise<Comman
     restaurantId: restaurant.id,
     message,
     mealTime: mealSeg === '점심' ? 'lunch' : 'dinner',
-    partySize: null,
+    partySize,
     hash,
     parentReviewId: null,
   });
