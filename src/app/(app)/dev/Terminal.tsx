@@ -55,6 +55,7 @@ interface Props {
   offices: Office[];
   cuisineItems: CuisineItem[];
   currentUserName: string;
+  currentOfficeName: string | null;
   originLat: number;
   originLng: number;
 }
@@ -70,26 +71,73 @@ interface HistoryEntry {
   output: Line[];
 }
 
-const WELCOME: Line[] = [
-  [{ text: '🖥️  lunchlog dev mode v0.3', cls: C.accent }],
-  [''],
-  ['디렉토리 구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>'],
-  [
-    '"help" 로 전체 명령어. ↑/↓ history. Ctrl+L clear. theme matrix/amber/classic.',
-  ],
-  ['"trending", "leaderboard", "near 0.5", "random 한식", "fortune" 등 시도해보세요.'],
-  [''],
-];
+function buildWelcome(opts: {
+  latestReview: DevReview | null;
+  currentOfficeName: string | null;
+}): Line[] {
+  const lines: Line[] = [];
+  lines.push([seg('🍱 CommitOS 0.4 (lunchlog)', C.accent)]);
+  lines.push([' * 활동 로그:    ', seg('git log /', C.dir)]);
+  lines.push([' * 통계:         ', seg('git stats', C.dir)]);
+  lines.push([' * 명령어 도움말: ', seg('help', C.dir)]);
+  if (opts.latestReview) {
+    const rv = opts.latestReview;
+    const author = rv.author_name ?? '?';
+    const msg = rv.message.replace(/\n/g, ' ').slice(0, 40);
+    const rel = relativeKo(rv.created_at);
+    lines.push([
+      ' * 최근 commit: ',
+      seg(rv.hash, C.hash),
+      ' by ',
+      seg(author, C.author),
+      ' ',
+      seg(`(${rel})`, C.dim),
+      seg(`  ${msg}`, C.dim),
+    ]);
+  }
+  lines.push(['']);
+  const now = new Date(Date.now() + 9 * 60 * 60 * 1000)
+    .toISOString()
+    .slice(0, 19)
+    .replace('T', ' ');
+  const fromLoc = opts.currentOfficeName ?? '익명';
+  lines.push([seg(`Last login: ${now} KST from ${fromLoc}`, C.dim)]);
+  lines.push(['']);
+  return lines;
+}
 
-export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems, currentUserName, originLat, originLng }: Props) {
+function relativeKo(iso: string): string {
+  const diff = Date.now() - new Date(iso).getTime();
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return '방금';
+  if (m < 60) return `${m}분 전`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}시간 전`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}일 전`;
+  return iso.slice(0, 10);
+}
+
+export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems, currentUserName, currentOfficeName, originLat, originLng }: Props) {
   const root = useMemo(
     () => buildVfs(restaurants, offices, cuisineItems),
     [restaurants, offices, cuisineItems],
   );
+  const latestReview = useMemo(
+    () =>
+      reviews.find(
+        (rv) => !rv.reverted && rv.parent_review_id === null,
+      ) ?? null,
+    [reviews],
+  );
+  const welcome = useMemo(
+    () => buildWelcome({ latestReview, currentOfficeName }),
+    [latestReview, currentOfficeName],
+  );
 
   const [cwd, setCwd] = useState<string[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([
-    { promptLine: [], output: WELCOME },
+    { promptLine: [], output: welcome },
   ]);
   const [input, setInput] = useState('');
   const [cmdHistory, setCmdHistory] = useState<string[]>([]);
@@ -106,10 +154,12 @@ export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems
 
   function promptSegs(): Line {
     return [
+      { text: currentUserName, cls: C.author },
+      { text: '@', cls: C.dim },
       { text: 'lunchlog', cls: C.prompt_user },
       { text: ':', cls: C.dim },
       { text: formatPath(cwd), cls: C.prompt_path },
-      { text: ' $ ', cls: C.prompt_dollar },
+      { text: '$ ', cls: C.prompt_dollar },
     ];
   }
 

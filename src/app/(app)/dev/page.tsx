@@ -22,12 +22,18 @@ export default async function DevPage() {
   const { data: meRow } = user
     ? await supabase
         .from('users')
-        .select('name, building_id, custom_lat, custom_lng')
+        .select('name, building_id, office_id, custom_lat, custom_lng')
         .eq('id', user.id)
         .maybeSingle()
     : { data: null };
   const profile = meRow as
-    | { name: string; building_id: string | null; custom_lat: number | null; custom_lng: number | null }
+    | {
+        name: string;
+        building_id: string | null;
+        office_id?: string | null;
+        custom_lat: number | null;
+        custom_lng: number | null;
+      }
     | null;
   const currentUserName = profile?.name ?? '익명';
 
@@ -120,6 +126,7 @@ export default async function DevPage() {
         offices={offices}
         cuisineItems={cuisineItems}
         currentUserName={currentUserName}
+        currentOfficeName={offices.find((o) => o.id === profile?.office_id)?.name ?? null}
         originLat={originLat}
         originLng={originLng}
       />
