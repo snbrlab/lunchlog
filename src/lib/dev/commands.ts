@@ -1,5 +1,5 @@
 // D82: 개발자 모드 — 명령어 파서 + 실행기.
-// MVP: pwd, cd, ls, cat, git log, clear, help
+// 출력은 Line[] = Segment[][] 로 색깔 segment 지원.
 
 import {
   formatPath,
@@ -9,33 +9,42 @@ import {
   type DirNode,
   type Node,
 } from './fs';
+import { C, seg, type Line } from './colors';
 
 export interface CommandContext {
   root: DirNode;
-  cwd: string[]; // ['광화문', 'lunch', '한식', '계시']
-  reviews: DevReview[]; // 전체 리뷰 (git log 용)
+  cwd: string[];
+  reviews: DevReview[]; // 전체 리뷰
+  cmdHistory: string[]; // history 명령용
+  currentUserName: string; // whoami 용
   setCwd: (parts: string[]) => void;
   clear: () => void;
 }
 
 export interface CommandResult {
-  // 출력 라인들. 빈 배열이면 출력 없음.
-  lines: string[];
+  lines: Line[];
 }
 
-const HELP = [
-  '명령어:',
-  '  pwd                  현재 경로',
-  '  ls [path]            디렉토리 / 파일 목록',
-  '  cd <path>            디렉토리 이동 (.., /, 절대/상대 OK)',
-  '  cat <file>           파일 내용',
-  '  git log [restaurant] commit 목록 (식당 안이면 인자 생략)',
-  '  grep <pat> [path]    파일 내용 + commit 메시지 재귀 검색 (-i 대소문자 무시)',
-  '  clear (Ctrl+L)       화면 지우기',
-  '  help                 이 도움말',
-  '',
-  '구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>',
-  '예: cd /광화문/점심/한식/계시 → ls → cat README.md → git log',
+const HELP: Line[] = [
+  ['명령어:'],
+  ['  pwd                  현재 경로'],
+  ['  ls [path]            디렉토리 / 파일 목록'],
+  ['  cd <path>            디렉토리 이동 (.., /, ~ OK)'],
+  ['  cat <file>           파일 내용'],
+  ['  git log [path]       commit 목록 (지역/식당)'],
+  ['  git show <hash>      단일 commit 상세'],
+  ['  git contributors [path]  작성자별 commit 카운트'],
+  ['  git stats            전체 통계'],
+  ['  grep <pat> [path]    파일 + commit 메시지 검색 (-i 대소문자 무시)'],
+  ['  find <pattern>       이름으로 식당 찾기 (대소문자 무시, 부분 매치)'],
+  ['  whoami               내 닉네임'],
+  ['  date                 현재 KST'],
+  ['  history              명령어 기록'],
+  ['  clear (Ctrl+L)       화면 지우기'],
+  ['  help                 이 도움말'],
+  [''],
+  ['구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>'],
+  ['예: cd /광화문/점심/한식/계시 → ls → cat README.md → git log'],
 ];
 
 export function runCommand(input: string, ctx: CommandContext): CommandResult {
@@ -47,55 +56,88 @@ export function runCommand(input: string, ctx: CommandContext): CommandResult {
   switch (cmd) {
     case 'help':
       return { lines: HELP };
-
     case 'clear':
       ctx.clear();
       return { lines: [] };
-
     case 'pwd':
-      return { lines: [formatPath(ctx.cwd)] };
-
+      return { lines: [[seg(formatPath(ctx.cwd), C.prompt_path)]] };
     case 'ls':
       return runLs(rest[0], ctx);
-
     case 'cd':
       return runCd(rest[0], ctx);
-
     case 'cat':
       return runCat(rest[0], ctx);
-
     case 'git':
       return runGit(rest, ctx);
-
     case 'grep':
       return runGrep(rest, ctx);
+    case 'find':
+      return runFind(rest, ctx);
+    case 'whoami':
+      return { lines: [[seg(ctx.currentUserName || '익명', C.author)]] };
+    case 'date':
+      return { lines: [[runDate()]] };
+    case 'history':
+      return runHistory(ctx);
+
+    // Easter eggs
+    case 'sudo':
+      return { lines: [[seg('🍱 sudo: 식사 맛있게 하세요', C.warn)]] };
+    case 'rm':
+      return rest.includes('-rf') || rest.includes('-r') || rest.includes('-f')
+        ? { lines: [[seg('에이 왜그러십니까', C.error)]] }
+        : { lines: [[seg('rm: ...님 그게 명령어가 됩니까', C.dim)]] };
+    case 'vim':
+    case 'nvim':
+    case 'emacs':
+    case 'nano':
+      return {
+        lines: [[seg(`${cmd}: 안 만들었어... 그냥 cat 으로 봐주세요`, C.dim)]],
+      };
+    case 'cowsay':
+      return runCowsay(rest.join(' '));
+    case 'apt':
+    case 'apt-get':
+    case 'brew':
+    case 'npm':
+    case 'yarn':
+      return {
+        lines: [
+          [seg(`${cmd}: 패키지 매니저는 당신의 점심 선택지 입니다 🍱`, C.dim)],
+        ],
+      };
 
     default:
-      return { lines: [`command not found: ${cmd}`, '"help" 로 사용 가능 명령어 확인`'] };
+      return {
+        lines: [
+          [seg(`command not found: ${cmd}`, C.error)],
+          [seg('"help" 로 사용 가능 명령어 확인', C.dim)],
+        ],
+      };
   }
 }
+
+// ---------------- ls / cd / cat ----------------
 
 function runLs(path: string | undefined, ctx: CommandContext): CommandResult {
   const parts = path ? resolvePath(ctx.cwd, path) : ctx.cwd;
   const node = lookup(ctx.root, parts);
-  if (!node) return { lines: [`ls: ${path ?? formatPath(parts)}: 경로 없음`] };
-  if (node.type !== 'dir') return { lines: [node.name] };
+  if (!node) return errLine(`ls: ${path ?? formatPath(parts)}: 경로 없음`);
+  if (node.type !== 'dir') return { lines: [[seg(node.name, C.dim)]] };
 
-  const lines: string[] = [];
+  const lines: Line[] = [];
   const entries = Array.from(node.entries.values());
-  // dir 먼저, file 나중 — 한글 정렬
   entries.sort((a, b) => {
     if (a.type !== b.type) return a.type === 'dir' ? -1 : 1;
     return a.name.localeCompare(b.name, 'ko');
   });
   for (const e of entries) {
     if (e.type === 'dir') {
-      const meta = e.restaurant
-        ? `  (commit ${e.restaurant.commit_count})`
-        : '';
-      lines.push(`${e.name}/${meta}`);
+      const meta = e.restaurant ? `  (commit ${e.restaurant.commit_count})` : '';
+      lines.push([seg(e.name + '/', C.dir), seg(meta, C.dim)]);
     } else {
-      lines.push(e.name);
+      const isHidden = e.name.startsWith('.');
+      lines.push([seg(e.name, isHidden ? C.hidden : '')]);
     }
   }
   return { lines };
@@ -108,126 +150,279 @@ function runCd(path: string | undefined, ctx: CommandContext): CommandResult {
   }
   const parts = resolvePath(ctx.cwd, path);
   const node = lookup(ctx.root, parts);
-  if (!node) return { lines: [`cd: ${path}: 경로 없음`] };
-  if (node.type !== 'dir') return { lines: [`cd: ${path}: 디렉토리 아님`] };
+  if (!node) return errLine(`cd: ${path}: 경로 없음`);
+  if (node.type !== 'dir') return errLine(`cd: ${path}: 디렉토리 아님`);
   ctx.setCwd(parts);
   return { lines: [] };
 }
 
 function runCat(path: string | undefined, ctx: CommandContext): CommandResult {
-  if (!path) return { lines: ['cat: 파일 이름 필요'] };
+  if (!path) return errLine('cat: 파일 이름 필요');
   const parts = resolvePath(ctx.cwd, path);
   const node = lookup(ctx.root, parts);
-  if (!node) return { lines: [`cat: ${path}: 없음`] };
-  if (node.type !== 'file') return { lines: [`cat: ${path}: 디렉토리`] };
-  return { lines: node.content.split('\n') };
+  if (!node) return errLine(`cat: ${path}: 없음`);
+  if (node.type !== 'file') return errLine(`cat: ${path}: 디렉토리`);
+  return { lines: node.content.split('\n').map((l) => [l] as Line) };
 }
+
+// ---------------- git ----------------
 
 function runGit(args: string[], ctx: CommandContext): CommandResult {
   const sub = args[0];
-  if (sub !== 'log') {
-    return { lines: [`git: '${sub ?? ''}' 명령은 v2 에서 지원. 현재는 'git log' 만`] };
+  switch (sub) {
+    case 'log':
+      return runGitLog(args.slice(1), ctx);
+    case 'show':
+      return runGitShow(args[1], ctx);
+    case 'contributors':
+      return runGitContributors(args[1], ctx);
+    case 'stats':
+      return runGitStats(ctx);
+    default:
+      return errLine(
+        `git: '${sub ?? ''}' 명령 미지원. 'log' / 'show' / 'contributors' / 'stats'`,
+      );
   }
+}
 
-  // cwd 또는 인자에서 시작 노드 결정 — 식당이면 그 식당, 상위 디렉토리면 그 하위 모든 식당
-  const target = args.length >= 2 ? resolvePath(ctx.cwd, args[1]!) : ctx.cwd;
+function runGitLog(args: string[], ctx: CommandContext): CommandResult {
+  const target = args.length >= 1 ? resolvePath(ctx.cwd, args[0]!) : ctx.cwd;
   const node = lookup(ctx.root, target);
   if (!node || node.type !== 'dir') {
-    return { lines: [`git log: ${formatPath(target)}: 디렉토리 없음`] };
+    return errLine(`git log: ${formatPath(target)}: 디렉토리 없음`);
   }
 
-  // 디렉토리 하위의 모든 식당 id 수집 (식당 자신이면 그 하나만)
   const restaurantIds = new Set<string>();
-  const showRestaurantName = !node.restaurant; // 상위 디렉토리에서 실행 시엔 식당명도 표시
+  const showRestaurantName = !node.restaurant;
+  const nameById = new Map<string, string>();
   function collect(n: Node) {
     if (n.type !== 'dir') return;
     if (n.restaurant) {
       restaurantIds.add(n.restaurant.id);
-      return; // 식당이면 더 들어갈 필요 없음
+      if (showRestaurantName) nameById.set(n.restaurant.id, n.restaurant.name);
+      return;
     }
-    for (const child of n.entries.values()) collect(child);
+    for (const c of n.entries.values()) collect(c);
   }
   collect(node);
 
-  if (restaurantIds.size === 0) {
-    return { lines: ['(이 디렉토리에 식당 없음)'] };
-  }
+  if (restaurantIds.size === 0) return { lines: [[seg('(식당 없음)', C.dim)]] };
 
-  // 식당 id → 이름 lookup (상위 디렉토리 출력에 필요)
-  const nameById = new Map<string, string>();
-  if (showRestaurantName) {
-    function gatherNames(n: Node) {
-      if (n.type !== 'dir') return;
-      if (n.restaurant) {
-        nameById.set(n.restaurant.id, n.restaurant.name);
-        return;
-      }
-      for (const child of n.entries.values()) gatherNames(child);
-    }
-    gatherNames(node);
-  }
-
-  const rootReviews = ctx.reviews
+  const commits = ctx.reviews
     .filter((rv) => restaurantIds.has(rv.restaurant_id) && rv.parent_review_id === null)
     .sort((a, b) => (a.created_at > b.created_at ? -1 : 1));
 
-  if (rootReviews.length === 0) {
-    return { lines: ['(아직 commit 없음)'] };
-  }
+  if (commits.length === 0) return { lines: [[seg('(아직 commit 없음)', C.dim)]] };
 
-  const lines: string[] = [];
-  for (const rv of rootReviews) {
-    const dateStr = rv.created_at.slice(0, 10);
-    const meal = rv.meal_time === 'lunch' ? '☀' : '🌙';
-    const party = rv.party_size ? ` (${rv.party_size}명)` : '';
-    const revertMark = rv.reverted ? ' [REVERTED]' : '';
-    const author = rv.author_name ?? '?';
-    const restaurantTag = showRestaurantName
-      ? ` [${nameById.get(rv.restaurant_id) ?? '?'}]`
-      : '';
-    const msg = rv.message.replace(/\n/g, ' ').slice(0, 80);
-    lines.push(`${rv.hash} ${dateStr} ${meal} ${author}${party}${revertMark}${restaurantTag}: ${msg}`);
+  return { lines: commits.map((rv) => commitLogLine(rv, showRestaurantName ? nameById.get(rv.restaurant_id) : null)) };
+}
+
+function commitLogLine(rv: DevReview, restaurantName: string | null): Line {
+  const dateStr = rv.created_at.slice(0, 10);
+  const meal = rv.meal_time === 'lunch' ? '☀' : '🌙';
+  const party = rv.party_size ? ` (${rv.party_size}명)` : '';
+  const revertMark = rv.reverted ? ' [REVERTED]' : '';
+  const author = rv.author_name ?? '?';
+  const msg = rv.message.replace(/\n/g, ' ').slice(0, 80);
+  const restaurantTag = restaurantName ? ` [${restaurantName}]` : '';
+
+  const msgCls = rv.reverted ? C.revert : '';
+  return [
+    seg(rv.hash, C.hash),
+    seg(' '),
+    seg(dateStr, C.date),
+    seg(' '),
+    `${meal} `,
+    seg(author, C.author),
+    `${party}`,
+    revertMark ? seg(revertMark, C.error) : '',
+    `${restaurantTag}: `,
+    msgCls ? seg(msg, msgCls) : msg,
+  ];
+}
+
+function runGitShow(hash: string | undefined, ctx: CommandContext): CommandResult {
+  if (!hash) return errLine('git show: hash 인자 필요');
+  const rv = ctx.reviews.find((r) => r.hash.startsWith(hash));
+  if (!rv) return errLine(`git show: ${hash}: commit 없음`);
+
+  // 식당 이름 찾기
+  let restaurantName = '?';
+  function findName(n: Node): void {
+    if (n.type !== 'dir') return;
+    if (n.restaurant?.id === rv.restaurant_id) {
+      restaurantName = n.restaurant.name;
+      return;
+    }
+    for (const c of n.entries.values()) findName(c);
   }
+  findName(ctx.root);
+
+  const meal = rv.meal_time === 'lunch' ? '☀ 점심' : '🌙 저녁';
+  const party = rv.party_size ? `, ${rv.party_size}명` : '';
+  const lines: Line[] = [
+    [seg(`commit ${rv.hash}`, C.hash)],
+    [seg('Author:     ', C.dim), seg(rv.author_name ?? '?', C.author)],
+    [seg('Date:       ', C.dim), seg(rv.created_at.slice(0, 19), C.date), ` (${meal}${party})`],
+    [seg('Restaurant: ', C.dim), seg(restaurantName, C.dir)],
+  ];
+  if (rv.reverted) lines.push([seg('Status:     ', C.dim), seg('REVERTED', C.error)]);
+  lines.push(['']);
+  rv.message.split('\n').forEach((l) => lines.push([`    ${l}`]));
   return { lines };
 }
 
+function runGitContributors(pathArg: string | undefined, ctx: CommandContext): CommandResult {
+  const target = pathArg ? resolvePath(ctx.cwd, pathArg) : ctx.cwd;
+  const node = lookup(ctx.root, target);
+  if (!node || node.type !== 'dir') {
+    return errLine(`git contributors: ${formatPath(target)}: 디렉토리 없음`);
+  }
+  const restaurantIds = new Set<string>();
+  function collect(n: Node) {
+    if (n.type !== 'dir') return;
+    if (n.restaurant) {
+      restaurantIds.add(n.restaurant.id);
+      return;
+    }
+    for (const c of n.entries.values()) collect(c);
+  }
+  collect(node);
+
+  const counts = new Map<string, number>();
+  for (const rv of ctx.reviews) {
+    if (!restaurantIds.has(rv.restaurant_id)) continue;
+    if (rv.parent_review_id) continue;
+    if (rv.reverted) continue;
+    const name = rv.author_name ?? '?';
+    counts.set(name, (counts.get(name) ?? 0) + 1);
+  }
+  if (counts.size === 0) return { lines: [[seg('(commit 없음)', C.dim)]] };
+
+  const sorted = Array.from(counts.entries()).sort((a, b) => b[1] - a[1]);
+  const maxCount = sorted[0]![1];
+  return {
+    lines: sorted.map(([name, n]) => {
+      const barLen = Math.max(1, Math.round((n / maxCount) * 20));
+      return [
+        seg(name.padEnd(20), C.author),
+        seg(String(n).padStart(4), C.accent),
+        '  ',
+        seg('█'.repeat(barLen), C.hash),
+      ];
+    }),
+  };
+}
+
+function runGitStats(ctx: CommandContext): CommandResult {
+  const allRestaurants = collectAllRestaurants(ctx.root);
+  const allActive = ctx.reviews.filter(
+    (rv) => !rv.reverted && rv.parent_review_id === null,
+  );
+
+  // 최근 7일
+  const cutoff = Date.now() - 7 * 24 * 60 * 60 * 1000;
+  const recent7 = allActive.filter((rv) => new Date(rv.created_at).getTime() > cutoff).length;
+
+  // top restaurant
+  const byRestaurant = new Map<string, number>();
+  for (const rv of allActive) {
+    byRestaurant.set(rv.restaurant_id, (byRestaurant.get(rv.restaurant_id) ?? 0) + 1);
+  }
+  const topR = Array.from(byRestaurant.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+  const restById = new Map(allRestaurants.map((r) => [r.id, r.name]));
+
+  // top author
+  const byAuthor = new Map<string, number>();
+  for (const rv of allActive) {
+    const name = rv.author_name ?? '?';
+    byAuthor.set(name, (byAuthor.get(name) ?? 0) + 1);
+  }
+  const topA = Array.from(byAuthor.entries())
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3);
+
+  const lines: Line[] = [
+    [seg('📊 lunchlog stats', C.accent)],
+    [''],
+    [seg('총 식당:        ', C.dim), seg(String(allRestaurants.length), C.accent)],
+    [seg('총 commit:      ', C.dim), seg(String(allActive.length), C.accent)],
+    [seg('최근 7일 commit:', C.dim), seg(' ' + String(recent7), C.accent)],
+    [''],
+    [seg('🔥 가장 많은 commit', C.warn)],
+    ...topR.map(([id, n]) => [
+      '  ',
+      seg(String(n).padStart(3), C.accent),
+      '  ',
+      seg(restById.get(id) ?? '?', C.dir),
+    ] as Line),
+    [''],
+    [seg('🌱 가장 활발한 작성자', C.warn)],
+    ...topA.map(([name, n]) => [
+      '  ',
+      seg(String(n).padStart(3), C.accent),
+      '  ',
+      seg(name, C.author),
+    ] as Line),
+  ];
+  return { lines };
+}
+
+function collectAllRestaurants(node: Node): { id: string; name: string }[] {
+  const out: { id: string; name: string }[] = [];
+  function walk(n: Node) {
+    if (n.type !== 'dir') return;
+    if (n.restaurant) {
+      out.push({ id: n.restaurant.id, name: n.restaurant.name });
+      return;
+    }
+    for (const c of n.entries.values()) walk(c);
+  }
+  walk(node);
+  return out;
+}
+
+// ---------------- grep ----------------
+
 function runGrep(args: string[], ctx: CommandContext): CommandResult {
-  // 플래그: -i (case-insensitive). 나머지 인자: pattern + optional path.
   const flags = new Set<string>();
   const positional: string[] = [];
   for (const a of args) {
-    if (a.startsWith('-')) {
-      for (const c of a.slice(1)) flags.add(c);
-    } else {
-      positional.push(a);
-    }
+    if (a.startsWith('-')) for (const c of a.slice(1)) flags.add(c);
+    else positional.push(a);
   }
   const pattern = positional[0];
   const pathArg = positional[1];
   if (!pattern) {
-    return { lines: ['grep: pattern 필요', '예: grep "사장님" / → 전체에서 commit 메시지/파일 검색'] };
+    return errLine('grep: pattern 필요  (예: grep "사장님" /)');
   }
   const caseInsensitive = flags.has('i');
   const needle = caseInsensitive ? pattern.toLowerCase() : pattern;
 
   const startParts = pathArg ? resolvePath(ctx.cwd, pathArg) : ctx.cwd;
   const startNode = lookup(ctx.root, startParts);
-  if (!startNode) return { lines: [`grep: ${pathArg ?? formatPath(startParts)}: 경로 없음`] };
+  if (!startNode) return errLine(`grep: ${pathArg ?? formatPath(startParts)}: 경로 없음`);
 
-  const matches: string[] = [];
+  const matches: Line[] = [];
   const includes = (hay: string) =>
     (caseInsensitive ? hay.toLowerCase() : hay).includes(needle);
 
   function walk(node: Node, parts: string[]) {
     if (node.type === 'file') {
-      // 파일 매치 — 라인 단위
       const fp = formatPath(parts);
       node.content.split('\n').forEach((line, i) => {
-        if (includes(line)) matches.push(`${fp}:${i + 1}: ${line}`);
+        if (includes(line)) {
+          matches.push([
+            seg(fp, C.dir),
+            seg(`:${i + 1}: `, C.dim),
+            line,
+          ]);
+        }
       });
       return;
     }
-    // dir — 식당이면 commit 메시지도 검색
     if (node.restaurant) {
       const rid = node.restaurant.id;
       const commits = ctx.reviews.filter(
@@ -237,22 +432,103 @@ function runGrep(args: string[], ctx: CommandContext): CommandResult {
         if (includes(rv.message)) {
           const fp = formatPath(parts);
           const msg = rv.message.replace(/\n/g, ' ').slice(0, 100);
-          matches.push(`${fp}:${rv.hash} ${rv.author_name ?? '?'}: ${msg}`);
+          matches.push([
+            seg(fp, C.dir),
+            seg(':', C.dim),
+            seg(rv.hash, C.hash),
+            ' ',
+            seg(rv.author_name ?? '?', C.author),
+            ': ',
+            msg,
+          ]);
         }
       }
     }
-    // 자식 노드 재귀
-    for (const [name, child] of node.entries) {
-      walk(child, [...parts, name]);
-    }
+    for (const [name, child] of node.entries) walk(child, [...parts, name]);
   }
-
   walk(startNode, startParts);
-  if (matches.length === 0) return { lines: ['(매치 없음)'] };
-  // 너무 많으면 상위 200개만
+  if (matches.length === 0) return { lines: [[seg('(매치 없음)', C.dim)]] };
   if (matches.length > 200) {
     matches.length = 200;
-    matches.push(`... (200개 초과 — 위 결과만 표시)`);
+    matches.push([seg('... (200개 초과)', C.dim)]);
   }
   return { lines: matches };
 }
+
+// ---------------- find ----------------
+
+function runFind(args: string[], ctx: CommandContext): CommandResult {
+  // 단순 syntax: find <pattern>  또는 find -name <pattern>
+  const positional = args.filter((a) => !a.startsWith('-') && a !== 'name');
+  const pattern = positional[0];
+  if (!pattern) {
+    return errLine('find: 패턴 필요  (예: find 닭갈비)');
+  }
+  const needle = pattern.toLowerCase();
+  const matches: Line[] = [];
+
+  function walk(node: Node, parts: string[]) {
+    if (node.type !== 'dir') return;
+    if (node.restaurant && node.name.toLowerCase().includes(needle)) {
+      matches.push([
+        seg(formatPath(parts), C.dir),
+        seg(`  (commit ${node.restaurant.commit_count})`, C.dim),
+      ]);
+    }
+    for (const [name, child] of node.entries) walk(child, [...parts, name]);
+  }
+  walk(ctx.root, []);
+  if (matches.length === 0) return { lines: [[seg('(매치 없음)', C.dim)]] };
+  return { lines: matches };
+}
+
+// ---------------- whoami / date / history ----------------
+
+function runDate(): Segment {
+  // KST = UTC+9
+  const now = new Date();
+  const kst = new Date(now.getTime() + 9 * 60 * 60 * 1000);
+  const iso = kst.toISOString().slice(0, 19).replace('T', ' ');
+  return seg(`${iso} KST`, C.date);
+}
+
+function runHistory(ctx: CommandContext): CommandResult {
+  if (ctx.cmdHistory.length === 0) return { lines: [[seg('(기록 없음)', C.dim)]] };
+  return {
+    lines: ctx.cmdHistory.map((h, i) => [
+      seg(String(i + 1).padStart(4), C.dim),
+      '  ',
+      h,
+    ]),
+  };
+}
+
+// ---------------- cowsay ----------------
+
+function runCowsay(msg: string): CommandResult {
+  const text = (msg || 'Moo').slice(0, 60);
+  const width = text.length + 2;
+  const top = ` ${'_'.repeat(width)}`;
+  const bot = ` ${'-'.repeat(width)}`;
+  const lines: Line[] = [
+    [seg(top, C.warn)],
+    [seg(`< ${text} >`, C.accent)],
+    [seg(bot, C.warn)],
+    [seg('        \\   ^__^', C.warn)],
+    [seg('         \\  (oo)\\_______', C.warn)],
+    [seg('            (__)\\       )\\/\\', C.warn)],
+    [seg('                ||----w |', C.warn)],
+    [seg('                ||     ||', C.warn)],
+  ];
+  return { lines };
+}
+
+// ---------------- helpers ----------------
+
+function errLine(msg: string): CommandResult {
+  return { lines: [[seg(msg, C.error)]] };
+}
+
+// Segment re-export for callers
+import type { Segment } from './colors';
+export type { Segment };

@@ -1,10 +1,11 @@
 'use client';
 
-// D82: 가상 터미널 UI. 입력 → runCommand → 출력.
+// D82: 가상 터미널 UI. Line[] (Segment[][]) 렌더링.
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildVfs, formatPath, type DevRestaurant, type DevReview } from '@/lib/dev/fs';
 import { runCommand } from '@/lib/dev/commands';
+import { C, type Line } from '@/lib/dev/colors';
 import type { CuisineItem } from '@/lib/cuisine';
 import type { Office } from '@/types/db';
 
@@ -13,22 +14,25 @@ interface Props {
   reviews: DevReview[];
   offices: Office[];
   cuisineItems: CuisineItem[];
+  currentUserName: string;
 }
 
 interface HistoryEntry {
-  prompt: string;
-  output: string[];
+  promptLine: Line; // 입력 라인 (prompt + 명령)
+  output: Line[];
 }
 
-const WELCOME = [
-  '🖥️  lunchlog dev mode v0.1',
-  '',
-  '디렉토리 구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>',
-  '"help" 로 명령어 보기. "ls" 부터 시작해보세요.',
-  '',
+const WELCOME: Line[] = [
+  [{ text: '🖥️  lunchlog dev mode v0.2', cls: C.accent }],
+  [''],
+  ['디렉토리 구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>'],
+  [
+    '"help" 로 명령어 보기. "ls" 부터 시작해보세요. 화살표 ↑/↓ 로 history. Ctrl+L 로 clear.',
+  ],
+  [''],
 ];
 
-export function Terminal({ restaurants, reviews, offices, cuisineItems }: Props) {
+export function Terminal({ restaurants, reviews, offices, cuisineItems, currentUserName }: Props) {
   const root = useMemo(
     () => buildVfs(restaurants, offices, cuisineItems),
     [restaurants, offices, cuisineItems],
@@ -36,10 +40,10 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems }: Props)
 
   const [cwd, setCwd] = useState<string[]>([]);
   const [history, setHistory] = useState<HistoryEntry[]>([
-    { prompt: '', output: WELCOME },
+    { promptLine: [], output: WELCOME },
   ]);
   const [input, setInput] = useState('');
-  const [cmdHistory, setCmdHistory] = useState<string[]>([]); // 위/아래 화살표용
+  const [cmdHistory, setCmdHistory] = useState<string[]>([]);
   const [historyIdx, setHistoryIdx] = useState<number>(-1);
 
   const inputRef = useRef<HTMLInputElement>(null);
@@ -49,8 +53,13 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems }: Props)
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [history]);
 
-  function prompt(): string {
-    return `lunchlog:${formatPath(cwd)}$ `;
+  function promptSegs(): Line {
+    return [
+      { text: 'lunchlog', cls: C.prompt_user },
+      { text: ':', cls: C.dim },
+      { text: formatPath(cwd), cls: C.prompt_path },
+      { text: ' $ ', cls: C.prompt_dollar },
+    ];
   }
 
   function onSubmit(e: React.FormEvent) {
@@ -58,25 +67,27 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems }: Props)
     const cmd = input;
     setInput('');
     if (!cmd.trim()) {
-      setHistory((h) => [...h, { prompt: prompt() + cmd, output: [] }]);
+      setHistory((h) => [...h, { promptLine: [...promptSegs(), cmd], output: [] }]);
       return;
     }
-    setCmdHistory((ch) => [...ch, cmd]);
+    const nextCmdHistory = [...cmdHistory, cmd];
+    setCmdHistory(nextCmdHistory);
     setHistoryIdx(-1);
 
     const ctx = {
       root,
       cwd,
       reviews,
+      cmdHistory: nextCmdHistory,
+      currentUserName,
       setCwd,
       clear: () => setHistory([]),
     };
     const result = runCommand(cmd, ctx);
-    setHistory((h) => [...h, { prompt: prompt() + cmd, output: result.lines }]);
+    setHistory((h) => [...h, { promptLine: [...promptSegs(), cmd], output: result.lines }]);
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-    // Ctrl+L — 화면 지우기 (브라우저 기본 동작인 URL 바 focus 방지)
     if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
       e.preventDefault();
       setHistory([]);
@@ -110,16 +121,14 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems }: Props)
     >
       {history.map((h, i) => (
         <div key={i}>
-          {h.prompt && <div className="whitespace-pre-wrap">{h.prompt}</div>}
+          {h.promptLine.length > 0 && <LineView line={h.promptLine} />}
           {h.output.map((line, j) => (
-            <div key={j} className="whitespace-pre-wrap text-emerald-200">
-              {line}
-            </div>
+            <LineView key={j} line={line} />
           ))}
         </div>
       ))}
       <form onSubmit={onSubmit} className="flex">
-        <span className="shrink-0 whitespace-pre">{prompt()}</span>
+        <LineView line={promptSegs()} inline />
         <input
           ref={inputRef}
           value={input}
@@ -133,4 +142,18 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems }: Props)
       </form>
     </div>
   );
+}
+
+function LineView({ line, inline = false }: { line: Line; inline?: boolean }) {
+  const content = line.map((seg, i) =>
+    typeof seg === 'string' ? (
+      <span key={i}>{seg}</span>
+    ) : (
+      <span key={i} className={seg.cls}>
+        {seg.text}
+      </span>
+    ),
+  );
+  if (inline) return <span className="shrink-0 whitespace-pre">{content}</span>;
+  return <div className="whitespace-pre-wrap">{content}</div>;
 }

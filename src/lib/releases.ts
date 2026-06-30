@@ -12,6 +12,23 @@ export interface ReleaseItem {
 
 export const RELEASES: ReleaseItem[] = [
   {
+    version: 'D82',
+    hash: 'pending',
+    date: '2026-06-06',
+    title: '🖥️ 개발자 모드 — 가상 터미널',
+    bullets: [
+      '헤더 🖥️ 아이콘 → /dev — 사옥/점심|저녁/cuisine/식당 트리를 Unix 처럼 탐색',
+      'ls / cd / cat / pwd — README.md, INFO, MENU, .kakao 열람',
+      'git log [path] — 식당/지역 전체 commit time-sorted',
+      'git show <hash> — 단일 commit 상세',
+      'git contributors / git stats — 작성자 leaderboard + 전체 통계',
+      'grep <pat> [path] / find <pattern> — commit 메시지 + 파일 + 식당 이름 검색',
+      'whoami / date / history / clear (Ctrl+L)',
+      'Easter eggs: sudo, rm -rf, vim, apt, cowsay 🐮 등',
+      '색깔: 디렉토리 sky / hash amber / 작성자 cyan / revert 취소선',
+    ],
+  },
+  {
     version: 'D78',
     hash: '9c8ef76',
     date: '2026-06-05',

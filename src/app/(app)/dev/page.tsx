@@ -14,6 +14,14 @@ const REVIEW_LIMIT = 5000;
 export default async function DevPage() {
   const supabase = await createSupabaseServerClient();
 
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const { data: meRow } = user
+    ? await supabase.from('users').select('name').eq('id', user.id).maybeSingle()
+    : { data: null };
+  const currentUserName = (meRow as { name: string } | null)?.name ?? '익명';
+
   const [{ data: rawRestaurants }, { data: rawReviews }, offices, cuisineItems] = await Promise.all([
     supabase
       .from('restaurants')
@@ -79,6 +87,7 @@ export default async function DevPage() {
         reviews={reviews}
         offices={offices}
         cuisineItems={cuisineItems}
+        currentUserName={currentUserName}
       />
     </main>
   );
