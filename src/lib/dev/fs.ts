@@ -1,7 +1,8 @@
 // D82: 개발자 모드 — 가상 파일시스템 빌더.
 // 사옥/meal/cuisine/식당 트리. 식당 안엔 README.md / INFO / MENU / .kakao.
 
-import type { Office, CuisineItem } from '@/types/db';
+import type { Office } from '@/types/db';
+import type { CuisineItem } from '@/lib/cuisine';
 
 export interface DevRestaurant {
   id: string;

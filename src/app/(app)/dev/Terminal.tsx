@@ -5,7 +5,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildVfs, formatPath, type DevRestaurant, type DevReview } from '@/lib/dev/fs';
 import { runCommand } from '@/lib/dev/commands';
-import type { CuisineItem, Office } from '@/types/db';
+import type { CuisineItem } from '@/lib/cuisine';
+import type { Office } from '@/types/db';
 
 interface Props {
   restaurants: DevRestaurant[];
