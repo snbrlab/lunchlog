@@ -22,7 +22,7 @@ interface HistoryEntry {
 const WELCOME = [
   '🖥️  lunchlog dev mode v0.1',
   '',
-  '디렉토리 구조: /<office>/<meal>/<cuisine>/<restaurant>/<file>',
+  '디렉토리 구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>',
   '"help" 로 명령어 보기. "ls" 부터 시작해보세요.',
   '',
 ];

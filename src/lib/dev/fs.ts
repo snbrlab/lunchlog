@@ -57,7 +57,7 @@ function file(name: string, content: string): FileNode {
   return { type: 'file', name, content };
 }
 
-const MEAL_LABEL: Record<string, string> = { lunch: 'lunch', dinner: 'dinner' };
+const MEAL_LABEL: Record<string, string> = { lunch: '점심', dinner: '저녁' };
 
 export function buildVfs(
   restaurants: DevRestaurant[],

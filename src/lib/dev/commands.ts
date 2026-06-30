@@ -32,8 +32,8 @@ const HELP = [
   '  clear                화면 지우기',
   '  help                 이 도움말',
   '',
-  '구조: /<office>/<meal>/<cuisine>/<restaurant>/<file>',
-  '예: cd /광화문/lunch/한식/계시 → ls → cat README.md → git log',
+  '구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>',
+  '예: cd /광화문/점심/한식/계시 → ls → cat README.md → git log',
 ];
 
 export function runCommand(input: string, ctx: CommandContext): CommandResult {
@@ -137,7 +137,7 @@ function runGit(args: string[], ctx: CommandContext): CommandResult {
     return {
       lines: [
         `git log: 식당 디렉토리에서 실행하거나 식당 경로 인자 필요`,
-        `예: cd /광화문/lunch/한식/계시 && git log`,
+        `예: cd /광화문/점심/한식/계시 && git log`,
       ],
     };
   }
