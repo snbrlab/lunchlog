@@ -38,6 +38,14 @@ export async function Header() {
           <span className="hidden sm:inline">+ 새 맛집</span>
           <span aria-hidden className="text-base leading-none sm:hidden">＋</span>
         </Link>
+        <Link
+          href="/dev"
+          aria-label="개발자 모드"
+          title="개발자 모드 (가상 터미널)"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-surface text-base transition hover:bg-fg/5"
+        >
+          🖥️
+        </Link>
         <NotificationBell />
         <UserMenu
           name={name}
