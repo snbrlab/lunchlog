@@ -106,7 +106,7 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems }: Props)
     <div
       ref={scrollRef}
       onClick={() => inputRef.current?.focus()}
-      className="flex flex-1 flex-col overflow-y-auto rounded-lg border border-emerald-700 bg-black px-3 py-2 font-mono text-[12px] leading-tight text-emerald-300 sm:text-[13px]"
+      className="flex flex-1 flex-col overflow-y-auto rounded-lg border border-emerald-700 bg-black px-3 py-2 font-mono text-[12px] leading-tight text-emerald-300 sm:text-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
     >
       {history.map((h, i) => (
         <div key={i}>
