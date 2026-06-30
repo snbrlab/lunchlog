@@ -189,28 +189,45 @@ function runLs(args: string[], ctx: CommandContext): CommandResult {
     });
 
   const lines: Line[] = [];
+  // long format 때 이름 폭 — 가장 긴 이름 기준 정렬 (Korean 은 monospace 에서 2칸 차지 가정)
+  const displayWidth = (s: string) =>
+    Array.from(s).reduce((w, ch) => w + (ch.charCodeAt(0) > 0x7f ? 2 : 1), 0);
+  const maxNameWidth = longFormat
+    ? Math.max(
+        ...entries.map((e) => displayWidth(e.type === 'dir' ? e.name + '/' : e.name)),
+        4,
+      )
+    : 0;
+  const padName = (name: string) =>
+    ' '.repeat(Math.max(0, maxNameWidth - displayWidth(name) + 2));
+
   for (const e of entries) {
     if (longFormat) {
-      // 메타: restaurant 면 'commit N · 날짜', 일반 dir 면 child 수, file 면 byte 수
-      let meta = '';
+      const isHidden = e.name.startsWith('.');
+      const displayName = e.type === 'dir' ? e.name + '/' : e.name;
+      const nameSeg =
+        e.type === 'dir'
+          ? seg(displayName, C.dir)
+          : seg(displayName, isHidden ? C.hidden : '');
+      // 메타: restaurant 는 commit + 날짜, 일반 dir 는 child 수, file 은 byte
+      let meta: Line = [];
       if (e.type === 'dir') {
         if (e.restaurant) {
           const date = e.restaurant.last_commit_at
             ? e.restaurant.last_commit_at.slice(0, 10)
             : '         -';
-          meta = `commit ${String(e.restaurant.commit_count).padStart(3)}  ${date}`;
+          meta = [
+            seg(`commit ${String(e.restaurant.commit_count).padStart(3)}`, C.accent),
+            '  ',
+            seg(date, C.date),
+          ];
         } else {
-          meta = `         ${String(e.entries.size).padStart(3)} entries`;
+          meta = [seg(`${e.entries.size}`, C.dim)];
         }
       } else {
-        meta = `${String(e.content.length).padStart(8)} B`;
+        meta = [seg(`${e.content.length} B`, C.dim)];
       }
-      const isHidden = e.name.startsWith('.');
-      const nameSeg =
-        e.type === 'dir'
-          ? seg(e.name + '/', C.dir)
-          : seg(e.name, isHidden ? C.hidden : '');
-      lines.push([seg(meta, C.dim), '  ', nameSeg]);
+      lines.push([nameSeg, padName(displayName), ...meta]);
     } else {
       // 기본 ls: 이름만
       if (e.type === 'dir') {
