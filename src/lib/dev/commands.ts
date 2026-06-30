@@ -7,6 +7,7 @@ import {
   resolvePath,
   type DevReview,
   type DirNode,
+  type Node,
 } from './fs';
 
 export interface CommandContext {
@@ -29,7 +30,8 @@ const HELP = [
   '  cd <path>            디렉토리 이동 (.., /, 절대/상대 OK)',
   '  cat <file>           파일 내용',
   '  git log [restaurant] commit 목록 (식당 안이면 인자 생략)',
-  '  clear                화면 지우기',
+  '  grep <pat> [path]    파일 내용 + commit 메시지 재귀 검색 (-i 대소문자 무시)',
+  '  clear (Ctrl+L)       화면 지우기',
   '  help                 이 도움말',
   '',
   '구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>',
@@ -64,6 +66,9 @@ export function runCommand(input: string, ctx: CommandContext): CommandResult {
 
     case 'git':
       return runGit(rest, ctx);
+
+    case 'grep':
+      return runGrep(rest, ctx);
 
     default:
       return { lines: [`command not found: ${cmd}`, '"help" 로 사용 가능 명령어 확인`'] };
@@ -162,4 +167,70 @@ function runGit(args: string[], ctx: CommandContext): CommandResult {
     lines.push(`${rv.hash} ${dateStr} ${meal} ${author}${party}${revertMark}: ${msg}`);
   }
   return { lines };
+}
+
+function runGrep(args: string[], ctx: CommandContext): CommandResult {
+  // 플래그: -i (case-insensitive). 나머지 인자: pattern + optional path.
+  const flags = new Set<string>();
+  const positional: string[] = [];
+  for (const a of args) {
+    if (a.startsWith('-')) {
+      for (const c of a.slice(1)) flags.add(c);
+    } else {
+      positional.push(a);
+    }
+  }
+  const pattern = positional[0];
+  const pathArg = positional[1];
+  if (!pattern) {
+    return { lines: ['grep: pattern 필요', '예: grep "사장님" / → 전체에서 commit 메시지/파일 검색'] };
+  }
+  const caseInsensitive = flags.has('i');
+  const needle = caseInsensitive ? pattern.toLowerCase() : pattern;
+
+  const startParts = pathArg ? resolvePath(ctx.cwd, pathArg) : ctx.cwd;
+  const startNode = lookup(ctx.root, startParts);
+  if (!startNode) return { lines: [`grep: ${pathArg ?? formatPath(startParts)}: 경로 없음`] };
+
+  const matches: string[] = [];
+  const includes = (hay: string) =>
+    (caseInsensitive ? hay.toLowerCase() : hay).includes(needle);
+
+  function walk(node: Node, parts: string[]) {
+    if (node.type === 'file') {
+      // 파일 매치 — 라인 단위
+      const fp = formatPath(parts);
+      node.content.split('\n').forEach((line, i) => {
+        if (includes(line)) matches.push(`${fp}:${i + 1}: ${line}`);
+      });
+      return;
+    }
+    // dir — 식당이면 commit 메시지도 검색
+    if (node.restaurant) {
+      const rid = node.restaurant.id;
+      const commits = ctx.reviews.filter(
+        (rv) => rv.restaurant_id === rid && rv.parent_review_id === null,
+      );
+      for (const rv of commits) {
+        if (includes(rv.message)) {
+          const fp = formatPath(parts);
+          const msg = rv.message.replace(/\n/g, ' ').slice(0, 100);
+          matches.push(`${fp}:${rv.hash} ${rv.author_name ?? '?'}: ${msg}`);
+        }
+      }
+    }
+    // 자식 노드 재귀
+    for (const [name, child] of node.entries) {
+      walk(child, [...parts, name]);
+    }
+  }
+
+  walk(startNode, startParts);
+  if (matches.length === 0) return { lines: ['(매치 없음)'] };
+  // 너무 많으면 상위 200개만
+  if (matches.length > 200) {
+    matches.length = 200;
+    matches.push(`... (200개 초과 — 위 결과만 표시)`);
+  }
+  return { lines: matches };
 }
