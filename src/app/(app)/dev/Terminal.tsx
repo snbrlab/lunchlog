@@ -76,6 +76,12 @@ export function Terminal({ restaurants, reviews, offices, cuisineItems }: Props)
   }
 
   function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    // Ctrl+L — 화면 지우기 (브라우저 기본 동작인 URL 바 focus 방지)
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'l') {
+      e.preventDefault();
+      setHistory([]);
+      return;
+    }
     if (e.key === 'ArrowUp') {
       e.preventDefault();
       if (cmdHistory.length === 0) return;
