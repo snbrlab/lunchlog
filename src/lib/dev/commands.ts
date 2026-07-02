@@ -106,9 +106,10 @@ export async function runCommand(input: string, ctx: CommandContext): Promise<Co
     case 'ls':
       return runLs(rest, ctx);
     case 'cd':
-      return runCd(rest[0], ctx);
+      // 공백 있는 이름 편의: 따옴표 없이 여러 토큰이 와도 path 로 join
+      return runCd(rest.length > 0 ? rest.join(' ') : undefined, ctx);
     case 'cat':
-      return runCat(rest[0], ctx);
+      return runCat(rest.length > 0 ? rest.join(' ') : undefined, ctx);
     case 'git':
       return runGit(rest, ctx);
     case 'grep':

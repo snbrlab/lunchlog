@@ -283,7 +283,7 @@ export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems
     <div
       ref={scrollRef}
       onClick={() => inputRef.current?.focus()}
-      className={`flex flex-1 flex-col overflow-y-auto rounded-lg border px-3 py-2 font-mono text-[12px] leading-tight sm:text-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${THEME_CLS[theme]}`}
+      className={`flex flex-1 flex-col overflow-y-auto rounded-lg border px-3 py-2 font-mono text-base leading-tight sm:text-[13px] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden ${THEME_CLS[theme]}`}
     >
       {history.map((h, i) => (
         <div key={i}>
@@ -303,7 +303,7 @@ export function Terminal({ restaurants, reviews, prEvents, offices, cuisineItems
           autoFocus
           spellCheck={false}
           autoComplete="off"
-          className="flex-1 bg-transparent font-mono text-[12px] leading-tight outline-none sm:text-[13px] text-inherit"
+          className="flex-1 bg-transparent font-mono text-base leading-tight outline-none sm:text-[13px] text-inherit"
         />
       </form>
     </div>
