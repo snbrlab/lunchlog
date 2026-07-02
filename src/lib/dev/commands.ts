@@ -76,11 +76,24 @@ const HELP: Line[] = [
   ['구조: /<사옥>/<점심|저녁>/<cuisine>/<식당>/<file>'],
 ];
 
+// 따옴표 존중 tokenizer — cd '스시이안앤 발산역점/' 같은 공백 있는 이름 처리.
+function tokenize(input: string): string[] {
+  const tokens: string[] = [];
+  const re = /"([^"]*)"|'([^']*)'|(\S+)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(input)) !== null) {
+    tokens.push(m[1] ?? m[2] ?? m[3] ?? '');
+  }
+  return tokens;
+}
+
 export async function runCommand(input: string, ctx: CommandContext): Promise<CommandResult> {
   const trimmed = input.trim();
   if (!trimmed) return { lines: [] };
 
-  const [cmd, ...rest] = trimmed.split(/\s+/);
+  const tokens = tokenize(trimmed);
+  const cmd = tokens[0] ?? '';
+  const rest = tokens.slice(1);
 
   switch (cmd) {
     case 'help':
