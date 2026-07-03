@@ -6,7 +6,8 @@ import { useState } from 'react';
 
 interface Props {
   title?: string;
-  text: string;
+  // text 를 비우면 URL 만 공유/복사 — OG 카드가 unfurl 되는 링크는 URL 하나가 깔끔.
+  text?: string;
   url: string;
   children: React.ReactNode;
   className?: string;
@@ -32,13 +33,16 @@ export function ShareButton({
       typeof window.matchMedia === 'function' &&
       window.matchMedia('(pointer: coarse)').matches;
 
+    // text 없으면 URL 만 (카드 unfurl 링크). 있으면 text + URL.
+    const clip = text ? `${text}\n\n${url}` : url;
+
     if (
       isTouch &&
       typeof navigator !== 'undefined' &&
       typeof navigator.share === 'function'
     ) {
       try {
-        await navigator.share({ title, text, url });
+        await navigator.share(text ? { title, text, url } : { title, url });
         return;
       } catch (err) {
         if ((err as Error).name === 'AbortError') return;
@@ -46,11 +50,11 @@ export function ShareButton({
     }
 
     try {
-      await navigator.clipboard.writeText(`${text}\n\n${url}`);
+      await navigator.clipboard.writeText(clip);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      window.prompt('복사해서 공유하세요', `${text}\n\n${url}`);
+      window.prompt('복사해서 공유하세요', clip);
     }
   }
 

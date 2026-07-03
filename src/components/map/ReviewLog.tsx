@@ -490,11 +490,12 @@ function ReviewRow({
               REVERTED
             </span>
           )}
-          <span className="ml-auto flex items-center gap-2">
+          <span
+            className={`ml-auto items-center gap-2 group-hover:flex ${active ? 'flex' : 'hidden'}`}
+          >
             {!review.reverted && (
               <ShareButton
                 title="lunchlog 한줄평"
-                text={`“${review.message}” — ${authorName}`}
                 url={
                   typeof window !== 'undefined'
                     ? `${window.location.origin}/c/${review.id}`
