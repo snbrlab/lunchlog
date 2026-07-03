@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { invalidateOfficesCache } from '@/lib/cache/offices';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
+import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
 import { getServerEnv } from '@/lib/env';
 import { avatarColorFor } from '@/lib/avatar-color';
 import { isNicknameTaken, validateNicknameShape } from '@/lib/auth/nickname';
@@ -375,6 +376,7 @@ export async function deleteRestaurant(restaurantId: string): Promise<DeleteRest
     .eq('id', restaurantId);
   if (error) return { ok: false, message: error.message };
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache(); // 삭제된 식당의 리뷰가 /log 에 유령으로 남지 않게
   return { ok: true };
 }
 
@@ -403,6 +405,7 @@ export async function mergeRestaurants(
   });
   if (error) return { ok: false, message: error.message };
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache(); // 병합으로 리뷰가 target 으로 이동 → /log 갱신
   return { ok: true };
 }
 
@@ -696,5 +699,6 @@ export async function deleteUser(userId: string): Promise<DeleteUserResult> {
   if (error) return { ok: false, message: error.message };
   // restaurants 의 creator join 결과가 NULL 로 바뀌므로 캐시 무효화
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache(); // /log 의 author 이름도 갱신
   return { ok: true };
 }

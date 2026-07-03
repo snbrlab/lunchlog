@@ -62,7 +62,7 @@ const HELP: Line[] = [
   ['  grep <pat> [path] [-i] / find <pattern>'],
   [''],
   ['🍱 lunchlog'],
-  ['  finger <닉네임> / myself / random [cuisine] / near [km] / trending / leaderboard'],
+  ['  finger <닉네임> / myself / random [cuisine] / near [m] / trending / leaderboard'],
   [''],
   ['🛠 unix'],
   ['  wc <file> / head [-n N] <file> / tail [-n N] <file> / echo / uname / uptime / env'],

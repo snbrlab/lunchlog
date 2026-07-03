@@ -2,6 +2,8 @@
 // DB user_badges.code → 라벨/이모지/설명 매핑.
 // 노티 페이로드엔 code 만 들고, UI 에서 여기로 lookup.
 
+import { CUISINE_GROUP_META } from './cuisine';
+
 export interface BadgeMeta {
   code: string;
   emoji: string;
@@ -13,11 +15,9 @@ export interface BadgeMeta {
   description: string;
 }
 
-// 13개 cuisine 그룹 (D27/D61)
-export const CUISINE_GROUP_LABELS = [
-  '한식','일식','중식','양식','아시아','고기','해산물','치킨','피자',
-  '카페·디저트','술집','뷔페','기타',
-] as const;
+// cuisine 그룹 라벨 — cuisine.ts 의 CUISINE_GROUP_META 를 단일 출처로 derive.
+// (예전엔 하드코딩이라 '버거' 누락 + '카페·디저트' vs '카페/디저트' drift 로 배지가 안 보였음)
+export const CUISINE_GROUP_LABELS = CUISINE_GROUP_META.map((m) => m.label);
 
 export const BADGES: readonly BadgeMeta[] = [
   // A. 활동량
@@ -57,7 +57,8 @@ export const BADGES: readonly BadgeMeta[] = [
   { code: 'cuisine_해산물',        emoji: '🦐', label: '인류는모두바다에서왔다',     axis: 'cuisine_해산물',       tier: 1, threshold: 20, unit: 'commit', description: '해산물 20번 — 바다 근본' },
   { code: 'cuisine_치킨',          emoji: '🍗', label: '오늘밤은치킨이닭',           axis: 'cuisine_치킨',         tier: 1, threshold: 20, unit: 'commit', description: '치킨 20번 — 한국인의 영혼' },
   { code: 'cuisine_피자',          emoji: '🍕', label: '피자러버',                   axis: 'cuisine_피자',         tier: 1, threshold: 20, unit: 'commit', description: '피자 20번 — 도우와 한 몸' },
-  { code: 'cuisine_카페·디저트',   emoji: '☕', label: '내피에는카페인이흘러',       axis: 'cuisine_카페·디저트',  tier: 1, threshold: 20, unit: 'commit', description: '카페·디저트 20번 — 카페인 의존자' },
+  { code: 'cuisine_버거',          emoji: '🍔', label: '오늘도버거버거',             axis: 'cuisine_버거',         tier: 1, threshold: 20, unit: 'commit', description: '버거 20번 — 번과 패티의 신도' },
+  { code: 'cuisine_카페/디저트',   emoji: '☕', label: '내피에는카페인이흘러',       axis: 'cuisine_카페/디저트',  tier: 1, threshold: 20, unit: 'commit', description: '카페/디저트 20번 — 카페인 의존자' },
   { code: 'cuisine_술집',          emoji: '🍻', label: '오늘한잔어때',               axis: 'cuisine_술집',         tier: 1, threshold: 20, unit: 'commit', description: '술집 20번 — 회식 단골' },
   { code: 'cuisine_뷔페',          emoji: '🍽️', label: '뷔페마스터',                 axis: 'cuisine_뷔페',         tier: 1, threshold: 20, unit: 'commit', description: '뷔페 20번 — 본전 뽑기의 달인' },
   { code: 'cuisine_기타',          emoji: '🍱', label: '나는나의길을간다',           axis: 'cuisine_기타',         tier: 1, threshold: 20, unit: 'commit', description: '기타 20번 — 분류 거부' },

@@ -133,6 +133,33 @@ const FIELD_DESCRIPTORS: Record<EditField, FieldDescriptor> = {
 
 export const EDIT_FIELDS = Object.keys(FIELD_DESCRIPTORS) as EditField[];
 
+// 서버측 재검증 — PR insert 는 RLS 만 통과하면 임의 edit_payload 를 저장할 수 있으므로
+// (client buildEditPayload 를 안 거침) apply 직전에 저장된 new 값의 타입/허용범위를 다시 확인.
+// 특히 kakao_place_url 의 javascript: 스킴 stored-XSS 차단.
+export function validateEditValue(field: EditField, v: unknown): boolean {
+  switch (field) {
+    case 'name':
+    case 'address':
+      return typeof v === 'string' && v.trim().length > 0;
+    case 'price_level':
+      return v === 1 || v === 2 || v === 3;
+    case 'has_alcohol':
+      return typeof v === 'boolean';
+    case 'cuisine_types':
+      return Array.isArray(v) && v.length > 0 && v.every((s) => typeof s === 'string');
+    case 'categories':
+      return (
+        Array.isArray(v) &&
+        v.length > 0 &&
+        v.every((s) => s === 'lunch' || s === 'dinner')
+      );
+    case 'kakao_place_url':
+      return typeof v === 'string' && isAllowedKakaoUrl(v);
+    default:
+      return false;
+  }
+}
+
 export function fieldLabel(f: EditField): string {
   return FIELD_DESCRIPTORS[f].label;
 }

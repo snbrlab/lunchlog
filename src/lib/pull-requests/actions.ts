@@ -6,8 +6,9 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
+import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
 import { requireAdmin } from '@/lib/auth/require-admin';
-import { EDIT_FIELDS } from '@/lib/pull-requests/fields';
+import { EDIT_FIELDS, validateEditValue } from '@/lib/pull-requests/fields';
 import type { EditField, EditPayload } from '@/types/db';
 
 const ALLOWED_EDIT_FIELDS: Set<EditField> = new Set(EDIT_FIELDS);
@@ -112,6 +113,7 @@ export async function mergePullRequest(prId: string): Promise<ResolvePRResult> {
   if (mergeErr) return { ok: false, message: mergeErr.message };
 
   // 2) PR status 갱신 → 트리거가 작성자에게 노티
+  // status='open' 조건 — 동시 클릭/경합 시 두 번째 update 가 이미 처리된 PR 을 덮어쓰지 않게
   const { error: updErr } = await admin.supabase
     .from('pull_requests')
     .update({
@@ -119,10 +121,12 @@ export async function mergePullRequest(prId: string): Promise<ResolvePRResult> {
       reviewed_by: admin.userId,
       reviewed_at: new Date().toISOString(),
     })
-    .eq('id', prId);
+    .eq('id', prId)
+    .eq('status', 'open');
   if (updErr) return { ok: false, message: updErr.message };
 
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache(); // 병합으로 식당/리뷰가 바뀌므로 /log 도 갱신
   return { ok: true };
 }
 
@@ -151,6 +155,11 @@ export async function applyEditPullRequest(prId: string): Promise<ResolvePRResul
   if (!ALLOWED_EDIT_FIELDS.has(payload.field)) {
     return { ok: false, message: `허용되지 않은 field: ${payload.field}` };
   }
+  // 값도 재검증 — PR insert 는 RLS 만 통과하면 임의 new 값을 저장할 수 있으므로
+  // (client 검증 우회 가능). kakao_place_url 의 javascript: 스킴 stored-XSS 등 차단.
+  if (!validateEditValue(payload.field, payload.new)) {
+    return { ok: false, message: `유효하지 않은 값입니다 (${payload.field})` };
+  }
 
   const { error: updErr } = await admin.supabase
     .from('restaurants')
@@ -165,10 +174,15 @@ export async function applyEditPullRequest(prId: string): Promise<ResolvePRResul
       reviewed_by: admin.userId,
       reviewed_at: new Date().toISOString(),
     })
-    .eq('id', prId);
+    .eq('id', prId)
+    .eq('status', 'open');
   if (prUpdErr) return { ok: false, message: prUpdErr.message };
 
   invalidateRestaurantsCache();
+  // 이름/cuisine 등이 바뀌면 /log 카드에 박제된 스냅샷도 갱신 필요
+  if (payload.field === 'name' || payload.field === 'cuisine_types') {
+    invalidateReviewsLogCache();
+  }
   return { ok: true };
 }
 

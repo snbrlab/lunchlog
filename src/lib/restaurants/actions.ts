@@ -5,6 +5,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { allCuisineValues } from '@/lib/cuisine';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import { invalidateRestaurantsCache } from '@/lib/cache/restaurants';
+import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
 import type { CuisineType, MealMode } from '@/types/db';
 
 function isAllowedKakaoUrl(url: string): boolean {
@@ -170,5 +171,6 @@ export async function updateRestaurant(
 
   if (error) return { ok: false, reason: 'unknown', message: error.message };
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache(); // 이름/cuisine 변경이 /log 카드 스냅샷에 반영되게
   redirect('/map');
 }

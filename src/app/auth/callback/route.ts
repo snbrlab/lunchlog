@@ -6,7 +6,10 @@ import { avatarColorFor } from '@/lib/avatar-color';
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = url.searchParams.get('code');
-  const next = url.searchParams.get('redirect') ?? '/map';
+  // open redirect 방지 — 같은 오리진의 상대경로만 허용 ('//evil' 은 프로토콜-상대라 거부)
+  const rawNext = url.searchParams.get('redirect');
+  const next =
+    rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//') ? rawNext : '/map';
 
   if (!code) {
     return NextResponse.redirect(new URL('/login?error=exchange', request.url));
