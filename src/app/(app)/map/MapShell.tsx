@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { KakaoMap } from '@/components/map/KakaoMap';
 import { RestaurantSidebar } from '@/components/map/RestaurantSidebar';
 import { RestaurantDetailPanel } from '@/components/map/RestaurantDetailPanel';
+import { LurkerNudge } from '@/components/LurkerNudge';
 import type { CuisineItem } from '@/lib/cuisine';
 import type { RestaurantListItem } from '@/types/db';
 
@@ -15,6 +16,9 @@ interface Props {
   isAdmin: boolean;
   favoriteIds: string[];
   cuisineItems: CuisineItem[];
+  showLurkerNudge?: boolean;
+  daysSinceJoin?: number;
+  forceNudge?: boolean;
 }
 
 export default function MapShell({
@@ -24,6 +28,9 @@ export default function MapShell({
   isAdmin,
   favoriteIds,
   cuisineItems,
+  showLurkerNudge = false,
+  daysSinceJoin = 0,
+  forceNudge = false,
 }: Props) {
   // 찜 목록은 client state 로 관리 — toggle 시 즉시 반영, server 는 router.refresh 로 동기
   const [favoriteSet, setFavoriteSet] = useState(() => new Set(favoriteIds));
@@ -137,6 +144,9 @@ export default function MapShell({
           }}
         />
       </div>
+      {showLurkerNudge ? (
+        <LurkerNudge daysSinceJoin={daysSinceJoin} force={forceNudge} />
+      ) : null}
     </div>
   );
 }
