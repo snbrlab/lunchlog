@@ -2,6 +2,12 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 
+// siteUrl 만 필요 — throw 하는 env.ts(publicEnv) 를 root layout 에 끌어오면
+// 모든 페이지가 빌드타임 env 에 하드의존하므로 fallback 있는 값만 직접 읽음.
+const SITE_URL = (
+  process.env.NEXT_PUBLIC_SITE_URL ?? "https://lunchlog-rho.vercel.app"
+).replace(/\/$/, "");
+
 const geistSans = Geist({
   variable: "--font-geist-sans",
   subsets: ["latin"],
@@ -13,6 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL(SITE_URL), // /c/[id] 공유 카드 og:image 절대 URL 해석용
   title: "런치로그",
   description: "가본 곳에 한 줄 평 남기기",
   robots: { index: false, follow: false },

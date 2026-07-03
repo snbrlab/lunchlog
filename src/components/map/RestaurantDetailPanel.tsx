@@ -28,6 +28,23 @@ interface Props {
   onFavoriteToggle: (restaurantId: string, next: boolean) => void;
 }
 
+// 공유 텍스트 조립 — 식당명 + cuisine + 최신 한줄평 (있으면). 카톡/슬랙에 그대로 붙는 내용.
+function buildShareText(
+  name: string,
+  cuisines: string[],
+  reviews: { message: string; author: string }[],
+): string {
+  const head = `🍱 ${name} 어때?${cuisines.length ? ` — ${cuisines.join(' / ')}` : ''}`;
+  if (reviews.length === 0) {
+    return `${head}\n런치로그에서 한 줄 리뷰 보기 👇`;
+  }
+  const quotes = reviews
+    .slice(0, 3)
+    .map((r) => `“${r.message}”${r.author ? ` — ${r.author}` : ''}`)
+    .join('\n');
+  return `${head}\n\n${quotes}\n\n런치로그에서 더 보기 👇`;
+}
+
 // SPEC 5.4 디테일 패널.
 export function RestaurantDetailPanel({
   origin,
@@ -206,7 +223,11 @@ export function RestaurantDetailPanel({
           </button>
           <ShareButton
             title={`🍱 ${restaurant.name}`}
-            text={`🍱 ${restaurant.name} 어때? — ${restaurant.cuisine_types.join(' / ')}\n런치로그에서 한 줄 리뷰 보기 👇`}
+            text={buildShareText(
+              restaurant.name,
+              restaurant.cuisine_types,
+              detail?.topReviews ?? [],
+            )}
             url={typeof window !== 'undefined' ? `${window.location.origin}/map?focus=${restaurant.id}` : ''}
             className="rounded border border-border px-2 py-0.5 text-[10px] uppercase tracking-wider text-fg-muted transition hover:border-emerald-400 hover:text-emerald-700"
             copiedMessage="식당 링크 복사됐어요"

@@ -5,7 +5,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { updateSession } from '@/lib/supabase/proxy';
 
-const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/auth'];
+// /c/* 는 커밋 공유 랜딩(+og 이미지) — 크롤러가 로그인에 안 튕기게 공개.
+const PUBLIC_PATHS = ['/login', '/signup', '/forgot-password', '/auth', '/c'];
 const ONBOARDING_PATH = '/onboarding';
 const SET_PASSWORD_PATH = '/set-password';
 

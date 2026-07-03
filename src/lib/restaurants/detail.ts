@@ -18,6 +18,8 @@ export interface RestaurantDetailExtra {
     avatar_emoji: string | null;
     avatar_color: string;
   } | null;
+  // 공유 텍스트용 최신 한줄평 (top-level, non-reverted) 최대 3개
+  topReviews: { message: string; author: string }[];
 }
 
 const DETAIL_COLUMNS =
@@ -35,5 +37,22 @@ export async function fetchRestaurantDetail(
     .eq('id', id)
     .maybeSingle();
   if (error || !data) return null;
-  return data as unknown as RestaurantDetailExtra;
+
+  // 공유 텍스트용 최신 한줄평 — top-level(답글 제외), non-reverted 3개
+  const { data: reviewRows } = await supabase
+    .from('reviews')
+    .select('message, author:users!reviews_author_id_fkey ( name )')
+    .eq('restaurant_id', id)
+    .eq('reverted', false)
+    .is('parent_review_id', null)
+    .order('created_at', { ascending: false })
+    .limit(3);
+
+  const topReviews = (
+    (reviewRows ?? []) as unknown as { message: string; author: { name: string } | null }[]
+  )
+    .map((r) => ({ message: r.message.trim(), author: r.author?.name ?? '' }))
+    .filter((r) => r.message.length > 0);
+
+  return { ...(data as unknown as RestaurantDetailExtra), topReviews };
 }

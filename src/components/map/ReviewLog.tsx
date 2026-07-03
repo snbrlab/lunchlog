@@ -7,6 +7,7 @@ import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { deleteReview, revertReview, setReviewMealTime } from '@/lib/reviews/actions';
 import ReactionBar from './ReactionBar';
+import { ShareButton } from '@/components/ShareButton';
 import type { MealMode, Review } from '@/types/db';
 
 // D75: @nickname 패턴 chip 렌더. 두 가지 형태 지원 — DB 트리거 / composer 와 동일.
@@ -490,6 +491,21 @@ function ReviewRow({
             </span>
           )}
           <span className="ml-auto flex items-center gap-2">
+            {!review.reverted && (
+              <ShareButton
+                title="lunchlog 한줄평"
+                text={`“${review.message}” — ${authorName}`}
+                url={
+                  typeof window !== 'undefined'
+                    ? `${window.location.origin}/c/${review.id}`
+                    : ''
+                }
+                className="text-[10px] text-fg-muted hover:text-emerald-600"
+                copiedMessage="한줄평 링크 복사됨"
+              >
+                📤 share
+              </ShareButton>
+            )}
             {onReply && (
               <button
                 type="button"
