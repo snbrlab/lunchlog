@@ -8,15 +8,18 @@ import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type { MealMode } from '@/types/db';
 
 // D75: @멘션 — 입력 중 "@..." 패턴 감지 → 사용자 typeahead.
-// 한 번 fetch 한 사용자 목록을 module-level 로 캐시 (탭 전환마다 재요청 X).
-let cachedUsers: { id: string; name: string }[] | null = null;
+// 모듈 캐시 + 5분 TTL. 이전엔 limit 500 이라 700명 이상 조직에선 뒤쪽 이름들이 안 잡히던 버그 있었음.
+let cachedUsers: { data: { id: string; name: string }[]; at: number } | null = null;
+const USERS_TTL_MS = 5 * 60 * 1000;
 
 async function fetchUsersOnce() {
-  if (cachedUsers) return cachedUsers;
+  if (cachedUsers && Date.now() - cachedUsers.at < USERS_TTL_MS) return cachedUsers.data;
   const supabase = createSupabaseBrowserClient();
-  const { data } = await supabase.from('users').select('id, name').order('name').limit(500);
-  cachedUsers = (data ?? []) as { id: string; name: string }[];
-  return cachedUsers;
+  // limit 제거 — 전체 fetch. 700명 기준 ~30KB 로 저렴.
+  const { data } = await supabase.from('users').select('id, name').order('name');
+  const arr = (data ?? []) as { id: string; name: string }[];
+  cachedUsers = { data: arr, at: Date.now() };
+  return arr;
 }
 
 // 현재 cursor 위치 직전의 @nickname 부분 (있으면) 추출. 없으면 null.
