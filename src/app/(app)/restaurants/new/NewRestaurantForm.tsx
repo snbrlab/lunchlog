@@ -6,6 +6,8 @@ import { KakaoPlacesSearch } from '@/components/map/KakaoPlacesSearch';
 import { useMealMode } from '@/lib/meal-mode/MealModeProvider';
 import { cuisineLabelFor, groupCuisineItems, type CuisineItem } from '@/lib/cuisine';
 import { createRestaurant, type CreateRestaurantResult } from './actions';
+import { createReview } from '@/lib/reviews/actions';
+import { generateCommitHash } from '@/lib/hash';
 import type { CuisineType, MealMode } from '@/types/db';
 import type { KakaoPlaceItem } from '@/types/kakao-maps';
 
@@ -409,9 +411,32 @@ export default function NewRestaurantForm({ origin, cuisineItems }: Props) {
           duplicate={duplicate}
           pending={pending}
           onSame={() => {
-            // 같은 곳이면 그쪽으로 이동
-            router.push('/map');
-            router.refresh();
+            // 같은 곳이면 입력한 첫 리뷰를 기존 식당에 commit 으로 추가하고 그쪽으로 이동.
+            // 리뷰 내용이 있으면 등록, 없으면 그냥 이동.
+            const message = firstReview.trim();
+            const partyNum = firstReviewParty.trim() ? Number(firstReviewParty) : null;
+            const existingId = duplicate.id;
+            setDuplicate(null);
+            startTransition(async () => {
+              if (message) {
+                const r = await createReview({
+                  restaurantId: existingId,
+                  message,
+                  mealTime: firstReviewMode,
+                  partySize:
+                    partyNum != null && Number.isInteger(partyNum) && partyNum >= 1 && partyNum <= 99
+                      ? partyNum
+                      : null,
+                  hash: generateCommitHash(),
+                });
+                if (!r.ok) {
+                  alert(`commit 등록 실패: ${r.message}`);
+                  // 실패해도 map 으로는 이동
+                }
+              }
+              router.push(`/map?focus=${existingId}`);
+              router.refresh();
+            });
           }}
           onDifferent={() => {
             setDuplicate(null);
