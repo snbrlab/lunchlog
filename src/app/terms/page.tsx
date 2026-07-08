@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { CONTACT_EMAIL } from '@/lib/contact';
 
 export const metadata: Metadata = {
   title: '이용약관 — lunchlog',
@@ -7,7 +8,6 @@ export const metadata: Metadata = {
 };
 
 const EFFECTIVE_DATE = '2026-07-08';
-const CONTACT = 'heejin.suh@lge.com';
 
 export default function TermsPage() {
   return (
@@ -81,7 +81,20 @@ export default function TermsPage() {
 
       <Section n="9" title="문의 및 준거법">
         <p>
-          문의: <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>
+          문의는 로그인 후{' '}
+          <Link href="/report" className="underline">
+            관리자에게 문의
+          </Link>
+          를 이용해 주세요.
+          {CONTACT_EMAIL && (
+            <>
+              {' '}
+              그 외 문의:{' '}
+              <a className="underline" href={`mailto:${CONTACT_EMAIL}`}>
+                {CONTACT_EMAIL}
+              </a>
+            </>
+          )}
           <br />
           본 약관과 관련한 분쟁은 대한민국 법령에 따릅니다.
         </p>

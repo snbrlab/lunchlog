@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { CONTACT_EMAIL } from '@/lib/contact';
 
 export const metadata: Metadata = {
   title: '개인정보 처리방침 — lunchlog',
@@ -8,7 +9,6 @@ export const metadata: Metadata = {
 
 // 시행일 — 내용이 바뀌면 갱신.
 const EFFECTIVE_DATE = '2026-07-08';
-const CONTACT = 'heejin.suh@lge.com';
 
 export default function PrivacyPage() {
   return (
@@ -79,9 +79,12 @@ export default function PrivacyPage() {
       <Section n="7" title="정보주체의 권리와 행사 방법">
         <p>
           이용자는 언제든지 본인 개인정보의 열람·정정·삭제·처리정지를 요청할 수 있습니다. 앱 내
-          프로필에서 정보를 수정할 수 있으며, 계정·데이터 삭제 등은 아래 연락처로 요청할 수
-          있습니다. 이용자는 동의를 거부할 권리가 있으나, 필수 항목 동의를 거부하는 경우 회원가입이
-          제한됩니다.
+          프로필에서 정보를 수정할 수 있으며, 계정·데이터 삭제 등은 로그인 후{' '}
+          <Link href="/report" className="underline">
+            관리자에게 문의
+          </Link>
+          하거나 아래 문의처로 요청할 수 있습니다. 이용자는 동의를 거부할 권리가 있으나, 필수 항목
+          동의를 거부하는 경우 회원가입이 제한됩니다.
         </p>
       </Section>
 
@@ -94,7 +97,20 @@ export default function PrivacyPage() {
 
       <Section n="9" title="문의처">
         <p>
-          개인정보 관련 문의: <a className="underline" href={`mailto:${CONTACT}`}>{CONTACT}</a>
+          개인정보 관련 문의는 로그인 후{' '}
+          <Link href="/report" className="underline">
+            관리자에게 문의
+          </Link>
+          를 이용해 주세요.
+          {CONTACT_EMAIL && (
+            <>
+              {' '}
+              그 외 문의:{' '}
+              <a className="underline" href={`mailto:${CONTACT_EMAIL}`}>
+                {CONTACT_EMAIL}
+              </a>
+            </>
+          )}
         </p>
       </Section>
 
