@@ -14,7 +14,6 @@ import type {
   ReportNewPayload,
   ReportUpdatePayload,
   ReviewReplyPayload,
-  SignupRequestNewPayload,
 } from '@/types/db';
 import { BADGE_BY_CODE } from '@/lib/badges';
 
@@ -109,36 +108,6 @@ function ToastCard({
           <DismissButton onDismiss={onDismiss} />
         </div>
       </div>
-    );
-  }
-
-  if (note.type === 'signup_request_new') {
-    const p = note.payload as SignupRequestNewPayload;
-    return (
-      <Link
-        href="/admin/signups"
-        onClick={onDismiss}
-        className="block rounded-lg border border-border bg-surface p-3 shadow-lg ring-1 ring-black/5 transition hover:border-fg/40"
-      >
-        <div className="flex items-start gap-2">
-          <span aria-hidden className="text-base">🆕</span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium text-fg">새 가입 신청이 들어왔어요</p>
-            <p className="mt-0.5 text-[11px] text-fg-muted">
-              <span className="font-medium text-fg">{p.name}</span>{' '}
-              <span className="font-mono">({p.email})</span>
-            </p>
-            <p className="mt-1.5 text-[11px] text-fg-muted">→ /admin/signups 에서 처리</p>
-          </div>
-          <DismissButton
-            onDismiss={(e) => {
-              e?.preventDefault();
-              e?.stopPropagation();
-              onDismiss();
-            }}
-          />
-        </div>
-      </Link>
     );
   }
 

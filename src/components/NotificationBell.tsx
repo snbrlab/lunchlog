@@ -18,7 +18,6 @@ import type {
   ReportNewPayload,
   ReportUpdatePayload,
   ReviewReplyPayload,
-  SignupRequestNewPayload,
 } from '@/types/db';
 import { BADGE_BY_CODE } from '@/lib/badges';
 
@@ -192,23 +191,6 @@ function NotificationItem({ note, onClick }: { note: NotificationRow; onClick: (
         </div>
         {time}
       </button>
-    );
-  }
-
-  if (note.type === 'signup_request_new') {
-    const p = note.payload as SignupRequestNewPayload;
-    return (
-      <Link href="/admin/signups" onClick={onClick} className={itemClass}>
-        <span aria-hidden className="text-base leading-none">🆕</span>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-fg">새 가입 신청</p>
-          <p className="mt-0.5 truncate text-[11px] text-fg-muted">
-            <span className="font-medium text-fg">{p.name}</span>{' '}
-            <span className="font-mono">({p.email})</span>
-          </p>
-        </div>
-        {time}
-      </Link>
     );
   }
 

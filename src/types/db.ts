@@ -121,7 +121,6 @@ export interface Review {
 export type NotificationType =
   | 'report_update'
   | 'review_reply'
-  | 'signup_request_new'
   | 'report_new'
   | 'report_comment'
   | 'badge_earned'
@@ -146,13 +145,6 @@ export interface ReviewReplyPayload {
   restaurant_id: string;
   restaurant_name: string;
   message: string;
-}
-
-// admin 전용
-export interface SignupRequestNewPayload {
-  request_id: string;
-  email: string;
-  name: string;
 }
 
 // admin 전용
@@ -254,7 +246,6 @@ export interface NotificationRow {
   payload:
     | ReportUpdatePayload
     | ReviewReplyPayload
-    | SignupRequestNewPayload
     | ReportNewPayload
     | ReportCommentPayload
     | BadgeEarnedPayload
