@@ -13,11 +13,13 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { id } = await params;
   const card = await fetchCommitCard(id);
-  if (!card) return { title: 'lunchlog' };
+  // noindex — 공개 공유 링크지만 검색엔진 색인은 막음 (한줄평이 검색에 뜨지 않게)
+  const robots = { index: false, follow: false };
+  if (!card) return { title: 'lunchlog', robots };
   const title = `${card.restaurantName} — lunchlog`;
-  const description = `“${card.message}” — ${card.author}`;
+  const description = `“${card.message}”`; // 작성자 닉네임 미포함 (익명 공개)
   // og:image 는 파일 컨벤션(opengraph-image.tsx)이 자동 주입. 여기선 title/description 만.
-  return { title, description, openGraph: { title, description } };
+  return { title, description, robots, openGraph: { title, description } };
 }
 
 export default async function CommitSharePage({
@@ -49,12 +51,9 @@ export default async function CommitSharePage({
               <div className="text-lg font-semibold">{card.restaurantName}</div>
               <div className="mt-2 h-1.5 w-16 bg-[#3fb950]" />
               <p className="mt-6 text-2xl leading-relaxed">“{card.message}”</p>
-              <div className="mt-5 text-[15px] text-[#3fb950]">
-                — {card.author}
-                <span className="ml-2 text-[#8b949e]">
-                  · {card.mealTime === 'dinner' ? '저녁' : '점심'}
-                  {card.region ? ` · ${card.region} 근처` : ''}
-                </span>
+              <div className="mt-5 text-[15px] text-[#8b949e]">
+                {card.mealTime === 'dinner' ? '저녁' : '점심'}
+                {card.region ? ` · ${card.region} 근처` : ''}
               </div>
               <Link
                 href={`/map?focus=${card.restaurantId}`}

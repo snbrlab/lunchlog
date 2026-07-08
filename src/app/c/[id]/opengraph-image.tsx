@@ -22,7 +22,6 @@ export default async function Image({ params }: { params: Promise<{ id: string }
 
   const message = card?.message ?? '런치로그에서 한 줄 남겨보세요';
   const restaurant = card?.restaurantName ?? 'lunchlog';
-  const author = card?.author ?? '';
   const meal = card?.mealTime === 'dinner' ? '저녁' : '점심';
   const region = card?.region ?? null;
   const hash = card?.hash ?? '';
@@ -76,10 +75,9 @@ export default async function Image({ params }: { params: Promise<{ id: string }
           “{message}”
         </div>
 
-        {/* 작성자 · 끼니 */}
-        <div style={{ display: 'flex', alignItems: 'center', fontSize: 30, color: GREEN }}>
-          {author ? <div style={{ display: 'flex' }}>— {author}</div> : <div style={{ display: 'flex' }} />}
-          <div style={{ display: 'flex', color: MUTED, marginLeft: 20 }}>· {meal}</div>
+        {/* 끼니 (작성자는 익명 — 공개 카드엔 닉네임 미노출) */}
+        <div style={{ display: 'flex', alignItems: 'center', fontSize: 30, color: MUTED }}>
+          <div style={{ display: 'flex' }}>{meal}</div>
         </div>
 
         {/* 하단: 지역 + 도메인 */}

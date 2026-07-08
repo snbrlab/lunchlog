@@ -50,6 +50,8 @@ export async function GET(request: NextRequest) {
       email: user.email,
       name,
       avatar_color: avatarColorFor(name + user.id),
+      // 신규 유저가 콜백에 도달하려면 동의-게이트된 가입 요청을 거쳐야 하므로 동의로 간주
+      agreed_at: new Date().toISOString(),
     });
     if (insertError) {
       await supabase.auth.signOut();

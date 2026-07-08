@@ -33,6 +33,15 @@ export async function requestOtp(formData: FormData): Promise<RequestOtpResult> 
   const email = String(formData.get('email') ?? '').trim().toLowerCase();
   const name = String(formData.get('name') ?? '').trim();
 
+  // PIPA — 이용약관 + 개인정보 수집·이용 동의 (둘 다 필수). 미동의 시 메일 발송 자체를 차단.
+  if (formData.get('agree_terms') !== 'on' || formData.get('agree_privacy') !== 'on') {
+    return {
+      ok: false,
+      reason: 'invalid',
+      message: '이용약관과 개인정보 수집·이용에 동의해주세요',
+    };
+  }
+
   if (!email || !email.includes('@')) {
     return { ok: false, reason: 'invalid', message: '이메일을 정확히 입력해주세요' };
   }
@@ -141,6 +150,7 @@ export async function verifyOtp(formData: FormData): Promise<VerifyOtpResult> {
         email: user.email,
         name: fallback,
         avatar_color: avatarColorFor(fallback + user.id),
+        agreed_at: new Date().toISOString(), // 가입 폼에서 약관·개인정보 동의함
       });
       if (insertError) {
         return { ok: false, reason: 'unknown', message: insertError.message };
@@ -153,6 +163,7 @@ export async function verifyOtp(formData: FormData): Promise<VerifyOtpResult> {
       email: user.email,
       name,
       avatar_color: avatarColorFor(name + user.id),
+      agreed_at: new Date().toISOString(), // 가입 폼에서 약관·개인정보 동의함
     });
     if (insertError) {
       return { ok: false, reason: 'unknown', message: insertError.message };

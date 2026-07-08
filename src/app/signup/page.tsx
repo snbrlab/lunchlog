@@ -22,6 +22,15 @@ export default function SignupPage() {
             로그인하러 가기
           </Link>
         </div>
+        <div className="mt-4 text-center text-[11px] text-neutral-400">
+          <Link href="/terms" className="underline-offset-2 hover:underline">
+            이용약관
+          </Link>
+          {' · '}
+          <Link href="/privacy" className="underline-offset-2 hover:underline">
+            개인정보 처리방침
+          </Link>
+        </div>
       </div>
     </main>
   );

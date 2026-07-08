@@ -5,9 +5,9 @@
 import { cache } from 'react';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 
+// 공개 카드 — 외부(사외) 노출이므로 작성자 닉네임은 담지 않음(익명). 앱 안에선 닉네임 노출.
 export interface CommitCard {
   message: string;
-  author: string;
   mealTime: 'lunch' | 'dinner';
   hash: string;
   restaurantId: string;
@@ -22,8 +22,7 @@ export const fetchCommitCard = cache(async (id: string): Promise<CommitCard | nu
     .from('reviews')
     .select(
       'message, meal_time, hash, reverted, ' +
-        'restaurant:restaurants ( id, name, office:offices ( name ) ), ' +
-        'author:users!reviews_author_id_fkey ( name )',
+        'restaurant:restaurants ( id, name, office:offices ( name ) )',
     )
     .eq('id', id)
     .maybeSingle();
@@ -37,14 +36,12 @@ export const fetchCommitCard = cache(async (id: string): Promise<CommitCard | nu
     hash: string;
     reverted: boolean;
     restaurant: { id: string; name: string; office: { name: string } | null } | null;
-    author: { name: string } | null;
   };
 
   if (row.reverted || !row.restaurant) return null; // revert 됐거나 식당 삭제됨
 
   return {
     message: row.message,
-    author: row.author?.name ?? '익명',
     mealTime: row.meal_time,
     hash: row.hash,
     restaurantId: row.restaurant.id,

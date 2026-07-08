@@ -49,6 +49,9 @@ export default function SignupForm() {
       const fd = new FormData();
       fd.set('email', submittedEmail);
       fd.set('name', submittedName);
+      // 이미 첫 요청에서 동의했으므로 재전송 시에도 동의 상태 유지
+      fd.set('agree_terms', 'on');
+      fd.set('agree_privacy', 'on');
       const r = await requestOtp(fd);
       if (!r.ok) setError(r.message);
     });
@@ -145,6 +148,42 @@ export default function SignupForm() {
         />
         <span className="mt-1 block text-xs text-neutral-500">동료들에게 표시될 이름이에요</span>
       </label>
+
+      {/* PIPA — 이용약관 / 개인정보 수집·이용 동의 (둘 다 필수). name 은 requestOtp 에서 검증. */}
+      <div className="space-y-2 rounded-md border border-neutral-200 bg-neutral-50 px-3 py-3 text-[13px]">
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            name="agree_terms"
+            required
+            disabled={pending}
+            className="mt-0.5 h-4 w-4 shrink-0"
+          />
+          <span className="text-neutral-700">
+            (필수){' '}
+            <a href="/terms" target="_blank" className="underline">
+              이용약관
+            </a>
+            에 동의합니다
+          </span>
+        </label>
+        <label className="flex items-start gap-2">
+          <input
+            type="checkbox"
+            name="agree_privacy"
+            required
+            disabled={pending}
+            className="mt-0.5 h-4 w-4 shrink-0"
+          />
+          <span className="text-neutral-700">
+            (필수){' '}
+            <a href="/privacy" target="_blank" className="underline">
+              개인정보 수집·이용
+            </a>
+            에 동의합니다
+          </span>
+        </label>
+      </div>
 
       {error && <p className="text-sm text-red-600">{error}</p>}
 
