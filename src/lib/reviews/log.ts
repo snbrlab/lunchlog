@@ -35,19 +35,29 @@ export interface LogReviewRow {
 
 export const LOG_PAGE_SIZE = 100;
 
+// 지역 필터 — office uuid | 'all'(전체) | 'none'(지역 미지정 식당)
+export type LogOfficeFilter = string;
+
 // before: 이 시각보다 과거의 commit 만 (keyset cursor). 없으면 최신부터.
+//
+// officeId 는 반드시 DB 쿼리에서 걸러야 한다. 클라이언트에서 걸러내면 특정 지역에
+// commit 이 몰렸을 때 최신 100개가 그 지역으로 다 채워져서, 다른 지역을 고르면
+// commit 이 없는 것처럼 보인다 (실제로는 100개 창 밖에 있음).
 export async function fetchReviewLogPage(
   supabase: SupabaseClient,
-  opts: { before?: string; limit?: number } = {},
+  opts: { before?: string; limit?: number; officeId?: LogOfficeFilter } = {},
 ): Promise<LogReviewRow[]> {
   const limit = opts.limit ?? LOG_PAGE_SIZE;
+  const office = opts.officeId ?? 'all';
 
   let q = supabase
     .from('reviews')
     .select(
       'id, message, meal_time, party_size, hash, reverted, parent_review_id, created_at, ' +
         'author:users!reviews_author_id_fkey ( id, name, avatar_emoji, avatar_color, office_id, primary_badge_code ), ' +
-        'restaurant:restaurants ( id, name, cuisine_types, is_closed, office_id ), ' +
+        // !inner — 임베드 컬럼(office_id)으로 부모(reviews)를 거르려면 조인 필요.
+        // restaurant_id 는 not null 이라 'all' 결과는 기존과 동일.
+        'restaurant:restaurants!inner ( id, name, cuisine_types, is_closed, office_id ), ' +
         // D79: reactions + 누른 사람 이름
         'reactions:review_reactions ( emoji, user_id, user:users ( name ) )',
     )
@@ -55,6 +65,8 @@ export async function fetchReviewLogPage(
     .limit(limit);
 
   if (opts.before) q = q.lt('created_at', opts.before);
+  if (office === 'none') q = q.is('restaurant.office_id', null);
+  else if (office !== 'all') q = q.eq('restaurant.office_id', office);
 
   const { data: rawData } = await q;
   type RawRow = Omit<LogReviewRow, 'parent'>;

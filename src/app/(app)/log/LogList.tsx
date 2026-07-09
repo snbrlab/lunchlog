@@ -7,7 +7,7 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
 import type { LogPREvent } from '@/lib/pull-requests/events';
 import { fieldLabel, fmtFieldValue } from '@/lib/pull-requests/fields';
-import { loadMoreReviewLog } from './actions';
+import { loadReviewLogPage } from './actions';
 import { BadgeChip } from '@/components/badges/BadgeChip';
 import ReactionBar from '@/components/map/ReactionBar';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
@@ -45,12 +45,30 @@ export default function LogList({
     const last = rows[rows.length - 1];
     if (!last) return;
     startLoadMore(async () => {
-      const res = await loadMoreReviewLog(last.created_at);
+      const res = await loadReviewLogPage(officeFilter, last.created_at);
       setRows((prev) => {
         // 중복 방지 (created_at 동률 경계 안전)
         const seen = new Set(prev.map((r) => r.id));
         return [...prev, ...res.rows.filter((r) => !seen.has(r.id))];
       });
+      setHasMore(res.hasMore);
+    });
+  }
+
+  // 지역 필터는 서버에서 걸러야 함 — 클라이언트 필터면 한 지역이 최신 100개를
+  // 다 차지했을 때 다른 지역이 "commit 없음" 처럼 보인다. 지역 바뀌면 1페이지 재요청.
+  function changeOffice(next: string) {
+    if (next === officeFilter) return;
+    setOfficeFilter(next);
+    if (next === 'all') {
+      // 'all' 첫 페이지는 이미 SSR 캐시로 받아둔 것 재사용
+      setRows(initialRows);
+      setHasMore(initialRows.length === LOG_PAGE_SIZE);
+      return;
+    }
+    startLoadMore(async () => {
+      const res = await loadReviewLogPage(next);
+      setRows(res.rows);
       setHasMore(res.hasMore);
     });
   }
@@ -67,12 +85,11 @@ export default function LogList({
 
   const filteredReviews = useMemo(() => {
     const q = query.trim().toLowerCase();
+    // officeFilter 는 서버 쿼리에서 이미 적용됨 (rows 가 해당 지역 것만) — 여기선 거르지 않음.
     return rows.filter((r) => {
       if (!showReverted && r.reverted) return false;
       if (meal !== 'all' && r.meal_time !== meal) return false;
       if (cutoff > 0 && new Date(r.created_at).getTime() < cutoff) return false;
-      if (officeFilter === 'none') { if (r.restaurant?.office_id) return false; }
-      else if (officeFilter !== 'all' && r.restaurant?.office_id !== officeFilter) return false;
       if (q) {
         const hay = [
           r.message,
@@ -86,7 +103,7 @@ export default function LogList({
       }
       return true;
     });
-  }, [rows, meal, cutoff, showReverted, query, officeFilter]);
+  }, [rows, meal, cutoff, showReverted, query]);
 
   // PR 이벤트: meal/reverted 는 무관 (review 전용 개념), date + query + region 적용.
   // region 은 PR 의 target 식당 office_id 기준.
@@ -181,7 +198,7 @@ export default function LogList({
         <span className="mr-1 text-[10px] text-fg-muted">지역</span>
         <button
           type="button"
-          onClick={() => setOfficeFilter('all')}
+          onClick={() => changeOffice('all')}
           className={`rounded-full px-2 py-0.5 text-[11px] transition ${
             officeFilter === 'all'
               ? 'bg-fg text-bg'
@@ -194,7 +211,7 @@ export default function LogList({
           <button
             key={o.id}
             type="button"
-            onClick={() => setOfficeFilter(o.id)}
+            onClick={() => changeOffice(o.id)}
             className={`rounded-full px-2 py-0.5 text-[11px] transition ${
               officeFilter === o.id
                 ? 'bg-fg text-bg'
@@ -206,7 +223,7 @@ export default function LogList({
         ))}
         <button
           type="button"
-          onClick={() => setOfficeFilter('none')}
+          onClick={() => changeOffice('none')}
           className={`rounded-full px-2 py-0.5 text-[11px] transition ${
             officeFilter === 'none'
               ? 'bg-fg text-bg'
