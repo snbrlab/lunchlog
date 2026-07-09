@@ -2,6 +2,7 @@
 
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { fetchReviewLogPage, LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
+import { getCachedReviewLogFirstPage } from '@/lib/cache/reviews-log';
 
 export type LoadMoreResult = {
   rows: LogReviewRow[];
@@ -23,10 +24,15 @@ export async function loadReviewLogPage(
   } = await supabase.auth.getUser();
   if (!user) return { rows: [], hasMore: false };
 
-  const rows = await fetchReviewLogPage(supabase, {
-    before: beforeIso,
-    limit: LOG_PAGE_SIZE,
-    officeId,
-  });
+  // 첫 페이지(지역 전환)는 지역별 캐시 히트로 — 왕복은 있어도 DB 쿼리는 건너뜀.
+  // 깊은 페이지(더보기)는 스크롤 깊이별로 캐시할 가치가 적어 live 쿼리.
+  const rows = beforeIso
+    ? await fetchReviewLogPage(supabase, {
+        before: beforeIso,
+        limit: LOG_PAGE_SIZE,
+        officeId,
+      })
+    : await getCachedReviewLogFirstPage(officeId);
+
   return { rows, hasMore: rows.length === LOG_PAGE_SIZE };
 }
