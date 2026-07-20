@@ -6,6 +6,7 @@ import { formatRelativeTime } from '@/lib/format-time';
 import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
 import type { LogPREvent } from '@/lib/pull-requests/events';
+import type { LogArchiveEvent } from '@/lib/restaurants/archive-events';
 import { fieldLabel, fmtFieldValue } from '@/lib/pull-requests/fields';
 import { loadReviewLogPage } from './actions';
 import { BadgeChip } from '@/components/badges/BadgeChip';
@@ -19,11 +20,13 @@ type DateRange = 'all' | '7d' | '30d';
 export default function LogList({
   initialRows,
   prEvents,
+  archiveEvents,
   offices,
   currentUserId,
 }: {
   initialRows: LogReviewRow[];
   prEvents: LogPREvent[];
+  archiveEvents: LogArchiveEvent[];
   offices: Office[];
   currentUserId: string;
 }) {
@@ -123,14 +126,28 @@ export default function LogList({
     });
   }, [prEvents, cutoff, query, officeFilter]);
 
-  // review + PR 이벤트 시간순 merge
+  // 아카이브(폐업) 이벤트: date + query + region 적용 (meal/reverted 무관)
+  const filteredArchives = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return archiveEvents.filter((a) => {
+      if (cutoff > 0 && new Date(a.at).getTime() < cutoff) return false;
+      if (officeFilter === 'none') { if (a.office_id) return false; }
+      else if (officeFilter !== 'all' && a.office_id !== officeFilter) return false;
+      if (q && !a.restaurant_name.toLowerCase().includes(q)) return false;
+      return true;
+    });
+  }, [archiveEvents, cutoff, query, officeFilter]);
+
+  // review + PR + archive 이벤트 시간순 merge
   type Activity =
     | (LogReviewRow & { kind: 'review' })
-    | (LogPREvent & { kind: 'pr' });
+    | (LogPREvent & { kind: 'pr' })
+    | (LogArchiveEvent & { kind: 'archive' });
   const activities = useMemo<Activity[]>(() => {
     const a: Activity[] = [
       ...filteredReviews.map((r) => ({ ...r, kind: 'review' as const })),
       ...filteredPrs.map((p) => ({ ...p, kind: 'pr' as const })),
+      ...filteredArchives.map((v) => ({ ...v, kind: 'archive' as const })),
     ];
     a.sort((x, y) => {
       const xt = x.kind === 'review' ? x.created_at : x.at;
@@ -138,7 +155,7 @@ export default function LogList({
       return new Date(yt).getTime() - new Date(xt).getTime();
     });
     return a;
-  }, [filteredReviews, filteredPrs]);
+  }, [filteredReviews, filteredPrs, filteredArchives]);
 
   return (
     <div className="space-y-3">
@@ -248,6 +265,8 @@ export default function LogList({
         {activities.map((a) =>
           a.kind === 'pr' ? (
             <PREventItem key={a.id} ev={a} />
+          ) : a.kind === 'archive' ? (
+            <ArchiveEventItem key={a.id} ev={a} />
           ) : (
             <LogItem
               key={a.id}
@@ -283,6 +302,34 @@ export default function LogList({
 }
 
 // D78/D80: PR 이벤트 카드. merge / edit 분기.
+// 폐업(아카이브) 이벤트 — 식당이 문을 닫았다는 소식. 히스토리는 보존됨.
+function ArchiveEventItem({ ev }: { ev: LogArchiveEvent }) {
+  return (
+    <li className="border-b border-border bg-amber-50/50 px-4 py-2.5 text-xs last:border-b-0">
+      <div className="flex items-center gap-2">
+        <span aria-hidden className="text-sm">🪦</span>
+        <span className="rounded bg-amber-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-amber-800">
+          archived
+        </span>
+        <a
+          href={`/map?focus=${ev.restaurant_id}`}
+          className="font-medium text-fg underline-offset-2 hover:underline"
+        >
+          {ev.restaurant_name}
+        </a>
+        <span className="text-fg-muted">폐업</span>
+        <span className="ml-auto text-[10px] text-fg-muted">
+          {formatRelativeTime(new Date(ev.at))}
+        </span>
+      </div>
+      <p className="mt-1 pl-7 text-[11px] text-fg-muted">
+        commit {ev.commit_count}개의 추억은 그대로 남아있어요
+        {ev.cuisine_types.length > 0 && ` · ${ev.cuisine_types.join(' / ')}`}
+      </p>
+    </li>
+  );
+}
+
 function PREventItem({ ev }: { ev: LogPREvent }) {
   const isEdit = ev.pr_kind === 'edit';
   const eventLabel =

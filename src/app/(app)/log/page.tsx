@@ -2,6 +2,7 @@ import { getCachedOffices } from '@/lib/cache/offices';
 import { getCachedRecentReviewLog } from '@/lib/cache/reviews-log';
 import { LOG_PAGE_SIZE } from '@/lib/reviews/log';
 import { fetchRecentPullRequestEvents } from '@/lib/pull-requests/events';
+import { fetchRecentArchiveEvents } from '@/lib/restaurants/archive-events';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import LogList from './LogList';
 
@@ -13,10 +14,11 @@ export default async function LogPage() {
   const {
     data: { user },
   } = await supabase.auth.getUser();
-  const [rows, offices, prEvents] = await Promise.all([
+  const [rows, offices, prEvents, archiveEvents] = await Promise.all([
     getCachedRecentReviewLog(),
     getCachedOffices(),
     fetchRecentPullRequestEvents(supabase),
+    fetchRecentArchiveEvents(supabase),
   ]);
 
   return (
@@ -29,6 +31,7 @@ export default async function LogPage() {
         <LogList
           initialRows={rows}
           prEvents={prEvents}
+          archiveEvents={archiveEvents}
           offices={offices}
           currentUserId={user?.id ?? ''}
         />

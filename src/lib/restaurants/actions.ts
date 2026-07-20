@@ -48,11 +48,16 @@ export async function toggleRestaurantClosed(
 
   const { error } = await supabase
     .from('restaurants')
-    .update({ is_closed: nextClosed })
+    .update({
+      is_closed: nextClosed,
+      // /log 아카이브 이벤트의 시간축. 폐업 해제하면 이벤트도 사라지도록 null.
+      closed_at: nextClosed ? new Date().toISOString() : null,
+    })
     .eq('id', restaurantId);
 
   if (error) return { ok: false, message: error.message };
   invalidateRestaurantsCache();
+  invalidateReviewsLogCache(); // /log 아카이브 이벤트 갱신
   return { ok: true, isClosed: nextClosed };
 }
 
