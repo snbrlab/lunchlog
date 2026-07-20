@@ -21,6 +21,7 @@ export interface DevRestaurant {
   created_at: string;
   creator_name: string | null;
   menu_tags: string[];
+  is_closed: boolean;
 }
 
 export interface DevReview {

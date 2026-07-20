@@ -475,7 +475,13 @@ function runGitLog(args: string[], ctx: CommandContext): CommandResult {
     if (n.type !== 'dir') return;
     if (n.restaurant) {
       restaurantIds.add(n.restaurant.id);
-      if (showRestaurantName) nameById.set(n.restaurant.id, n.restaurant.name);
+      // 폐업(아카이브) 식당은 이름 옆에 (archived) 표시
+      if (showRestaurantName) {
+        nameById.set(
+          n.restaurant.id,
+          n.restaurant.is_closed ? `${n.restaurant.name} (archived)` : n.restaurant.name,
+        );
+      }
       return;
     }
     for (const c of n.entries.values()) collect(c);
@@ -510,6 +516,10 @@ function runGitLog(args: string[], ctx: CommandContext): CommandResult {
       ? commitLogLine(e.rv, showRestaurantName ? (nameById.get(e.rv.restaurant_id) ?? null) : null)
       : prLogLine(e.pr, showRestaurantName),
   );
+  // 단일 폐업 식당의 log 는 맨 위(최신)에 아카이브 마커 한 줄 (DB row 아님, 렌더만)
+  if (node.restaurant?.is_closed) {
+    lines.unshift([seg('🪦 archived', C.warn), seg('  폐업 — 히스토리 보존됨', C.dim)]);
+  }
   if (!showAll && entries.length > LIMIT) {
     lines.push([
       seg(`... ${entries.length - LIMIT} more entries  `, C.dim),

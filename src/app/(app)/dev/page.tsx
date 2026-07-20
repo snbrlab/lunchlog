@@ -51,9 +51,9 @@ export default async function DevPage() {
       .select(
         'id, name, cuisine_types, categories, price_level, has_alcohol, address, ' +
           'latitude, longitude, kakao_place_url, office_id, commit_count, last_commit_at, ' +
-          'created_at, menu_tags, creator:users!restaurants_created_by_fkey ( name )',
+          'created_at, menu_tags, is_closed, creator:users!restaurants_created_by_fkey ( name )',
       )
-      .eq('is_closed', false)
+      // 폐업(아카이브) 식당도 포함 — git log 에서 (archived) 로 보여줌
       .order('name'),
     supabase
       .from('reviews')
@@ -129,6 +129,7 @@ export default async function DevPage() {
     last_commit_at: r.last_commit_at,
     created_at: r.created_at,
     menu_tags: r.menu_tags ?? [],
+    is_closed: r.is_closed,
     creator_name: r.creator?.name ?? null,
   }));
 

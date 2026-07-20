@@ -71,6 +71,8 @@ interface Props {
   onMutated: () => void;
   // 답글 버튼 클릭 시 부모(DetailPanel)에 알리는 콜백 — D40
   onReply?: (review: { id: string; hash: string; authorName: string }) => void;
+  // 폐업(아카이브) 식당이면 log 맨 위에 마커 한 줄 (DB row 아님, 렌더만)
+  isClosed?: boolean;
 }
 
 export function ReviewLog({
@@ -80,6 +82,7 @@ export function ReviewLog({
   refreshKey,
   onMutated,
   onReply,
+  isClosed = false,
 }: Props) {
   const [reviews, setReviews] = useState<EnrichedReview[]>([]);
   const [loading, setLoading] = useState(true);
@@ -260,6 +263,13 @@ export function ReviewLog({
 
       {/* 목록 — 자체 스크롤 없음. 부모 스크롤 영역에서 처리. */}
       <ol className="px-5 pb-2">
+        {isClosed && !loading && (
+          <li className="flex items-center gap-2 border-b border-dashed border-amber-200 py-2 font-mono text-[11px] text-amber-700">
+            <span>🪦</span>
+            <span className="font-semibold">archived</span>
+            <span className="text-fg-muted">폐업 — 여기까지의 히스토리는 보존돼요</span>
+          </li>
+        )}
         {loading && (
           <li className="py-6 text-center text-xs text-fg-muted/70">불러오는 중…</li>
         )}

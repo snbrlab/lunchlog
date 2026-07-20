@@ -288,6 +288,7 @@ export function RestaurantDetailPanel({
           refreshKey={refreshKey}
           onMutated={triggerRefresh}
           onReply={setReplyTo}
+          isClosed={restaurant.is_closed}
         />
       </div>
 
