@@ -117,8 +117,8 @@ export function RestaurantDetailPanel({
   return (
     <section className="z-30 flex flex-col overflow-hidden border-t border-border bg-surface max-lg:absolute max-lg:inset-x-0 max-lg:bottom-0 max-lg:max-h-[75dvh] max-lg:shadow-2xl lg:h-[500px] lg:shrink-0">
       {restaurant.is_closed && (
-        <div className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-center text-xs font-medium text-amber-800">
-          ⚠️ 폐업한 식당입니다
+        <div className="border-b border-amber-200 bg-amber-50 px-5 py-2 text-center text-[11px] font-medium text-amber-800">
+          <span className="font-mono">🪦 archived</span> · 폐업한 식당이에요. 추억 한 줄은 계속 남길 수 있어요.
         </div>
       )}
 

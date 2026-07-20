@@ -249,8 +249,11 @@ export function RestaurantSidebar({
                     )}
                     {r.name}
                     {r.is_closed && (
-                      <span className="ml-1.5 rounded bg-fg/10 px-1.5 py-0.5 text-[9px] font-semibold uppercase text-fg-muted">
-                        폐업
+                      <span
+                        title="폐업 — 아카이브됨 (히스토리 보존)"
+                        className="ml-1.5 rounded bg-fg/10 px-1.5 py-0.5 font-mono text-[9px] font-semibold text-fg-muted"
+                      >
+                        🪦 archived
                       </span>
                     )}
                     {otherModeLabel && (
