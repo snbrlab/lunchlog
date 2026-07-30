@@ -120,11 +120,15 @@ export default function IssuesClient({
                   {it.office_name && (
                     <span className="rounded bg-fg/5 px-1.5 py-0.5">🏷 {it.office_name}</span>
                   )}
-                  {it.restaurant_name && (
+                  {it.restaurant_name ? (
                     <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">
                       👉 {it.restaurant_name}
                     </span>
-                  )}
+                  ) : it.external_name ? (
+                    <span className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-700">
+                      🔗 {it.external_name}
+                    </span>
+                  ) : null}
                   {it.status === 'closed' && it.resolved_restaurant_name && (
                     <span className="text-fg-muted">→ {it.resolved_restaurant_name} 로 해결</span>
                   )}
@@ -142,6 +146,10 @@ function NewIssueForm({ offices, onOpened }: { offices: Office[]; onOpened: () =
   const [target, setTarget] = useState<Target>('restaurant');
   const [restaurant, setRestaurant] = useState<{ id: string; name: string } | null>(null);
   const [officeId, setOfficeId] = useState<string>(offices[0]?.id ?? '');
+  // 미등록 식당 (검색에 없을 때) — 카카오맵 링크로
+  const [external, setExternal] = useState(false);
+  const [extName, setExtName] = useState('');
+  const [extUrl, setExtUrl] = useState('');
   const [body, setBody] = useState('');
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -149,16 +157,27 @@ function NewIssueForm({ offices, onOpened }: { offices: Office[]; onOpened: () =
   function submit() {
     setError(null);
     if (!body.trim()) return setError('무엇이 궁금한지 적어주세요');
-    if (target === 'restaurant' && !restaurant) return setError('식당을 골라주세요');
+    if (target === 'restaurant') {
+      if (external) {
+        if (!extName.trim()) return setError('식당 이름을 적어주세요');
+        if (!extUrl.trim()) return setError('카카오맵 링크를 넣어주세요');
+      } else if (!restaurant) {
+        return setError('식당을 고르거나, 없으면 카카오맵 링크로 추가해주세요');
+      }
+    }
     start(async () => {
       const r = await openIssue({
         body,
-        restaurantId: target === 'restaurant' ? restaurant!.id : null,
+        restaurantId: target === 'restaurant' && !external ? restaurant!.id : null,
+        externalName: target === 'restaurant' && external ? extName : null,
+        externalUrl: target === 'restaurant' && external ? extUrl : null,
         officeId: target === 'region' ? officeId : null,
       });
       if (!r.ok) return setError(r.message);
       setBody('');
       setRestaurant(null);
+      setExtName('');
+      setExtUrl('');
       onOpened();
     });
   }
@@ -181,7 +200,48 @@ function NewIssueForm({ offices, onOpened }: { offices: Office[]; onOpened: () =
       </div>
 
       {target === 'restaurant' ? (
-        <RestaurantPicker value={restaurant} onChange={setRestaurant} />
+        <div className="space-y-2">
+          {!external ? (
+            <>
+              <RestaurantPicker value={restaurant} onChange={setRestaurant} />
+              <button
+                type="button"
+                onClick={() => {
+                  setExternal(true);
+                  setRestaurant(null);
+                }}
+                className="block text-[11px] text-fg-muted underline-offset-2 hover:underline"
+              >
+                검색에 없어요? 카카오맵 링크로 추가 →
+              </button>
+            </>
+          ) : (
+            <div className="space-y-2 rounded-md border border-dashed border-border p-2.5">
+              <input
+                type="text"
+                value={extName}
+                onChange={(e) => setExtName(e.target.value)}
+                maxLength={100}
+                placeholder="식당 이름"
+                className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs outline-none focus:border-fg"
+              />
+              <input
+                type="url"
+                value={extUrl}
+                onChange={(e) => setExtUrl(e.target.value)}
+                placeholder="카카오맵 링크 (place.map.kakao.com/…)"
+                className="w-full rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs outline-none focus:border-fg"
+              />
+              <button
+                type="button"
+                onClick={() => setExternal(false)}
+                className="text-[11px] text-fg-muted underline-offset-2 hover:underline"
+              >
+                ← 등록된 식당에서 찾기
+              </button>
+            </div>
+          )}
+        </div>
       ) : (
         <select
           value={officeId}

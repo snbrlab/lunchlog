@@ -51,6 +51,16 @@ export default function IssueThread({
               👉 {issue.restaurant_name}
             </a>
           )}
+          {!issue.restaurant_id && issue.external_name && issue.external_url && (
+            <a
+              href={issue.external_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="rounded bg-amber-50 px-1.5 py-0.5 text-amber-700 hover:underline"
+            >
+              🔗 {issue.external_name} (카카오맵)
+            </a>
+          )}
         </div>
         {issue.status === 'closed' && issue.resolved_restaurant_name && (
           <p className="mt-2 text-xs text-fg-muted">

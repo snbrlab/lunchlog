@@ -4,6 +4,7 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
 import { invalidateIssuesCache } from '@/lib/cache/issues';
+import { isAllowedKakaoUrl } from '@/lib/kakao-url';
 import { fetchIssues, type IssueListItem } from '@/lib/issues/queries';
 
 // 탭/지역 필터 변경 시 목록 재조회 (인증 사용자만)
@@ -68,10 +69,12 @@ async function notifyIssueMentions(opts: {
   );
 }
 
-// 이슈 열기 — restaurantId 있으면 '식당 이슈', 없으면 officeId 로 '지역 이슈'.
+// 이슈 열기 — 대상: 등록 식당(restaurantId) / 미등록 식당(externalName+externalUrl) / 지역(officeId).
 export async function openIssue(input: {
   body: string;
   restaurantId?: string | null;
+  externalName?: string | null;
+  externalUrl?: string | null;
   officeId?: string | null;
 }): Promise<OpenIssueResult> {
   const body = input.body.trim();
@@ -87,6 +90,8 @@ export async function openIssue(input: {
   // 대상 결정 + office_id 도출 (지역필터는 항상 office_id 기준)
   let restaurantId: string | null = null;
   let officeId: string | null = input.officeId ?? null;
+  let externalName: string | null = null;
+  let externalUrl: string | null = null;
 
   if (input.restaurantId) {
     const { data: r } = await supabase
@@ -97,8 +102,18 @@ export async function openIssue(input: {
     if (!r) return { ok: false, message: '식당을 찾을 수 없어요' };
     restaurantId = r.id;
     officeId = r.office_id; // 식당 이슈의 지역 = 식당의 office
-  } else if (!officeId) {
-    // 지역 미지정이면 작성자 근무지로 기본
+  } else if (input.externalName?.trim()) {
+    // 미등록 식당 — 이름 + 카카오맵 링크
+    externalName = input.externalName.trim().slice(0, 100);
+    const url = input.externalUrl?.trim() ?? '';
+    if (!url || !isAllowedKakaoUrl(url)) {
+      return { ok: false, message: '카카오맵 링크를 정확히 넣어주세요' };
+    }
+    externalUrl = url;
+  }
+
+  if (!officeId) {
+    // 지역 미지정(지역이슈 or 미등록식당이슈)이면 작성자 근무지로 기본
     const { data: me } = await supabase
       .from('users')
       .select('office_id')
@@ -119,6 +134,8 @@ export async function openIssue(input: {
       author_id: user.id,
       office_id: officeId,
       restaurant_id: restaurantId,
+      external_name: externalName,
+      external_url: externalUrl,
       body,
     })
     .select('id, issue_number')

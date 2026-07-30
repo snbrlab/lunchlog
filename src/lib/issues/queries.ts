@@ -16,6 +16,9 @@ export interface IssueListItem {
   office_name: string | null;
   restaurant_id: string | null;
   restaurant_name: string | null;
+  // 미등록 식당 (카카오맵 링크로 지정)
+  external_name: string | null;
+  external_url: string | null;
   resolved_restaurant_id: string | null;
   resolved_restaurant_name: string | null;
   author: IssueAuthor | null;
@@ -39,7 +42,7 @@ export interface IssueDetail extends IssueListItem {
 }
 
 const LIST_SELECT =
-  'id, issue_number, body, status, office_id, restaurant_id, resolved_restaurant_id, created_at, closed_at, ' +
+  'id, issue_number, body, status, office_id, restaurant_id, external_name, external_url, resolved_restaurant_id, created_at, closed_at, ' +
   'author:users!issues_author_id_fkey ( name, avatar_color, avatar_emoji ), ' +
   'restaurant:restaurants!issues_restaurant_id_fkey ( name ), ' +
   'resolved:restaurants!issues_resolved_restaurant_id_fkey ( name ), ' +
@@ -53,6 +56,8 @@ type RawList = {
   status: 'open' | 'closed';
   office_id: string | null;
   restaurant_id: string | null;
+  external_name: string | null;
+  external_url: string | null;
   resolved_restaurant_id: string | null;
   created_at: string;
   closed_at: string | null;
@@ -74,6 +79,8 @@ function shapeList(r: RawList): IssueListItem {
     office_name: r.office?.name ?? null,
     restaurant_id: r.restaurant_id,
     restaurant_name: r.restaurant?.name ?? null,
+    external_name: r.external_name,
+    external_url: r.external_url,
     resolved_restaurant_id: r.resolved_restaurant_id,
     resolved_restaurant_name: r.resolved?.name ?? null,
     author: r.author,
@@ -160,7 +167,7 @@ export async function fetchRecentIssueEvents(
   const { data } = await supabase
     .from('issues')
     .select(
-      'id, issue_number, body, office_id, created_at, ' +
+      'id, issue_number, body, office_id, external_name, created_at, ' +
         'author:users!issues_author_id_fkey ( name, avatar_color, avatar_emoji ), ' +
         'restaurant:restaurants!issues_restaurant_id_fkey ( name )',
     )
@@ -172,6 +179,7 @@ export async function fetchRecentIssueEvents(
     issue_number: number;
     body: string;
     office_id: string | null;
+    external_name: string | null;
     created_at: string;
     author: IssueAuthor | null;
     restaurant: { name: string } | null;
@@ -183,7 +191,7 @@ export async function fetchRecentIssueEvents(
     issue_number: r.issue_number,
     body: r.body,
     office_id: r.office_id,
-    restaurant_name: r.restaurant?.name ?? null,
+    restaurant_name: r.restaurant?.name ?? r.external_name ?? null,
     author: r.author,
     at: r.created_at,
   }));
