@@ -4,6 +4,8 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { createSupabaseBrowserClient } from '@/lib/supabase/client';
 import type {
+  IssueAnswerPayload,
+  IssueMentionPayload,
   BadgeEarnedPayload,
   MentionPayload,
   NotificationRow,
@@ -370,6 +372,48 @@ function ToastCard({
             </p>
             <p className="mt-1.5 line-clamp-2 rounded-md border border-sky-200 bg-white px-2 py-1.5 text-xs text-fg">
               {p.message}
+            </p>
+          </div>
+          <DismissButton
+            onDismiss={(e) => {
+              e?.preventDefault();
+              e?.stopPropagation();
+              onDismiss();
+            }}
+          />
+        </div>
+      </Link>
+    );
+  }
+
+  if (note.type === 'issue_answer' || note.type === 'issue_mention') {
+    const p = note.payload as IssueAnswerPayload | IssueMentionPayload;
+    const isMention = note.type === 'issue_mention';
+    return (
+      <Link
+        href={`/issues/${p.issue_id}`}
+        onClick={onDismiss}
+        className="block rounded-lg border border-emerald-300 bg-emerald-50 p-3 shadow-lg ring-1 ring-black/5 transition hover:border-emerald-400"
+      >
+        <div className="flex items-start gap-2">
+          <span aria-hidden className="text-base">{isMention ? '📣' : '💬'}</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm text-emerald-900">
+              {isMention ? (
+                <>
+                  <span className="font-medium">
+                    {(p as IssueMentionPayload).author_name}
+                  </span>{' '}
+                  님이 issue <span className="font-mono">#{p.issue_number}</span> 에서 멘션
+                </>
+              ) : (
+                <>
+                  내 issue <span className="font-mono">#{p.issue_number}</span> 에 답변이 달렸어요
+                </>
+              )}
+            </p>
+            <p className="mt-1.5 line-clamp-2 rounded-md border border-emerald-200 bg-white px-2 py-1.5 text-xs text-fg">
+              {p.preview}
             </p>
           </div>
           <DismissButton

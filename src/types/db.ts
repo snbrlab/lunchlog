@@ -127,7 +127,9 @@ export type NotificationType =
   | 'region_champion'
   | 'mention'
   | 'pull_request_new'
-  | 'pull_request_resolved';
+  | 'pull_request_resolved'
+  | 'issue_answer'
+  | 'issue_mention';
 
 export interface ReportUpdatePayload {
   report_id: string;
@@ -185,6 +187,19 @@ export interface MentionPayload {
   restaurant_id: string;
   restaurant_name: string;
   message: string;
+}
+
+// issue 답변 도착 / issue 에서 @멘션
+export interface IssueAnswerPayload {
+  issue_id: string;
+  issue_number: number;
+  preview: string;
+}
+export interface IssueMentionPayload {
+  issue_id: string;
+  issue_number: number;
+  author_name: string;
+  preview: string;
 }
 
 // D78/D80: PR 제안 (admin 에게)
@@ -252,7 +267,9 @@ export interface NotificationRow {
     | RegionChampionPayload
     | MentionPayload
     | PullRequestNewPayload
-    | PullRequestResolvedPayload;
+    | PullRequestResolvedPayload
+    | IssueAnswerPayload
+    | IssueMentionPayload;
   read_at: string | null;
   created_at: string;
 }

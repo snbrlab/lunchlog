@@ -7,6 +7,7 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import { LOG_PAGE_SIZE, type LogReviewRow } from '@/lib/reviews/log';
 import type { LogPREvent } from '@/lib/pull-requests/events';
 import type { LogArchiveEvent } from '@/lib/restaurants/archive-events';
+import type { LogIssueEvent } from '@/lib/issues/queries';
 import { fieldLabel, fmtFieldValue } from '@/lib/pull-requests/fields';
 import { loadReviewLogPage } from './actions';
 import { BadgeChip } from '@/components/badges/BadgeChip';
@@ -21,18 +22,21 @@ export default function LogList({
   initialRows,
   prEvents,
   archiveEvents,
+  issueEvents,
   offices,
   currentUserId,
 }: {
   initialRows: LogReviewRow[];
   prEvents: LogPREvent[];
   archiveEvents: LogArchiveEvent[];
+  issueEvents: LogIssueEvent[];
   offices: Office[];
   currentUserId: string;
 }) {
   const [meal, setMeal] = useState<MealFilter>('all');
   const [dateRange, setDateRange] = useState<DateRange>('all');
   const [showReverted, setShowReverted] = useState(false);
+  const [hideIssues, setHideIssues] = useState(false);
   const [query, setQuery] = useState('');
   // 식당 지역 필터 — 'all' / office.id / 'none' (미분류). D72 의미: 작성자 근무지 → 식당 지역
   const [officeFilter, setOfficeFilter] = useState<string>('all');
@@ -138,16 +142,34 @@ export default function LogList({
     });
   }, [archiveEvents, cutoff, query, officeFilter]);
 
-  // review + PR + archive 이벤트 시간순 merge
+  // 이슈(궁금해요) 열림 이벤트: date + query + region 적용. "issue 제외" 토글로 숨김.
+  const filteredIssues = useMemo(() => {
+    if (hideIssues) return [];
+    const q = query.trim().toLowerCase();
+    return issueEvents.filter((v) => {
+      if (cutoff > 0 && new Date(v.at).getTime() < cutoff) return false;
+      if (officeFilter === 'none') { if (v.office_id) return false; }
+      else if (officeFilter !== 'all' && v.office_id !== officeFilter) return false;
+      if (q) {
+        const hay = [v.body, v.author?.name ?? '', v.restaurant_name ?? ''].join('|').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [issueEvents, hideIssues, cutoff, query, officeFilter]);
+
+  // review + PR + archive + issue 이벤트 시간순 merge
   type Activity =
     | (LogReviewRow & { kind: 'review' })
     | (LogPREvent & { kind: 'pr' })
-    | (LogArchiveEvent & { kind: 'archive' });
+    | (LogArchiveEvent & { kind: 'archive' })
+    | (LogIssueEvent & { kind: 'issue' });
   const activities = useMemo<Activity[]>(() => {
     const a: Activity[] = [
       ...filteredReviews.map((r) => ({ ...r, kind: 'review' as const })),
       ...filteredPrs.map((p) => ({ ...p, kind: 'pr' as const })),
       ...filteredArchives.map((v) => ({ ...v, kind: 'archive' as const })),
+      ...filteredIssues.map((v) => ({ ...v, kind: 'issue' as const })),
     ];
     a.sort((x, y) => {
       const xt = x.kind === 'review' ? x.created_at : x.at;
@@ -155,7 +177,7 @@ export default function LogList({
       return new Date(yt).getTime() - new Date(xt).getTime();
     });
     return a;
-  }, [filteredReviews, filteredPrs, filteredArchives]);
+  }, [filteredReviews, filteredPrs, filteredArchives, filteredIssues]);
 
   return (
     <div className="space-y-3">
@@ -207,6 +229,15 @@ export default function LogList({
             className="h-3.5 w-3.5"
           />
           revert 포함
+        </label>
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-md border border-border bg-surface px-2.5 py-1.5 text-xs text-fg">
+          <input
+            type="checkbox"
+            checked={hideIssues}
+            onChange={(e) => setHideIssues(e.target.checked)}
+            className="h-3.5 w-3.5"
+          />
+          issue 제외
         </label>
       </div>
 
@@ -267,6 +298,8 @@ export default function LogList({
             <PREventItem key={a.id} ev={a} />
           ) : a.kind === 'archive' ? (
             <ArchiveEventItem key={a.id} ev={a} />
+          ) : a.kind === 'issue' ? (
+            <IssueEventItem key={a.id} ev={a} />
           ) : (
             <LogItem
               key={a.id}
@@ -302,6 +335,31 @@ export default function LogList({
 }
 
 // D78/D80: PR 이벤트 카드. merge / edit 분기.
+// 이슈(궁금해요) 열림 — 누가 뭘 물어봤다는 소식. 클릭 → /issues 로 답하러.
+function IssueEventItem({ ev }: { ev: LogIssueEvent }) {
+  return (
+    <li className="border-b border-border bg-emerald-50/40 px-4 py-2.5 text-xs last:border-b-0">
+      <a href={`/issues/${ev.issue_id}`} className="block">
+        <div className="flex items-center gap-2">
+          <span aria-hidden className="text-sm">🔎</span>
+          <span className="rounded bg-emerald-100 px-1.5 py-0.5 font-mono text-[10px] font-semibold text-emerald-800">
+            issue #{ev.issue_number}
+          </span>
+          <span className="font-medium text-fg">{ev.author?.name ?? '익명'}</span>
+          <span className="text-fg-muted">님이 궁금해함</span>
+          <span className="ml-auto text-[10px] text-fg-muted">
+            {formatRelativeTime(new Date(ev.at))}
+          </span>
+        </div>
+        <p className="mt-1 truncate pl-7 text-[12px] text-fg">
+          {ev.restaurant_name ? `👉 ${ev.restaurant_name} · ` : ''}
+          {ev.body}
+        </p>
+      </a>
+    </li>
+  );
+}
+
 // 폐업(아카이브) 이벤트 — 식당이 문을 닫았다는 소식. 히스토리는 보존됨.
 function ArchiveEventItem({ ev }: { ev: LogArchiveEvent }) {
   return (

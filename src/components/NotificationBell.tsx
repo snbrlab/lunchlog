@@ -18,6 +18,8 @@ import type {
   ReportNewPayload,
   ReportUpdatePayload,
   ReviewReplyPayload,
+  IssueAnswerPayload,
+  IssueMentionPayload,
 } from '@/types/db';
 import { BADGE_BY_CODE } from '@/lib/badges';
 
@@ -284,6 +286,39 @@ function NotificationItem({ note, onClick }: { note: NotificationRow; onClick: (
             <span className="font-medium">{p.author_name}</span> 님이 멘션
           </p>
           <p className="mt-0.5 truncate text-[11px] text-fg-muted">📍 {p.restaurant_name}</p>
+        </div>
+        {time}
+      </Link>
+    );
+  }
+
+  if (note.type === 'issue_answer') {
+    const p = note.payload as IssueAnswerPayload;
+    return (
+      <Link href={`/issues/${p.issue_id}`} onClick={onClick} className={itemClass}>
+        <span aria-hidden className="text-base leading-none">💬</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-fg">
+            내 issue <span className="font-mono">#{p.issue_number}</span> 에 답변이 달렸어요
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-fg-muted">{p.preview}</p>
+        </div>
+        {time}
+      </Link>
+    );
+  }
+
+  if (note.type === 'issue_mention') {
+    const p = note.payload as IssueMentionPayload;
+    return (
+      <Link href={`/issues/${p.issue_id}`} onClick={onClick} className={itemClass}>
+        <span aria-hidden className="text-base leading-none">📣</span>
+        <div className="min-w-0 flex-1">
+          <p className="text-xs text-fg">
+            <span className="font-medium">{p.author_name}</span> 님이 issue{' '}
+            <span className="font-mono">#{p.issue_number}</span> 에서 멘션
+          </p>
+          <p className="mt-0.5 truncate text-[11px] text-fg-muted">{p.preview}</p>
         </div>
         {time}
       </Link>
