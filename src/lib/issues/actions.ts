@@ -157,15 +157,29 @@ export async function openIssue(input: {
   return { ok: true, id: data.id };
 }
 
-// 답변 — 선택적으로 식당 추천 첨부(restaurantId)
+// 답변 — 선택적으로 식당 추천 첨부: 등록(restaurantId) 또는 미등록(externalName+externalUrl)
 export async function answerIssue(input: {
   issueId: string;
   body: string;
   restaurantId?: string | null;
+  externalName?: string | null;
+  externalUrl?: string | null;
 }): Promise<AnswerIssueResult> {
   const body = input.body.trim();
   if (!body) return { ok: false, message: '답변을 입력해주세요' };
   if (body.length > ANSWER_MAX) return { ok: false, message: `${ANSWER_MAX}자 이내로 적어주세요` };
+
+  // 미등록 식당 첨부 시 카카오 링크 검증
+  let externalName: string | null = null;
+  let externalUrl: string | null = null;
+  if (!input.restaurantId && input.externalName?.trim()) {
+    externalName = input.externalName.trim().slice(0, 100);
+    const url = input.externalUrl?.trim() ?? '';
+    if (!url || !isAllowedKakaoUrl(url)) {
+      return { ok: false, message: '카카오맵 링크를 정확히 넣어주세요' };
+    }
+    externalUrl = url;
+  }
 
   const supabase = await createSupabaseServerClient();
   const {
@@ -185,6 +199,8 @@ export async function answerIssue(input: {
     author_id: user.id,
     body,
     restaurant_id: input.restaurantId ?? null,
+    external_name: externalName,
+    external_url: externalUrl,
   });
   if (error) return { ok: false, message: error.message };
   // issue_answer 노티는 trg_issue_answer 트리거가 처리 (이슈 작성자에게)

@@ -7,6 +7,7 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import type { IssueComment, IssueDetail } from '@/lib/issues/queries';
 import { answerIssue, closeIssue } from '@/lib/issues/actions';
 import { RestaurantPicker } from '../RestaurantPicker';
+import { PlacePicker, type PlaceValue } from '../PlacePicker';
 import { MentionTextarea } from '../MentionTextarea';
 
 export default function IssueThread({
@@ -126,14 +127,23 @@ function AnswerRow({ c }: { c: IssueComment }) {
           <span>{formatRelativeTime(new Date(c.created_at))}</span>
         </div>
         <p className="mt-0.5 text-sm text-fg">{c.body}</p>
-        {c.restaurant_id && c.restaurant_name && (
+        {c.restaurant_id && c.restaurant_name ? (
           <a
             href={`/map?focus=${c.restaurant_id}`}
             className="mt-1 inline-block rounded-full border border-emerald-300 bg-emerald-50 px-2 py-0.5 text-[11px] text-emerald-700 hover:bg-emerald-100"
           >
             👉 {c.restaurant_name}
           </a>
-        )}
+        ) : c.external_name && c.external_url ? (
+          <a
+            href={c.external_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-1 inline-block rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[11px] text-amber-700 hover:bg-amber-100"
+          >
+            🔗 {c.external_name} (카카오맵)
+          </a>
+        ) : null}
       </div>
     </div>
   );
@@ -141,7 +151,7 @@ function AnswerRow({ c }: { c: IssueComment }) {
 
 function AnswerForm({ issueId, onDone }: { issueId: string; onDone: () => void }) {
   const [body, setBody] = useState('');
-  const [restaurant, setRestaurant] = useState<{ id: string; name: string } | null>(null);
+  const [place, setPlace] = useState<PlaceValue>(null);
   const [pending, start] = useTransition();
   const [error, setError] = useState<string | null>(null);
 
@@ -149,10 +159,16 @@ function AnswerForm({ issueId, onDone }: { issueId: string; onDone: () => void }
     setError(null);
     if (!body.trim()) return setError('답변을 입력해주세요');
     start(async () => {
-      const r = await answerIssue({ issueId, body, restaurantId: restaurant?.id ?? null });
+      const r = await answerIssue({
+        issueId,
+        body,
+        restaurantId: place?.kind === 'registered' ? place.id : null,
+        externalName: place?.kind === 'external' ? place.name : null,
+        externalUrl: place?.kind === 'external' ? place.url : null,
+      });
       if (!r.ok) return setError(r.message);
       setBody('');
-      setRestaurant(null);
+      setPlace(null);
       onDone();
     });
   }
@@ -166,10 +182,10 @@ function AnswerForm({ issueId, onDone }: { issueId: string; onDone: () => void }
         maxLength={2000}
         placeholder="답변 남기기 (@닉네임 으로 멘션 가능)"
       />
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-1.5 text-[11px] text-fg-muted">
-          <span>👉 추천 식당</span>
-          <RestaurantPicker value={restaurant} onChange={setRestaurant} placeholder="첨부 (선택)" />
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0 flex-1 text-[11px] text-fg-muted">
+          <span className="mb-1 block">👉 추천 식당 (선택)</span>
+          <PlacePicker value={place} onChange={setPlace} searchPlaceholder="식당 검색…" />
         </div>
         <button
           type="button"

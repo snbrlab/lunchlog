@@ -32,6 +32,8 @@ export interface IssueComment {
   body: string;
   restaurant_id: string | null;
   restaurant_name: string | null;
+  external_name: string | null;
+  external_url: string | null;
   author: (IssueAuthor & { id: string }) | null;
   created_at: string;
 }
@@ -121,7 +123,7 @@ export async function fetchIssueDetail(
   const { data: rawComments } = await supabase
     .from('issue_comments')
     .select(
-      'id, body, restaurant_id, created_at, ' +
+      'id, body, restaurant_id, external_name, external_url, created_at, ' +
         'author:users!issue_comments_author_id_fkey ( id, name, avatar_color, avatar_emoji ), ' +
         'restaurant:restaurants!issue_comments_restaurant_id_fkey ( name )',
     )
@@ -132,6 +134,8 @@ export async function fetchIssueDetail(
     id: string;
     body: string;
     restaurant_id: string | null;
+    external_name: string | null;
+    external_url: string | null;
     created_at: string;
     author: (IssueAuthor & { id: string }) | null;
     restaurant: { name: string } | null;
@@ -141,6 +145,8 @@ export async function fetchIssueDetail(
     body: c.body,
     restaurant_id: c.restaurant_id,
     restaurant_name: c.restaurant?.name ?? null,
+    external_name: c.external_name,
+    external_url: c.external_url,
     author: c.author,
     created_at: c.created_at,
   }));
