@@ -15,11 +15,9 @@ type Target = 'restaurant' | 'region';
 export default function IssuesClient({
   initialIssues,
   offices,
-  currentUserId,
 }: {
   initialIssues: IssueListItem[];
   offices: Office[];
-  currentUserId: string;
 }) {
   const [status, setStatus] = useState<StatusTab>('open');
   const [office, setOffice] = useState('all');

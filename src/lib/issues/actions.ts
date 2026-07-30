@@ -3,6 +3,7 @@
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
 import { invalidateReviewsLogCache } from '@/lib/cache/reviews-log';
+import { invalidateIssuesCache } from '@/lib/cache/issues';
 import { fetchIssues, type IssueListItem } from '@/lib/issues/queries';
 
 // 탭/지역 필터 변경 시 목록 재조회 (인증 사용자만)
@@ -135,6 +136,7 @@ export async function openIssue(input: {
   });
 
   invalidateReviewsLogCache(); // /log 피드에 'issue 열림' 반영
+  invalidateIssuesCache(); // /issues 기본 목록 새로고침
   return { ok: true, id: data.id };
 }
 
@@ -186,6 +188,7 @@ export async function answerIssue(input: {
     excludeIds: [user.id, issue.author_id],
   });
 
+  invalidateIssuesCache(); // 목록의 💬 답변수 갱신
   return { ok: true };
 }
 
@@ -216,5 +219,6 @@ export async function closeIssue(input: {
   if (!count) return { ok: false, message: '닫을 권한이 없거나 이미 닫힌 이슈예요' };
 
   invalidateReviewsLogCache();
+  invalidateIssuesCache();
   return { ok: true };
 }

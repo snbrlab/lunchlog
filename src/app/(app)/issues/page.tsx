@@ -1,18 +1,11 @@
 import { getCachedOffices } from '@/lib/cache/offices';
-import { fetchIssues } from '@/lib/issues/queries';
-import { createSupabaseServerClient } from '@/lib/supabase/server';
+import { getCachedOpenIssues } from '@/lib/cache/issues';
 import IssuesClient from './IssuesClient';
 
 // 커뮤니티 Q&A. "이 식당 어때요?" / "마곡 평냉 추천" 을 묻고 서로 답한다 (git issue 메타포).
+// 기본 목록(Open·전체)은 캐시 → 탭 진입이 빠름. 탭/지역 변경은 클라에서 서버액션 live 조회.
 export default async function IssuesPage() {
-  const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const [openIssues, offices] = await Promise.all([
-    fetchIssues(supabase, { status: 'open' }),
-    getCachedOffices(),
-  ]);
+  const [openIssues, offices] = await Promise.all([getCachedOpenIssues(), getCachedOffices()]);
 
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 px-5 py-8">
@@ -21,11 +14,7 @@ export default async function IssuesPage() {
         궁금한 식당·지역을 물어보세요. 아는 사람이 답해줄 거예요.
       </p>
       <div className="mt-5">
-        <IssuesClient
-          initialIssues={openIssues}
-          offices={offices}
-          currentUserId={user?.id ?? ''}
-        />
+        <IssuesClient initialIssues={openIssues} offices={offices} />
       </div>
     </main>
   );
