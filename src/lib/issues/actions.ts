@@ -7,16 +7,15 @@ import { invalidateIssuesCache } from '@/lib/cache/issues';
 import { isAllowedKakaoUrl } from '@/lib/kakao-url';
 import { fetchIssues, type IssueListItem } from '@/lib/issues/queries';
 
-// 탭/지역 필터 변경 시 목록 재조회 (인증 사용자만)
+// 탭/지역 필터 변경 시 목록 재조회.
+// auth.getUser() 는 매 호출마다 Auth 서버 네트워크 검증이라 느림 — 생략.
+// 페이지가 이미 인증 프록시 뒤이고, issues 는 RLS 상 authenticated 세션에서만 읽힌다
+// (세션 없으면 anon 이라 정책상 0건). 검증 없이도 안전.
 export async function listIssues(
   status: 'open' | 'closed' | 'all',
   office: string,
 ): Promise<IssueListItem[]> {
   const supabase = await createSupabaseServerClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  if (!user) return [];
   return fetchIssues(supabase, { status, office });
 }
 
