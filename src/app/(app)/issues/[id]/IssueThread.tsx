@@ -7,6 +7,7 @@ import { resolveAvatarEmoji } from '@/lib/avatar-emoji';
 import type { IssueComment, IssueDetail } from '@/lib/issues/queries';
 import { answerIssue, closeIssue } from '@/lib/issues/actions';
 import { RestaurantPicker } from '../RestaurantPicker';
+import { MentionTextarea } from '../MentionTextarea';
 
 export default function IssueThread({
   issue,
@@ -148,13 +149,12 @@ function AnswerForm({ issueId, onDone }: { issueId: string; onDone: () => void }
 
   return (
     <div className="space-y-2 rounded-lg border border-border bg-surface p-3">
-      <textarea
+      <MentionTextarea
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         rows={2}
         maxLength={2000}
         placeholder="답변 남기기 (@닉네임 으로 멘션 가능)"
-        className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-fg"
       />
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 text-[11px] text-fg-muted">

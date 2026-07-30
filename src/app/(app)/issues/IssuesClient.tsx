@@ -7,6 +7,7 @@ import type { Office } from '@/types/db';
 import type { IssueListItem } from '@/lib/issues/queries';
 import { listIssues, openIssue } from '@/lib/issues/actions';
 import { RestaurantPicker } from './RestaurantPicker';
+import { MentionTextarea } from './MentionTextarea';
 
 type StatusTab = 'open' | 'closed';
 type Target = 'restaurant' | 'region';
@@ -197,15 +198,16 @@ function NewIssueForm({ offices, onOpened }: { offices: Office[]; onOpened: () =
         </select>
       )}
 
-      <textarea
+      <MentionTextarea
         value={body}
-        onChange={(e) => setBody(e.target.value)}
+        onChange={setBody}
         rows={2}
         maxLength={500}
         placeholder={
-          target === 'restaurant' ? '지나가다 봤는데 여기 어때요?' : '마곡 근처 평양냉면 맛집 추천해주세요!'
+          target === 'restaurant'
+            ? '지나가다 봤는데 여기 어때요? (@닉네임 멘션 가능)'
+            : '마곡 근처 평양냉면 맛집 추천해주세요! (@닉네임 멘션 가능)'
         }
-        className="w-full resize-none rounded-md border border-border bg-surface px-3 py-2 text-sm outline-none focus:border-fg"
       />
 
       {error && <p className="text-xs text-red-600">{error}</p>}
