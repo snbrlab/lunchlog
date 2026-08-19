@@ -329,41 +329,58 @@ function ResultCard({
   );
 }
 
-// 사주 냄비 그림 — 재료 이모지(개수만큼)가 냄비 안에 담기고, 위로 김이 모락모락.
+// 사주 냄비 그림 — 무쇠 전골냄비 위에 재료가 둥둥, 김 모락모락.
 function SajuPot({
   distribution,
 }: {
   distribution: { element: Element; count: number }[];
 }) {
   const ingredients = distribution.flatMap((d) =>
-    Array.from({ length: d.count }, (_, i) => ({ key: `${d.element}-${i}`, emoji: INGREDIENT[d.element] })),
+    Array.from({ length: d.count }, (_, i) => ({
+      key: `${d.element}-${i}`,
+      emoji: INGREDIENT[d.element],
+    })),
   );
   return (
-    <div className="mx-auto w-60 max-w-full">
+    <div className="relative mx-auto w-64 max-w-full">
       {/* 김 모락모락 */}
-      <div className="mb-1 flex justify-center gap-4 text-lg text-fg-muted/40">
+      <div className="flex justify-center gap-5 text-xl text-fg-muted/40">
         <span className="animate-pulse">〜</span>
-        <span className="animate-pulse [animation-delay:0.3s]">〜</span>
-        <span className="animate-pulse [animation-delay:0.6s]">〜</span>
+        <span className="animate-pulse [animation-delay:0.4s]">〜</span>
+        <span className="animate-pulse [animation-delay:0.8s]">〜</span>
       </div>
 
       <div className="relative">
-        {/* 손잡이 */}
-        <span className="absolute -left-2.5 top-4 h-6 w-5 rounded-l-full border-4 border-r-0 border-fg/20" />
-        <span className="absolute -right-2.5 top-4 h-6 w-5 rounded-r-full border-4 border-l-0 border-fg/20" />
+        <svg viewBox="0 0 260 168" className="w-full" role="img" aria-label="사주 냄비">
+          <defs>
+            <linearGradient id="potBody" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stopColor="#54545a" />
+              <stop offset="1" stopColor="#2a2a2e" />
+            </linearGradient>
+            <radialGradient id="broth" cx="0.5" cy="0.4" r="0.7">
+              <stop offset="0" stopColor="#f7d792" />
+              <stop offset="1" stopColor="#d9a548" />
+            </radialGradient>
+          </defs>
+          {/* 손잡이 (귀) */}
+          <path d="M24 62 q-20 2 -20 15 q0 13 20 14" fill="none" stroke="#2a2a2e" strokeWidth="9" strokeLinecap="round" />
+          <path d="M236 62 q20 2 20 15 q0 13 -20 14" fill="none" stroke="#2a2a2e" strokeWidth="9" strokeLinecap="round" />
+          {/* 몸통 */}
+          <path d="M20 66 C20 138 58 160 130 160 C202 160 240 138 240 66 Z" fill="url(#potBody)" />
+          {/* 입구 테두리 */}
+          <ellipse cx="130" cy="64" rx="116" ry="19" fill="#3c3c42" />
+          <ellipse cx="130" cy="64" rx="106" ry="14" fill="#2a2a2e" />
+          {/* 국물 */}
+          <ellipse cx="130" cy="66" rx="98" ry="12" fill="url(#broth)" />
+        </svg>
 
-        {/* 뚜껑 테두리(냄비 입구) */}
-        <div className="mx-auto h-3 rounded-full bg-fg/15" />
-
-        {/* 냄비 몸통 + 국물 + 재료 */}
-        <div className="-mt-1 rounded-b-[2.75rem] rounded-t-md bg-amber-50 ring-1 ring-fg/10">
-          <div className="flex min-h-[7rem] flex-wrap content-center justify-center gap-1 px-5 py-4 text-2xl leading-none">
-            {ingredients.length > 0 ? (
-              ingredients.map((it) => <span key={it.key}>{it.emoji}</span>)
-            ) : (
-              <span className="text-sm text-fg-muted/60">텅 빈 냄비…</span>
-            )}
-          </div>
+        {/* 국물 위 재료 (냄비 안쪽에 겹쳐서) */}
+        <div className="absolute inset-x-[15%] top-[26%] bottom-[16%] flex flex-wrap content-center justify-center gap-x-1 gap-y-0.5 text-2xl leading-none drop-shadow-sm">
+          {ingredients.length > 0 ? (
+            ingredients.map((it) => <span key={it.key}>{it.emoji}</span>)
+          ) : (
+            <span className="text-xs text-white/70">텅 빈 냄비…</span>
+          )}
         </div>
       </div>
     </div>
