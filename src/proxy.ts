@@ -15,6 +15,7 @@ const PUBLIC_PATHS = [
   '/c',
   '/privacy',
   '/terms',
+  '/saju', // 운명의 점심 (사주) — 로그인 없이, 생일은 브라우저에서만 계산
 ];
 const ONBOARDING_PATH = '/onboarding';
 const SET_PASSWORD_PATH = '/set-password';
