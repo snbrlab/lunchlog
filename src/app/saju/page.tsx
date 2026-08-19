@@ -3,7 +3,7 @@ import SajuApp from './SajuApp';
 
 export const metadata: Metadata = {
   title: '운명의 점심 — lunchlog',
-  description: '사주(만세력)로 보는 오늘의 운명 점심 메뉴',
+  description: '사주로 보는 당신의 점심 메뉴',
   robots: { index: false, follow: false },
 };
 

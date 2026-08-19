@@ -43,7 +43,7 @@ export default function SajuApp() {
     <div className="flex flex-col gap-6">
       <header className="text-center">
         <h1 className="text-2xl font-bold text-fg">🔮 운명의 점심</h1>
-        <p className="mt-1 text-xs text-fg-muted">사주(만세력)로 보는 오늘의 점심 메뉴</p>
+        <p className="mt-1 text-xs text-fg-muted">사주로 보는 당신의 점심 메뉴</p>
       </header>
 
       {!view ? (
@@ -171,50 +171,97 @@ function ResultCard({
   restaurant: SajuRestaurant | null;
   loading: boolean;
 }) {
+  const el = ELEMENT_META[view.element];
   return (
     <div className="flex flex-col gap-5">
-      {/* 운명의 점심 */}
+      {/* 운명의 메뉴 */}
       <div
         className="rounded-2xl border border-border p-6 text-center"
-        style={{ background: `${ELEMENT_META[view.element].color}14` }}
+        style={{ background: `${el.color}14` }}
       >
-        <p className="text-xs font-medium text-fg-muted">{view.elementLabel} · {view.strengthLabel}</p>
-        <p className="mt-2 text-4xl">{view.elementEmoji}</p>
-        <p className="mt-2 text-sm text-fg-muted">당신의 운명 점심</p>
+        <p className="text-4xl">{view.elementEmoji}</p>
+        <p className="mt-3 text-sm text-fg-muted">당신의 운명의 메뉴</p>
         <p className="mt-1 text-3xl font-extrabold text-fg">{view.menu}</p>
-        <p className="mt-3 text-xs text-fg-muted">
-          {view.seasonLabel} 기운 · {view.seasonTemp}
-        </p>
+        <div className="mt-3 flex flex-wrap justify-center gap-1.5">
+          <Chip>{view.elementLabel}</Chip>
+          <Chip>{view.strengthLabel}</Chip>
+          <Chip>{view.seasonLabel} 기운</Chip>
+        </div>
       </div>
 
-      {/* 성격 */}
-      <Section title="🧬 타고난 성향">
-        <p className="text-sm text-fg">
-          <b>{view.personaLabel}</b> — {view.personaLine}
-        </p>
+      {/* 성향 해석 */}
+      <Section title="🧬 성향 해석">
+        <div className="rounded-xl bg-fg/[0.03] p-3.5">
+          <p className="text-[11px] text-fg-muted">
+            타고난 바탕 · 일간 {view.dayGanKo}({view.dayGan})
+          </p>
+          <p className="mt-1 text-base font-bold text-fg">{view.stemPoetic}</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">{view.strengthLine}</p>
+        </div>
+
+        <p className="mt-4 mb-1.5 text-[11px] font-medium text-fg-muted">이런 식성이에요</p>
+        <ul className="flex flex-col gap-1.5">
+          {view.eaterBody.map((line, i) => (
+            <li key={i} className="text-[13px] leading-relaxed text-fg">
+              {line}
+            </li>
+          ))}
+        </ul>
+
+        <dl className="mt-4 flex flex-col gap-2 border-t border-border pt-3 text-[13px]">
+          <Row k="강점" v={view.eaterStrength} />
+          <Row k="주의" v={view.eaterCaution} />
+          <Row k="식사메이트" v={view.eaterMate} />
+        </dl>
+      </Section>
+
+      {/* 왜 이 메뉴일까 */}
+      <Section title={`왜 ${view.menu}일까`}>
+        <ul className="flex flex-col gap-2">
+          {view.reasons.map((r, i) => (
+            <li key={i} className="flex gap-2 text-[13px] leading-relaxed text-fg">
+              <span aria-hidden style={{ color: el.color }}>
+                ●
+              </span>
+              <span>{r}</span>
+            </li>
+          ))}
+        </ul>
       </Section>
 
       {/* 오행 분포 */}
       <Section title="📊 내 오행 분포">
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           {view.distribution.map((d) => (
             <div key={d.element} className="flex items-center gap-2 text-xs">
-              <span className="w-8 shrink-0">{d.emoji}{d.element}</span>
+              <span className="w-14 shrink-0">
+                {d.emoji} {ELEMENT_META[d.element].label.split('·')[0]?.trim() ?? d.element}
+              </span>
+              <span className="w-8 shrink-0 text-fg-muted">{d.trait}</span>
               <div className="h-3 flex-1 overflow-hidden rounded-full bg-fg/10">
                 <div
                   className="h-full rounded-full"
                   style={{ width: `${d.percent}%`, background: ELEMENT_META[d.element].color }}
                 />
               </div>
-              <span className="w-12 shrink-0 text-right text-fg-muted">{d.count}개 {d.percent}%</span>
+              <span className="w-14 shrink-0 text-right text-fg-muted">
+                {d.count}개 {d.percent}%
+              </span>
             </div>
           ))}
+        </div>
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="mb-1 text-[11px] font-medium text-fg-muted">두드러지는 성향</p>
+          <p className="text-[13px] text-fg">
+            {view.dominantTraits.map((t) => t.label).join(' · ')}
+          </p>
         </div>
       </Section>
 
       {/* 궁합 메뉴 (상생상극) */}
       <Section title="🍽 궁합 메뉴">
-        <div className="flex flex-col gap-2 text-sm">
+        <p className="mb-2 text-[11px] text-fg-muted">{view.lackLine}</p>
+        <div className="flex flex-col gap-2 text-[13px]">
           <p>
             <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-emerald-700">나를 살리는</span>{' '}
             {ELEMENT_META[view.boostElement].emoji} {view.boostMenu}
@@ -243,8 +290,47 @@ function ResultCard({
         )}
       </Section>
 
-      {/* 사주 팔자 */}
-      <p className="text-center font-mono text-[11px] text-fg-muted">사주 {view.palja}</p>
+      {/* 사주 여덟 글자 */}
+      <Section title="🀄 내 사주 여덟 글자">
+        <div className="grid grid-cols-4 gap-1.5">
+          {view.pillars.map((p) => (
+            <div key={p.label} className="text-center">
+              <p className="text-[10px] text-fg-muted">{p.label}</p>
+              <div className="mt-1 rounded-lg bg-fg/[0.03] py-2">
+                <p className="text-xl font-bold text-fg">{p.gan}</p>
+                <p className="text-[10px] text-fg-muted">
+                  {p.ganKo} · {ELEMENT_META[p.ganElement].emoji}
+                </p>
+                <p className="mt-1.5 text-xl font-bold text-fg">{p.zhi}</p>
+                <p className="text-[10px] text-fg-muted">
+                  {p.zhiKo} · {ELEMENT_META[p.zhiElement].emoji}
+                </p>
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-[11px] leading-relaxed text-fg-muted">
+          위 글자는 하늘의 기운(천간), 아래는 땅의 기운(지지)이에요. 세 번째 칸(일) 위가 사주의
+          기준이 되는 일간이고, 운명의 메뉴도 여기서 출발해요.
+        </p>
+      </Section>
+    </div>
+  );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="rounded-full border border-border bg-surface px-2.5 py-1 text-[11px] font-medium text-fg-muted">
+      {children}
+    </span>
+  );
+}
+
+function Row({ k, v }: { k: string; v: string }) {
+  return (
+    <div className="flex gap-2">
+      <dt className="w-16 shrink-0 font-semibold text-fg-muted">{k}</dt>
+      <dd className="flex-1 text-fg">{v}</dd>
     </div>
   );
 }

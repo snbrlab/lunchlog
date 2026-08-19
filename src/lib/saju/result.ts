@@ -1,8 +1,16 @@
 // SajuResult → 화면에 뿌릴 최종 결과 조립 (메뉴 + 궁합 + 성격 + 분포).
 import type { Element } from './menus';
 import { ELEMENT_META, pickMenu } from './menus';
-import type { SajuResult } from './calc';
+import type { Pillar, SajuResult } from './calc';
 import { AXIS_PERSONA, SEASON_LABEL, SEASON_TEMP } from './personality';
+import {
+  ELEMENT_TRAIT,
+  STEM_POETIC,
+  EATER,
+  STRENGTH_LINE,
+  AXIS_KO,
+  SEASON_KO,
+} from './copy';
 
 // 오행 상생(生): 水→木→火→土→金→水. "나를 生하는"(살리는) = 나의 앞 오행.
 const GENERATOR: Record<Element, Element> = { 木: '水', 火: '木', 土: '火', 金: '土', 水: '金' };
@@ -19,13 +27,25 @@ const ELEMENT_MENU_HINT: Record<Element, string> = {
 
 export interface SajuView {
   palja: string;
+  pillars: Pillar[];
   element: Element;
   elementEmoji: string;
   elementLabel: string; // "🔥 火 뜨겁고 매움"
   strengthLabel: string; // 기본형/진화형/최종진화
-  menu: string; // 운명의 점심
+  strengthLine: string;
+  menu: string; // 운명의 메뉴
+  // 성향 해석
+  dayGanKo: string; // 병
+  dayGan: string; // 丙
+  stemPoetic: string; // "사방을 비추는 해"
+  eaterBody: string[]; // 먹는 스타일 3줄
+  eaterStrength: string;
+  eaterCaution: string;
+  eaterMate: string;
   personaLabel: string; // 자기주도형 등
   personaLine: string;
+  dominantTraits: { label: string; el: Element }[]; // 두드러지는 성향 2
+  reasons: string[]; // 왜 이 메뉴일까
   seasonLabel: string;
   seasonTemp: string;
   // 궁합 메뉴 (상생/상극)
@@ -34,8 +54,8 @@ export interface SajuView {
   coolElement: Element;
   coolMenu: string;
   // 오행 분포 (차트)
-  distribution: { element: Element; emoji: string; count: number; percent: number }[];
-  // 우리 식당 매칭용 — 이 오행 장르에 해당하는 cuisine 후보 (page 에서 식당 조회)
+  distribution: { element: Element; emoji: string; trait: string; count: number; percent: number }[];
+  lackLine: string; // 없는/부족 기운 안내
   cuisineHints: string[];
 }
 
@@ -55,23 +75,51 @@ export function buildSajuView(r: SajuResult): SajuView {
   const meta = ELEMENT_META[el];
   const menu = pickMenu(el, r.strength, r.seed);
   const persona = AXIS_PERSONA[r.dominantAxis];
+  const eater = EATER[el];
 
   const boost = GENERATOR[el];
   const cool = CONTROLLER[el];
 
   const total = ORDER.reduce((s, e) => s + r.counts[e], 0) || 1;
-
   const strengthLabel = { weak: '기본형', mid: '진화형', strong: '최종진화' }[r.strength];
+
+  // "왜 이 메뉴일까" — 사주 근거들
+  const reasons: string[] = [
+    `타고난 기운이 ${meta.label.split('·')[0]?.trim()}인 ${el}(${ELEMENT_META[el].emoji}) 쪽이라, 그 결의 메뉴가 잘 맞아요.`,
+    r.counts[el] >= 2
+      ? `사주에 ${el} 기운이 ${r.counts[el]}개로 두드러져 ${strengthLabel}이에요.`
+      : `${el} 기운이 은은한 편이라 순한 쪽부터 어울려요.`,
+    `${SEASON_KO[r.season]}에 태어나 ${SEASON_TEMP[r.season]}을 타고났어요.`,
+    r.lackIsNone
+      ? '다섯 기운이 골고루 있어 균형 잡힌 입맛이에요.'
+      : `${r.lackElement}(${ELEMENT_META[r.lackElement].emoji}) 기운이 부족해, 그쪽으로 곁들이면 밸런스가 좋아요.`,
+    `${AXIS_KO[r.dominantAxis]} 성향이 두드러지는 배치예요.`,
+  ];
+
+  const lackLine = r.lackIsNone
+    ? '다섯 기운이 모두 있어요. 어느 한쪽으로 크게 치우치지 않은 균형형이에요.'
+    : `${r.lackElement}(${ELEMENT_META[r.lackElement].emoji}) 기운이 가장 얇아요. 궁합 메뉴로 채우면 좋아요.`;
 
   return {
     palja: r.palja,
+    pillars: r.pillars,
     element: el,
     elementEmoji: meta.emoji,
     elementLabel: `${meta.emoji} ${el} ${meta.label}`,
     strengthLabel,
+    strengthLine: STRENGTH_LINE[r.strength],
     menu,
+    dayGanKo: r.dayGanKo,
+    dayGan: r.dayGan,
+    stemPoetic: STEM_POETIC[r.dayGan] ?? '',
+    eaterBody: eater.body,
+    eaterStrength: eater.strength,
+    eaterCaution: eater.caution,
+    eaterMate: eater.mate,
     personaLabel: persona.label,
     personaLine: persona.line,
+    dominantTraits: r.dominantAxes.map((ax) => ({ label: AXIS_KO[ax], el })),
+    reasons,
     seasonLabel: SEASON_LABEL[r.season],
     seasonTemp: SEASON_TEMP[r.season],
     boostElement: boost,
@@ -81,9 +129,11 @@ export function buildSajuView(r: SajuResult): SajuView {
     distribution: ORDER.map((e) => ({
       element: e,
       emoji: ELEMENT_META[e].emoji,
+      trait: ELEMENT_TRAIT[e],
       count: r.counts[e],
       percent: Math.round((r.counts[e] / total) * 100),
     })),
+    lackLine,
     cuisineHints: CUISINE_BY_ELEMENT[el],
   };
 }

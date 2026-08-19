@@ -16,18 +16,43 @@ export interface SajuInput {
   isLeapMonth?: boolean;
 }
 
+export interface Pillar {
+  label: string; // 연/월/일/시
+  gan: string; // 천간 한자 (甲乙…)
+  ganKo: string; // 갑을…
+  ganElement: Element;
+  zhi: string; // 지지 한자 (子丑…)
+  zhiKo: string;
+  zhiElement: Element;
+}
+
 export interface SajuResult {
   palja: string; // "甲戌 丁卯 丙午 乙未"
+  dayGan: string; // 일간 한자 (丙)
+  dayGanKo: string; // 병
   dayElement: Element;
   dayYinYang: 'yang' | 'yin';
   strength: Strength; // 일간 오행 개수 → 약/중/강
   counts: Record<Element, number>;
   lackElement: Element; // 가장 적은 오행 (곁들이 처방)
+  lackIsNone: boolean; // 오행이 모두 있으면 true (부족 없음)
   season: Season;
   dominantAxis: Axis; // 최다 십성축 (성격)
+  dominantAxes: Axis[]; // 상위 2개 (두드러지는 성향)
+  pillars: Pillar[]; // 연월일시 (표시용, 연→시 순)
   hasBirthTime: boolean;
   seed: number; // 메뉴 후보 선택용 (결정론)
 }
+
+// 한자 천간/지지 → 한글
+const GAN_KO: Record<string, string> = {
+  甲: '갑', 乙: '을', 丙: '병', 丁: '정', 戊: '무',
+  己: '기', 庚: '경', 辛: '신', 壬: '임', 癸: '계',
+};
+const ZHI_KO: Record<string, string> = {
+  子: '자', 丑: '축', 寅: '인', 卯: '묘', 辰: '진', 巳: '사',
+  午: '오', 未: '미', 申: '신', 酉: '유', 戌: '술', 亥: '해',
+};
 
 // 오행 한자 → 우리 Element (라이브러리는 木火土金水 그대로 반환)
 const WX: Record<string, Element> = { 木: '木', 火: '火', 土: '土', 金: '金', 水: '水' };
@@ -110,6 +135,21 @@ export function computeSaju(input: SajuInput): SajuResult {
   }
   const axes: Axis[] = ['self', 'express', 'wealth', 'order', 'insight'];
   const dominantAxis = axes.reduce((a, b) => (axisCount[b] > axisCount[a] ? b : a), axes[0]!);
+  const dominantAxes = [...axes].sort((a, b) => axisCount[b] - axisCount[a]).slice(0, 2);
+
+  // 팔자 4주 (연월일시) — 각 주 = 천간+지지, 오행은 getXWuXing() 2글자
+  const [yg, zg] = Array.from(ec.getYearWuXing()) as [string, string];
+  const [mg, mz] = Array.from(ec.getMonthWuXing()) as [string, string];
+  const [dg, dz] = Array.from(ec.getDayWuXing()) as [string, string];
+  const [tg, tz] = Array.from(ec.getTimeWuXing()) as [string, string];
+  const pillars: Pillar[] = [
+    mkPillar('연', ec.getYearGan(), ec.getYearZhi(), yg, zg),
+    mkPillar('월', ec.getMonthGan(), ec.getMonthZhi(), mg, mz),
+    mkPillar('일', ec.getDayGan(), ec.getDayZhi(), dg, dz),
+    mkPillar('시', ec.getTimeGan(), ec.getTimeZhi(), tg, tz),
+  ];
+
+  const lackIsNone = order.every((e) => counts[e] > 0);
 
   // seed = 일주 + 계절 + 시 조합 (같은 오행·세기여도 사람마다 다른 메뉴 뽑히게)
   const seed =
@@ -120,14 +160,31 @@ export function computeSaju(input: SajuInput): SajuResult {
 
   return {
     palja: [ec.getYear(), ec.getMonth(), ec.getDay(), ec.getTime()].join(' '),
+    dayGan,
+    dayGanKo: GAN_KO[dayGan] ?? dayGan,
     dayElement,
     dayYinYang,
     strength,
     counts,
     lackElement,
+    lackIsNone,
     season,
     dominantAxis,
+    dominantAxes,
+    pillars,
     hasBirthTime,
     seed,
+  };
+}
+
+function mkPillar(label: string, gan: string, zhi: string, ganEl: string, zhiEl: string): Pillar {
+  return {
+    label,
+    gan,
+    ganKo: GAN_KO[gan] ?? gan,
+    ganElement: (WX[ganEl] ?? '土') as Element,
+    zhi,
+    zhiKo: ZHI_KO[zhi] ?? zhi,
+    zhiElement: (WX[zhiEl] ?? '土') as Element,
   };
 }
