@@ -3,8 +3,24 @@
 import { useState, useTransition } from 'react';
 import { computeSaju, type SajuInput } from '@/lib/saju/calc';
 import { buildSajuView, type SajuView } from '@/lib/saju/result';
-import { ELEMENT_META } from '@/lib/saju/menus';
+import { ELEMENT_META, type Element } from '@/lib/saju/menus';
 import { recommendRestaurant, type SajuRestaurant } from './actions';
+
+// 사주 냄비 재료 — 오행별 재료 이모지 + 한글 이름
+const INGREDIENT: Record<Element, string> = {
+  木: '🥬',
+  火: '🌶️',
+  土: '🍖',
+  金: '🧂',
+  水: '🐟',
+};
+const ELEMENT_KO: Record<Element, string> = {
+  木: '나무',
+  火: '불',
+  土: '흙',
+  金: '쇠',
+  水: '물',
+};
 
 // 십이지시 — value = 각 시지의 대표 시각(0~23). 사주는 2시간 단위 시지로 묶임.
 const SIJI = [
@@ -229,29 +245,44 @@ function ResultCard({
         </ul>
       </Section>
 
-      {/* 오행 분포 */}
-      <Section title="📊 내 오행 분포">
-        <div className="flex flex-col gap-2">
-          {view.distribution.map((d) => (
-            <div key={d.element} className="flex items-center gap-2 text-xs">
-              <span className="w-14 shrink-0">
-                {d.emoji} {ELEMENT_META[d.element].label.split('·')[0]?.trim() ?? d.element}
-              </span>
-              <span className="w-8 shrink-0 text-fg-muted">{d.trait}</span>
-              <div className="h-3 flex-1 overflow-hidden rounded-full bg-fg/10">
-                <div
-                  className="h-full rounded-full"
-                  style={{ width: `${d.percent}%`, background: ELEMENT_META[d.element].color }}
-                />
-              </div>
-              <span className="w-14 shrink-0 text-right text-fg-muted">
-                {d.count}개 {d.percent}%
-              </span>
-            </div>
-          ))}
+      {/* 오행 분포 = 사주 냄비 (재료가 얼마나 들어갔나) */}
+      <Section title="🍲 내 사주 한 냄비">
+        <p className="mb-3 text-[11px] text-fg-muted">어떤 재료가 얼마나 들어갔을까?</p>
+
+        {/* 냄비에 담긴 비율 — 한 줄 스택 게이지 */}
+        <div className="mb-4 flex h-4 overflow-hidden rounded-full bg-fg/10">
+          {view.distribution
+            .filter((d) => d.count > 0)
+            .map((d) => (
+              <div
+                key={d.element}
+                style={{ width: `${d.percent}%`, background: ELEMENT_META[d.element].color }}
+                title={`${ELEMENT_KO[d.element]} ${d.count}개`}
+              />
+            ))}
         </div>
+
+        {/* 재료별 — 이모지 개수로 */}
+        <ul className="flex flex-col gap-2">
+          {view.distribution.map((d) => (
+            <li key={d.element} className="flex items-center gap-2 text-[13px]">
+              <span className="w-20 shrink-0 text-fg-muted">
+                {INGREDIENT[d.element]} {ELEMENT_KO[d.element]}·{d.trait}
+              </span>
+              <span className="min-w-0 flex-1 truncate leading-none">
+                {d.count > 0 ? (
+                  INGREDIENT[d.element].repeat(d.count)
+                ) : (
+                  <span className="text-fg-muted/50">안 들어감</span>
+                )}
+              </span>
+              <span className="w-12 shrink-0 text-right text-fg-muted">{d.count}개</span>
+            </li>
+          ))}
+        </ul>
+
         <div className="mt-3 border-t border-border pt-3">
-          <p className="mb-1 text-[11px] font-medium text-fg-muted">두드러지는 성향</p>
+          <p className="mb-1 text-[11px] font-medium text-fg-muted">가장 진한 맛 (두드러지는 성향)</p>
           <p className="text-[13px] text-fg">
             {view.dominantTraits.map((t) => t.label).join(' · ')}
           </p>

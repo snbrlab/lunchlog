@@ -17,12 +17,13 @@ const GENERATOR: Record<Element, Element> = { 木: '水', 火: '木', 土: '火'
 // 오행 상극(克): 나를 克하는(누르는/식히는) 오행. 金克木·水克火·木克土·火克金·土克水.
 const CONTROLLER: Record<Element, Element> = { 木: '金', 火: '水', 土: '木', 金: '火', 水: '土' };
 
+// 오행 무드 형용사 — 궁합 메뉴 앞 수식 (메뉴가 다양해도 안 어긋나게 형용사만).
 const ELEMENT_MENU_HINT: Record<Element, string> = {
-  木: '산뜻한 채소',
-  火: '매콤한 것',
-  土: '든든한 고기',
-  金: '정갈한 일식',
-  水: '시원한 국물',
+  木: '산뜻한',
+  火: '매콤한',
+  土: '든든한',
+  金: '정갈한',
+  水: '시원한',
 };
 
 export interface SajuView {
