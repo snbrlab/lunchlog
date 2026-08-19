@@ -245,41 +245,21 @@ function ResultCard({
         </ul>
       </Section>
 
-      {/* 오행 분포 = 사주 냄비 (재료가 얼마나 들어갔나) */}
+      {/* 오행 분포 = 사주 냄비 그림 (재료가 얼마나 들어갔나) */}
       <Section title="🍲 내 사주 한 냄비">
         <p className="mb-3 text-[11px] text-fg-muted">어떤 재료가 얼마나 들어갔을까?</p>
 
-        {/* 냄비에 담긴 비율 — 한 줄 스택 게이지 */}
-        <div className="mb-4 flex h-4 overflow-hidden rounded-full bg-fg/10">
-          {view.distribution
-            .filter((d) => d.count > 0)
-            .map((d) => (
-              <div
-                key={d.element}
-                style={{ width: `${d.percent}%`, background: ELEMENT_META[d.element].color }}
-                title={`${ELEMENT_KO[d.element]} ${d.count}개`}
-              />
-            ))}
-        </div>
+        <SajuPot distribution={view.distribution} />
 
-        {/* 재료별 — 이모지 개수로 */}
-        <ul className="flex flex-col gap-2">
+        {/* 범례 */}
+        <div className="mt-3 flex flex-wrap justify-center gap-x-3 gap-y-1 text-[12px] text-fg-muted">
           {view.distribution.map((d) => (
-            <li key={d.element} className="flex items-center gap-2 text-[13px]">
-              <span className="w-20 shrink-0 text-fg-muted">
-                {INGREDIENT[d.element]} {ELEMENT_KO[d.element]}·{d.trait}
-              </span>
-              <span className="min-w-0 flex-1 truncate leading-none">
-                {d.count > 0 ? (
-                  INGREDIENT[d.element].repeat(d.count)
-                ) : (
-                  <span className="text-fg-muted/50">안 들어감</span>
-                )}
-              </span>
-              <span className="w-12 shrink-0 text-right text-fg-muted">{d.count}개</span>
-            </li>
+            <span key={d.element}>
+              {INGREDIENT[d.element]} {ELEMENT_KO[d.element]}·{d.trait}{' '}
+              <b className="text-fg">{d.count}</b>
+            </span>
           ))}
-        </ul>
+        </div>
 
         <div className="mt-3 border-t border-border pt-3">
           <p className="mb-1 text-[11px] font-medium text-fg-muted">가장 진한 맛 (두드러지는 성향)</p>
@@ -345,6 +325,47 @@ function ResultCard({
           기준이 되는 일간이고, 운명의 메뉴도 여기서 출발해요.
         </p>
       </Section>
+    </div>
+  );
+}
+
+// 사주 냄비 그림 — 재료 이모지(개수만큼)가 냄비 안에 담기고, 위로 김이 모락모락.
+function SajuPot({
+  distribution,
+}: {
+  distribution: { element: Element; count: number }[];
+}) {
+  const ingredients = distribution.flatMap((d) =>
+    Array.from({ length: d.count }, (_, i) => ({ key: `${d.element}-${i}`, emoji: INGREDIENT[d.element] })),
+  );
+  return (
+    <div className="mx-auto w-60 max-w-full">
+      {/* 김 모락모락 */}
+      <div className="mb-1 flex justify-center gap-4 text-lg text-fg-muted/40">
+        <span className="animate-pulse">〜</span>
+        <span className="animate-pulse [animation-delay:0.3s]">〜</span>
+        <span className="animate-pulse [animation-delay:0.6s]">〜</span>
+      </div>
+
+      <div className="relative">
+        {/* 손잡이 */}
+        <span className="absolute -left-2.5 top-4 h-6 w-5 rounded-l-full border-4 border-r-0 border-fg/20" />
+        <span className="absolute -right-2.5 top-4 h-6 w-5 rounded-r-full border-4 border-l-0 border-fg/20" />
+
+        {/* 뚜껑 테두리(냄비 입구) */}
+        <div className="mx-auto h-3 rounded-full bg-fg/15" />
+
+        {/* 냄비 몸통 + 국물 + 재료 */}
+        <div className="-mt-1 rounded-b-[2.75rem] rounded-t-md bg-amber-50 ring-1 ring-fg/10">
+          <div className="flex min-h-[7rem] flex-wrap content-center justify-center gap-1 px-5 py-4 text-2xl leading-none">
+            {ingredients.length > 0 ? (
+              ingredients.map((it) => <span key={it.key}>{it.emoji}</span>)
+            ) : (
+              <span className="text-sm text-fg-muted/60">텅 빈 냄비…</span>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
