@@ -351,35 +351,36 @@ function SajuPot({
       </div>
 
       <div className="relative">
-        <svg viewBox="0 0 260 168" className="w-full" role="img" aria-label="사주 냄비">
+        <svg viewBox="0 0 260 186" className="w-full" role="img" aria-label="사주 냄비">
           <defs>
             <linearGradient id="potBody" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stopColor="#54545a" />
-              <stop offset="1" stopColor="#2a2a2e" />
+              <stop offset="0" stopColor="#4a4a50" />
+              <stop offset="1" stopColor="#242428" />
             </linearGradient>
-            <radialGradient id="broth" cx="0.5" cy="0.4" r="0.7">
-              <stop offset="0" stopColor="#f7d792" />
-              <stop offset="1" stopColor="#d9a548" />
+            <radialGradient id="broth" cx="0.5" cy="0.42" r="0.72">
+              <stop offset="0" stopColor="#f8dc9a" />
+              <stop offset="0.75" stopColor="#e6b055" />
+              <stop offset="1" stopColor="#cf9a3e" />
             </radialGradient>
           </defs>
           {/* 손잡이 (귀) */}
-          <path d="M24 62 q-20 2 -20 15 q0 13 20 14" fill="none" stroke="#2a2a2e" strokeWidth="9" strokeLinecap="round" />
-          <path d="M236 62 q20 2 20 15 q0 13 -20 14" fill="none" stroke="#2a2a2e" strokeWidth="9" strokeLinecap="round" />
-          {/* 몸통 */}
-          <path d="M20 66 C20 138 58 160 130 160 C202 160 240 138 240 66 Z" fill="url(#potBody)" />
-          {/* 입구 테두리 */}
-          <ellipse cx="130" cy="64" rx="116" ry="19" fill="#3c3c42" />
-          <ellipse cx="130" cy="64" rx="106" ry="14" fill="#2a2a2e" />
-          {/* 국물 */}
-          <ellipse cx="130" cy="66" rx="98" ry="12" fill="url(#broth)" />
+          <path d="M22 74 q-20 2 -20 16 q0 14 20 15" fill="none" stroke="#242428" strokeWidth="10" strokeLinecap="round" />
+          <path d="M238 74 q20 2 20 16 q0 14 -20 15" fill="none" stroke="#242428" strokeWidth="10" strokeLinecap="round" />
+          {/* 냄비 입구(위에서 본 타원 테두리) */}
+          <ellipse cx="130" cy="70" rx="116" ry="44" fill="#3a3a40" />
+          {/* 몸통 (앞쪽 벽 + 둥근 바닥) — 입구 아래 절반을 덮음 */}
+          <path d="M14 70 C14 154 58 184 130 184 C202 184 246 154 246 70 Z" fill="url(#potBody)" />
+          {/* 국물 면 (넓게, 재료가 잠기는 곳) */}
+          <ellipse cx="130" cy="70" rx="100" ry="34" fill="url(#broth)" />
+          <ellipse cx="130" cy="66" rx="100" ry="30" fill="#ffffff" opacity="0.08" />
         </svg>
 
-        {/* 국물 위 재료 (냄비 안쪽에 겹쳐서) */}
-        <div className="absolute inset-x-[15%] top-[26%] bottom-[16%] flex flex-wrap content-center justify-center gap-x-1 gap-y-0.5 text-2xl leading-none drop-shadow-sm">
+        {/* 국물 속 재료 — 국물 면(중앙 타원) 위에 흩뿌려 잠긴 느낌 */}
+        <div className="absolute inset-x-[18%] top-[24%] bottom-[38%] flex flex-wrap content-center justify-center gap-x-1 gap-y-0 text-[1.7rem] leading-none">
           {ingredients.length > 0 ? (
             ingredients.map((it) => <span key={it.key}>{it.emoji}</span>)
           ) : (
-            <span className="text-xs text-white/70">텅 빈 냄비…</span>
+            <span className="text-xs text-amber-900/60">텅 빈 냄비…</span>
           )}
         </div>
       </div>
