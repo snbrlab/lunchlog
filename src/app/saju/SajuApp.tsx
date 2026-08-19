@@ -6,6 +6,23 @@ import { buildSajuView, type SajuView } from '@/lib/saju/result';
 import { ELEMENT_META } from '@/lib/saju/menus';
 import { recommendRestaurant, type SajuRestaurant } from './actions';
 
+// 십이지시 — value = 각 시지의 대표 시각(0~23). 사주는 2시간 단위 시지로 묶임.
+const SIJI = [
+  { value: '', label: '태어난 시간을 몰라요' },
+  { value: '0', label: '자시 · 23:30~01:30' },
+  { value: '2', label: '축시 · 01:30~03:30' },
+  { value: '4', label: '인시 · 03:30~05:30' },
+  { value: '6', label: '묘시 · 05:30~07:30' },
+  { value: '8', label: '진시 · 07:30~09:30' },
+  { value: '10', label: '사시 · 09:30~11:30' },
+  { value: '12', label: '오시 · 11:30~13:30' },
+  { value: '14', label: '미시 · 13:30~15:30' },
+  { value: '16', label: '신시 · 15:30~17:30' },
+  { value: '18', label: '유시 · 17:30~19:30' },
+  { value: '20', label: '술시 · 19:30~21:30' },
+  { value: '22', label: '해시 · 21:30~23:30' },
+];
+
 export default function SajuApp() {
   const [view, setView] = useState<SajuView | null>(null);
   const [restaurant, setRestaurant] = useState<SajuRestaurant | null>(null);
@@ -122,10 +139,9 @@ function BirthForm({ onResult }: { onResult: (v: SajuView, seed: number) => void
           onChange={(e) => setHour(e.target.value)}
           className="rounded-xl border border-border bg-bg px-4 py-3 text-base text-fg outline-none focus:border-fg"
         >
-          <option value="">시간을 몰라요</option>
-          {Array.from({ length: 24 }, (_, h) => (
-            <option key={h} value={h}>
-              {String(h).padStart(2, '0')}시대
+          {SIJI.map((s) => (
+            <option key={s.value} value={s.value}>
+              {s.label}
             </option>
           ))}
         </select>
