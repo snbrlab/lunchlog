@@ -206,6 +206,11 @@ function ResultCard({
         <p className="text-4xl">{view.elementEmoji}</p>
         <p className="mt-3 text-sm text-fg-muted">당신의 운명의 메뉴</p>
         <p className="mt-1 text-3xl font-extrabold text-fg">{view.menu}</p>
+        {view.menuTagline && (
+          <p className="mx-auto mt-2 max-w-[17rem] text-[15px] font-semibold leading-snug" style={{ color: el.color }}>
+            “{view.menuTagline}”
+          </p>
+        )}
         <div className="mt-3 flex flex-wrap justify-center gap-1.5">
           <Chip>{view.elementLabel}</Chip>
           <Chip>{view.strengthLabel} 기운</Chip>
@@ -225,6 +230,18 @@ function ResultCard({
 
       {/* 성향 해석 */}
       <Section title="🧬 성향 해석">
+        {/* 메뉴를 고른 십성축 = 이 사람의 유형 */}
+        <div
+          className="mb-3 rounded-xl border p-3.5"
+          style={{ borderColor: `${el.color}55`, background: `${el.color}0f` }}
+        >
+          <p className="text-[11px] text-fg-muted">이 메뉴를 고른 나의 유형</p>
+          <p className="mt-1 text-lg font-extrabold" style={{ color: el.color }}>
+            {view.personaLabel}
+          </p>
+          <p className="mt-0.5 text-[13px] leading-relaxed text-fg">{view.personaLine}</p>
+        </div>
+
         <div className="rounded-xl bg-fg/[0.03] p-3.5">
           <p className="text-[11px] text-fg-muted">
             타고난 바탕 · 일간 {view.dayGanKo}({view.dayGan})

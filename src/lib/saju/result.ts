@@ -1,7 +1,7 @@
 // SajuResult → 화면에 뿌릴 최종 결과 조립 (메뉴 + 궁합 + 성격 + 분포).
 import type { Element } from './menus';
-import { ELEMENT_META, pickMenu, STRENGTH_LABEL } from './menus';
-import type { Pillar, SajuResult } from './calc';
+import { ELEMENT_META, pickMenu, STRENGTH_LABEL, MENU_TAGLINE } from './menus';
+import type { Axis, Pillar, SajuResult } from './calc';
 import { AXIS_PERSONA, SEASON_LABEL, SEASON_TEMP } from './personality';
 import {
   ELEMENT_TRAIT,
@@ -37,6 +37,7 @@ export interface SajuView {
   strengthLabel: string; // 은은한/균형잡힌/묵직한
   strengthLine: string;
   menu: string; // 운명의 메뉴
+  menuTagline: string; // 메뉴별 캐릭터 한 줄 (버킷 공유 아님)
   // 성향 해석
   dayGanKo: string; // 병
   dayGan: string; // 丙
@@ -65,6 +66,8 @@ export interface SajuView {
 }
 
 const ORDER: Element[] = ['木', '火', '土', '金', '水'];
+// calc.ts AXES 와 동일 순서 — 셀 안 메뉴 후보의 인덱스가 곧 이 축.
+const AXIS_ORDER: Axis[] = ['self', 'express', 'wealth', 'order', 'insight'];
 
 // 오행별 우리 cuisine_types 매칭 힌트 (식당 추천 쿼리에 사용)
 export const CUISINE_BY_ELEMENT: Record<Element, string[]> = {
@@ -78,7 +81,9 @@ export const CUISINE_BY_ELEMENT: Record<Element, string[]> = {
 export function buildSajuView(r: SajuResult): SajuView {
   const el = r.dayElement;
   const meta = ELEMENT_META[el];
-  const menu = pickMenu(el, r.strength, r.seed);
+  // 운명 메뉴 = 오행×세기 칸 안에서 십성축(dominantAxis)이 고른 후보 → 메뉴가 곧 사주 유형.
+  const axisIdx = Math.max(0, AXIS_ORDER.indexOf(r.dominantAxis));
+  const menu = pickMenu(el, r.strength, axisIdx);
   const persona = AXIS_PERSONA[r.dominantAxis];
   const eater = EATER[el];
 
@@ -88,17 +93,17 @@ export function buildSajuView(r: SajuResult): SajuView {
   const total = ORDER.reduce((s, e) => s + r.counts[e], 0) || 1;
   const strengthLabel = STRENGTH_LABEL[r.strength];
 
-  // "왜 이 메뉴일까" — 사주 근거들
+  // "왜 이 메뉴일까" — 사주 근거들. 세 축(오행·세기·십성)이 이 한 그릇을 고른 흐름으로.
   const reasons: string[] = [
     `타고난 기운이 ${meta.label.split('·')[0]?.trim()}인 ${el}(${ELEMENT_META[el].emoji}) 쪽이라, 그 결의 메뉴가 잘 맞아요.`,
     r.counts[el] >= 2
       ? `사주에 ${el} 기운이 ${r.counts[el]}개로 두드러진 ${strengthLabel} 기운이에요.`
       : `${el} 기운이 은은한 편이라 순한 쪽부터 어울려요.`,
+    `여기에 ${persona.label}(${AXIS_KO[r.dominantAxis]}) 성향이 겹쳐서, 같은 ${el}·${strengthLabel} 기운 중에서도 딱 이 ${menu}(으)로 좁혀졌어요.`,
     `${SEASON_KO[r.season]}에 태어나 ${SEASON_TEMP[r.season]}을 타고났어요.`,
     r.lackIsNone
       ? '다섯 기운이 골고루 있어 균형 잡힌 입맛이에요.'
       : `${r.lackElement}(${ELEMENT_META[r.lackElement].emoji}) 기운이 부족해, 그쪽으로 곁들이면 밸런스가 좋아요.`,
-    `${AXIS_KO[r.dominantAxis]} 성향이 두드러지는 배치예요.`,
   ];
 
   const lackLine = r.lackIsNone
@@ -114,6 +119,7 @@ export function buildSajuView(r: SajuResult): SajuView {
     strengthLabel,
     strengthLine: STRENGTH_LINE[r.strength],
     menu,
+    menuTagline: MENU_TAGLINE[menu] ?? '',
     dayGanKo: r.dayGanKo,
     dayGan: r.dayGan,
     stemPoetic: STEM_POETIC[r.dayGan] ?? '',
