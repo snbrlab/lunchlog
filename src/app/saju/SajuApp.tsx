@@ -94,7 +94,7 @@ function BirthForm({ onResult }: { onResult: (v: SajuView, seed: number, code: s
   function submit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    if (digits.length !== 8) return setError('생년월일 8자리를 입력해주세요 (예: 19940321)');
+    if (digits.length !== 8) return setError('생년월일 8자리를 입력해주세요 (예: 19960209)');
     const year = Number(digits.slice(0, 4));
     const month = Number(digits.slice(4, 6));
     const day = Number(digits.slice(6, 8));
@@ -145,7 +145,7 @@ function BirthForm({ onResult }: { onResult: (v: SajuView, seed: number, code: s
           inputMode="numeric"
           value={digits}
           onChange={(e) => setDigits(e.target.value.replace(/\D/g, '').slice(0, 8))}
-          placeholder="19940321"
+          placeholder="19960209"
           className="rounded-xl border border-border bg-bg px-4 py-3 text-base text-fg outline-none focus:border-fg"
         />
       </label>
@@ -242,18 +242,6 @@ function ResultCard({
           <p className="mt-0.5 text-[13px] leading-relaxed text-fg">{view.personaLine}</p>
         </div>
 
-        <div className="rounded-xl bg-fg/[0.03] p-3.5">
-          <p className="text-[11px] text-fg-muted">
-            타고난 바탕 · 일간 {view.dayGanKo}({view.dayGan})
-          </p>
-          <p className="mt-1 text-base font-bold text-fg">{view.stemPoetic}</p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">{view.strengthLine}</p>
-          <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">{view.yinYangLine}</p>
-          {view.timeLine && (
-            <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">⏱ {view.timeLine}</p>
-          )}
-        </div>
-
         <p className="mt-4 mb-1.5 text-[11px] font-medium text-fg-muted">이런 식성이에요</p>
         <ul className="flex flex-col gap-1.5">
           {view.eaterBody.map((line, i) => (
@@ -268,6 +256,18 @@ function ResultCard({
           <Row k="주의" v={view.eaterCaution} />
           <Row k="식사메이트" v={view.eaterMate} />
         </dl>
+      <div className="rounded-xl bg-fg/[0.03] p-3.5">
+          <p className="text-[11px] text-fg-muted">
+            타고난 바탕 · 일간 {view.dayGanKo}({view.dayGan})
+          </p>
+          <p className="mt-1 text-base font-bold text-fg">{view.stemPoetic}</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">{view.strengthLine}</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">{view.yinYangLine}</p>
+          {view.timeLine && (
+            <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">⏱ {view.timeLine}</p>
+          )}
+        </div>
+        
       </Section>
 
       {/* 왜 이 메뉴일까 */}
