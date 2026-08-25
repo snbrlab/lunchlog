@@ -10,6 +10,8 @@ import {
   STRENGTH_LINE,
   AXIS_KO,
   SEASON_KO,
+  TIME_PERSONA,
+  YINYANG_LINE,
 } from './copy';
 
 // 오행 상생(生): 水→木→火→土→金→水. "나를 生하는"(살리는) = 나의 앞 오행.
@@ -45,6 +47,8 @@ export interface SajuView {
   eaterMate: string;
   personaLabel: string; // 자기주도형 등
   personaLine: string;
+  yinYangLine: string; // 음양 기울기 한 줄
+  timeLine: string | null; // 태어난 시 기운 한 줄 (시각 입력 시)
   dominantTraits: { label: string; el: Element }[]; // 두드러지는 성향 2
   reasons: string[]; // 왜 이 메뉴일까
   seasonLabel: string;
@@ -119,6 +123,8 @@ export function buildSajuView(r: SajuResult): SajuView {
     eaterMate: eater.mate,
     personaLabel: persona.label,
     personaLine: persona.line,
+    yinYangLine: YINYANG_LINE[r.yinYangTilt],
+    timeLine: r.timeZhi ? (TIME_PERSONA[r.timeZhi] ?? null) : null,
     dominantTraits: r.dominantAxes.map((ax) => ({ label: AXIS_KO[ax], el })),
     reasons,
     seasonLabel: SEASON_LABEL[r.season],

@@ -50,7 +50,7 @@ export default function SajuApp() {
     setSeed(s);
     setRestaurant(null);
     start(async () => {
-      const r = await recommendRestaurant(v.cuisineHints, s);
+      const r = await recommendRestaurant(v.cuisineHints, s, v.menu);
       setRestaurant(r);
     });
   }
@@ -213,6 +213,10 @@ function ResultCard({
           </p>
           <p className="mt-1 text-base font-bold text-fg">{view.stemPoetic}</p>
           <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">{view.strengthLine}</p>
+          <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">{view.yinYangLine}</p>
+          {view.timeLine && (
+            <p className="mt-1.5 text-[13px] leading-relaxed text-fg-muted">⏱ {view.timeLine}</p>
+          )}
         </div>
 
         <p className="mt-4 mb-1.5 text-[11px] font-medium text-fg-muted">이런 식성이에요</p>
@@ -290,6 +294,11 @@ function ResultCard({
           <p className="text-xs text-fg-muted">맞는 식당 찾는 중…</p>
         ) : restaurant ? (
           <a href={`/map?focus=${restaurant.id}`} className="block">
+            <p className="mb-1 text-[11px] text-fg-muted">
+              {restaurant.matchType === 'menu'
+                ? `🎯 '${view.menu}' 가 있는 집`
+                : `${view.elementEmoji} ${view.element} 기운에 맞는 인기 집`}
+            </p>
             <p className="text-base font-bold text-fg">{restaurant.name}</p>
             <p className="mt-0.5 text-xs text-fg-muted">
               {restaurant.region ? `${restaurant.region} · ` : ''}

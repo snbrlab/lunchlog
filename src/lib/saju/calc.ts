@@ -41,6 +41,9 @@ export interface SajuResult {
   dominantAxes: Axis[]; // 상위 2개 (두드러지는 성향)
   pillars: Pillar[]; // 연월일시 (표시용, 연→시 순)
   hasBirthTime: boolean;
+  timeZhi: string; // 시지 한자 (午). 시각 없으면 ''
+  timeZhiKo: string; // 오. 시각 없으면 ''
+  yinYangTilt: 'yang' | 'yin' | 'balanced'; // 팔자 전체 음양 기울기
   seed: number; // 메뉴 후보 선택용 (결정론)
 }
 
@@ -57,6 +60,7 @@ const ZHI_KO: Record<string, string> = {
 // 오행 한자 → 우리 Element (라이브러리는 木火土金水 그대로 반환)
 const WX: Record<string, Element> = { 木: '木', 火: '火', 土: '土', 金: '金', 水: '水' };
 const YANG_GAN = new Set(['甲', '丙', '戊', '庚', '壬']); // 나머지는 음간
+const YANG_ZHI = new Set(['子', '寅', '辰', '午', '申', '戌']); // 나머지는 음지
 
 // 십성(간체) → 5축
 const SHISHEN_AXIS: Record<string, Axis> = {
@@ -151,6 +155,16 @@ export function computeSaju(input: SajuInput): SajuResult {
 
   const lackIsNone = order.every((e) => counts[e] > 0);
 
+  // 음양 기울기 — 팔자 8글자(천간+지지) 중 양이 많으면 yang, 적으면 yin
+  const gans = [ec.getYearGan(), ec.getMonthGan(), ec.getDayGan(), ...(hasBirthTime ? [ec.getTimeGan()] : [])];
+  const zhis = [ec.getYearZhi(), ec.getMonthZhi(), ec.getDayZhi(), ...(hasBirthTime ? [ec.getTimeZhi()] : [])];
+  const yangN = gans.filter((g) => YANG_GAN.has(g)).length + zhis.filter((z) => YANG_ZHI.has(z)).length;
+  const total = gans.length + zhis.length;
+  const yinYangTilt: 'yang' | 'yin' | 'balanced' =
+    yangN * 2 > total ? 'yang' : yangN * 2 < total ? 'yin' : 'balanced';
+
+  const timeZhi = hasBirthTime ? ec.getTimeZhi() : '';
+
   // seed = 일주 + 계절 + 시 조합 (같은 오행·세기여도 사람마다 다른 메뉴 뽑히게)
   const seed =
     ec.getDayGanIndex() * 12 +
@@ -173,6 +187,9 @@ export function computeSaju(input: SajuInput): SajuResult {
     dominantAxes,
     pillars,
     hasBirthTime,
+    timeZhi,
+    timeZhiKo: ZHI_KO[timeZhi] ?? '',
+    yinYangTilt,
     seed,
   };
 }
