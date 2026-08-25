@@ -3,7 +3,9 @@
 import { useState, useTransition } from 'react';
 import { computeSaju, type SajuInput } from '@/lib/saju/calc';
 import { buildSajuView, type SajuView } from '@/lib/saju/result';
+import { encodeSaju } from '@/lib/saju/share';
 import { ELEMENT_META, type Element } from '@/lib/saju/menus';
+import { ShareButton } from '@/components/ShareButton';
 import { recommendRestaurant, type SajuRestaurant } from './actions';
 
 // 사주 냄비 재료 — 오행별 재료 이모지 + 한글 이름
@@ -41,12 +43,14 @@ const SIJI = [
 
 export default function SajuApp() {
   const [view, setView] = useState<SajuView | null>(null);
+  const [code, setCode] = useState('');
   const [restaurant, setRestaurant] = useState<SajuRestaurant | null>(null);
   const [seed, setSeed] = useState(0);
   const [pending, start] = useTransition();
 
-  function onResult(v: SajuView, s: number) {
+  function onResult(v: SajuView, s: number, shareCode: string) {
     setView(v);
+    setCode(shareCode);
     setSeed(s);
     setRestaurant(null);
     start(async () => {
@@ -66,7 +70,7 @@ export default function SajuApp() {
         <BirthForm onResult={onResult} />
       ) : (
         <>
-          <ResultCard view={view} restaurant={restaurant} loading={pending} />
+          <ResultCard view={view} restaurant={restaurant} loading={pending} code={code} />
           <button
             type="button"
             onClick={() => setView(null)}
@@ -80,7 +84,7 @@ export default function SajuApp() {
   );
 }
 
-function BirthForm({ onResult }: { onResult: (v: SajuView, seed: number) => void }) {
+function BirthForm({ onResult }: { onResult: (v: SajuView, seed: number, code: string) => void }) {
   const [digits, setDigits] = useState('');
   const [hour, setHour] = useState('');
   const [calendar, setCalendar] = useState<'solar' | 'lunar'>('solar');
@@ -105,7 +109,7 @@ function BirthForm({ onResult }: { onResult: (v: SajuView, seed: number) => void
     };
     try {
       const r = computeSaju(input);
-      onResult(buildSajuView(r), r.seed);
+      onResult(buildSajuView(r), r.seed, encodeSaju(r));
     } catch {
       setError('계산에 실패했어요. 입력값을 확인해주세요');
     }
@@ -182,12 +186,16 @@ function ResultCard({
   view,
   restaurant,
   loading,
+  code,
 }: {
   view: SajuView;
   restaurant: SajuRestaurant | null;
   loading: boolean;
+  code: string;
 }) {
   const el = ELEMENT_META[view.element];
+  const shareUrl =
+    typeof window !== 'undefined' ? `${window.location.origin}/saju/c/${code}` : `/saju/c/${code}`;
   return (
     <div className="flex flex-col gap-5">
       {/* 운명의 메뉴 */}
@@ -200,9 +208,19 @@ function ResultCard({
         <p className="mt-1 text-3xl font-extrabold text-fg">{view.menu}</p>
         <div className="mt-3 flex flex-wrap justify-center gap-1.5">
           <Chip>{view.elementLabel}</Chip>
-          <Chip>{view.strengthLabel}</Chip>
+          <Chip>{view.strengthLabel} 기운</Chip>
           <Chip>{view.seasonLabel} 기운</Chip>
         </div>
+        {code && (
+          <ShareButton
+            url={shareUrl}
+            title="나의 운명의 점심 메뉴"
+            copiedMessage="공유 링크가 복사됐어요!"
+            className="mx-auto mt-4 flex items-center justify-center gap-1.5 rounded-full border border-border px-4 py-2 text-sm font-medium text-fg transition hover:bg-fg/[0.05]"
+          >
+            🔗 결과 공유하기
+          </ShareButton>
+        )}
       </div>
 
       {/* 성향 해석 */}

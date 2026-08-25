@@ -1,6 +1,6 @@
 // SajuResult → 화면에 뿌릴 최종 결과 조립 (메뉴 + 궁합 + 성격 + 분포).
 import type { Element } from './menus';
-import { ELEMENT_META, pickMenu } from './menus';
+import { ELEMENT_META, pickMenu, STRENGTH_LABEL } from './menus';
 import type { Pillar, SajuResult } from './calc';
 import { AXIS_PERSONA, SEASON_LABEL, SEASON_TEMP } from './personality';
 import {
@@ -34,7 +34,7 @@ export interface SajuView {
   element: Element;
   elementEmoji: string;
   elementLabel: string; // "🔥 火 뜨겁고 매움"
-  strengthLabel: string; // 기본형/진화형/최종진화
+  strengthLabel: string; // 은은한/균형잡힌/묵직한
   strengthLine: string;
   menu: string; // 운명의 메뉴
   // 성향 해석
@@ -86,13 +86,13 @@ export function buildSajuView(r: SajuResult): SajuView {
   const cool = CONTROLLER[el];
 
   const total = ORDER.reduce((s, e) => s + r.counts[e], 0) || 1;
-  const strengthLabel = { weak: '기본형', mid: '진화형', strong: '최종진화' }[r.strength];
+  const strengthLabel = STRENGTH_LABEL[r.strength];
 
   // "왜 이 메뉴일까" — 사주 근거들
   const reasons: string[] = [
     `타고난 기운이 ${meta.label.split('·')[0]?.trim()}인 ${el}(${ELEMENT_META[el].emoji}) 쪽이라, 그 결의 메뉴가 잘 맞아요.`,
     r.counts[el] >= 2
-      ? `사주에 ${el} 기운이 ${r.counts[el]}개로 두드러져 ${strengthLabel}이에요.`
+      ? `사주에 ${el} 기운이 ${r.counts[el]}개로 두드러진 ${strengthLabel} 기운이에요.`
       : `${el} 기운이 은은한 편이라 순한 쪽부터 어울려요.`,
     `${SEASON_KO[r.season]}에 태어나 ${SEASON_TEMP[r.season]}을 타고났어요.`,
     r.lackIsNone

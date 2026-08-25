@@ -17,9 +17,9 @@ export const ELEMENT_META: Record<
 };
 
 export const STRENGTH_LABEL: Record<Strength, string> = {
-  weak: '기본형',
-  mid: '진화형',
-  strong: '최종진화',
+  weak: '은은한',
+  mid: '균형잡힌',
+  strong: '묵직한',
 };
 
 // 일간 오행이 팔자에 몇 개인가로 세기 판정
