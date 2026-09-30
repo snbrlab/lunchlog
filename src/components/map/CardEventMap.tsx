@@ -16,6 +16,38 @@ export interface CardEventMarker {
   matched: boolean;
 }
 
+function median(nums: number[]): number {
+  const s = [...nums].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid]! : (s[mid - 1]! + s[mid]!) / 2;
+}
+
+function haversineMeters(a: { lat: number; lng: number }, b: { lat: number; lng: number }): number {
+  const R = 6_371_000;
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const h =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+// 초기 줌을 "밀집된 핵심 상권" 기준으로 맞추기 위한 이상치 제외(IQR 방식).
+// 핀 자체는 모든 마커를 그대로 다 찍음 — 여기서 걸러진 마커는 bounds 계산에서만 빠짐.
+function coreMarkersForBounds(markers: CardEventMarker[]): CardEventMarker[] {
+  if (markers.length <= 3) return markers;
+  const medLat = median(markers.map((m) => m.lat));
+  const medLng = median(markers.map((m) => m.lng));
+  const dists = markers.map((m) => haversineMeters({ lat: medLat, lng: medLng }, m));
+  const sorted = [...dists].sort((a, b) => a - b);
+  const q1 = sorted[Math.floor(sorted.length * 0.25)]!;
+  const q3 = sorted[Math.floor(sorted.length * 0.75)]!;
+  const threshold = q3 + 1.5 * (q3 - q1);
+  const core = markers.filter((_, i) => dists[i]! <= threshold);
+  return core.length > 0 ? core : markers;
+}
+
 interface Props {
   markers: CardEventMarker[];
   selectedId: string | null;
@@ -86,6 +118,7 @@ export function CardEventMap({ markers, selectedId, onSelect, onDeselect }: Prop
     if (markers.length === 0) return;
 
     const bounds = new window.kakao.maps.LatLngBounds();
+    const coreIds = new Set(coreMarkersForBounds(markers).map((m) => m.id));
 
     for (const m of markers) {
       const isSelected = m.id === selectedId;
@@ -123,7 +156,7 @@ export function CardEventMap({ markers, selectedId, onSelect, onDeselect }: Prop
       });
       overlay.setMap(map);
       pinRefs.current.set(m.id, overlay);
-      bounds.extend(pos);
+      if (coreIds.has(m.id)) bounds.extend(pos);
     }
 
     const boundsKey = markers
