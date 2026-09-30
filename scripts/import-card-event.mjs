@@ -143,7 +143,13 @@ async function geocodeMerchant(name, gu, address) {
   const hit = fallback.find((d) => inGu(d, gu) && sameRoad(d, merchantRoad));
   if (hit) return hit;
 
-  return await kakaoAddressSearch(address);
+  // "서울 {구}" 접두어 없이 지번(예: "성북동 137-15")만 검색하면, 동명 지역이 다른
+  // 도시에도 있을 때(성북동이 경남 진주시에도 있음) 전혀 엉뚱한 곳으로 튈 수 있음.
+  // 접두어를 붙여 시/구 범위로 좁히고, 그래도 결과가 구 밖이면 버림(좌표 없음이 나음).
+  const addrResult = await kakaoAddressSearch(`서울 ${gu} ${address}`);
+  if (addrResult && inGu(addrResult, gu)) return addrResult;
+
+  return null;
 }
 
 async function fetchDistrictMerchants(district) {
