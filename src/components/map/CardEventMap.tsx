@@ -104,7 +104,7 @@ export function CardEventMap({ markers, selectedId, onSelect, onDeselect }: Prop
         `box-shadow:0 2px 6px rgba(0,0,0,0.25)${isSelected ? `,0 0 0 4px ${color}44` : ''};` +
         'display:flex;align-items:center;justify-content:center;' +
         `font-size:${isSelected ? 14 : 11}px;line-height:1;`;
-      dot.textContent = m.matched ? '✅' : '🤍';
+      dot.textContent = m.matched ? '🖤' : '🤍';
       el.appendChild(dot);
 
       el.addEventListener('click', (e) => {

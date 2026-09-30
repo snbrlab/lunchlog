@@ -82,9 +82,9 @@ export function CardEventShell({
   return (
     <div className="flex h-[calc(100dvh-5rem)] flex-col overflow-hidden">
       <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
-        <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="mb-1 flex items-center justify-between gap-2">
           <h1 className="text-base font-semibold tracking-tight text-fg">
-            🎟️ 서울시 로컬브랜드 가맹점
+            🎟️ 페이북 이벤트 지도
           </h1>
           <div className="relative">
             <button
@@ -136,6 +136,21 @@ export function CardEventShell({
             )}
           </div>
         </div>
+        <p className="mb-2 text-[11px] leading-relaxed text-fg-muted">
+          💳 BC카드 페이북 · 로컬브랜드 가맹점 2만원 이상 결제 시 7,000원 즉시할인 (월 3회,
+          계정당) ·{' '}
+          <a
+            href="https://cdn.paybooc.co.kr/static/html/benefit/event/popup/2026080030_pop.html"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="underline decoration-dotted hover:text-fg"
+          >
+            가맹점 원문 보기 ↗
+          </a>
+          <br />
+          ⚠️ 페이북 앱에서 이 이벤트 &quot;혜택받기&quot;를 먼저 눌러야 할인이 적용돼요. 이벤트
+          기간은 원문 링크에서 확인해주세요.
+        </p>
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {CARD_EVENT_DISTRICTS.map((d) => (
             <button
@@ -179,7 +194,7 @@ export function CardEventShell({
                   }`}
                 >
                   <span className="mr-1.5" aria-hidden>
-                    {m.matched_restaurant_id ? '✅' : '🤍'}
+                    {m.matched_restaurant_id ? '🖤' : '🤍'}
                   </span>
                   <span className="font-medium text-fg">{m.name}</span>
                   {m.latitude == null && (

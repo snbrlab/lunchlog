@@ -99,7 +99,7 @@ export function UserMenu({ name, email, avatarColor, avatarEmoji, isAdmin }: Pro
             role="menuitem"
             className="block px-4 py-2.5 text-sm text-fg hover:bg-fg/5"
           >
-            🎟️ 카드사 가맹점 지도
+            🎟️ 페이북 이벤트 지도
           </Link>
           {/* 랭킹은 멤버 등급 기능 도입 후 공개 예정. /ranking 페이지 자체는 url 직접 들어가면 보임.
           <Link

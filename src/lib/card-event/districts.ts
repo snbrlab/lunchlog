@@ -7,6 +7,7 @@ export interface CardEventDistrict {
 }
 
 export const CARD_EVENT_DISTRICTS: CardEventDistrict[] = [
+  { code: 'gangseo', label: '강서구' },
   { code: 'gangbuk', label: '강북구' },
   { code: 'jungnang', label: '중랑구' },
   { code: 'jung', label: '중구' },
@@ -16,7 +17,6 @@ export const CARD_EVENT_DISTRICTS: CardEventDistrict[] = [
   { code: 'dongdaemun', label: '동대문구' },
   { code: 'gwangjin', label: '광진구' },
   { code: 'gwanak', label: '관악구' },
-  { code: 'gangseo', label: '강서구' },
 ];
 
 export const CARD_EVENT_ID = '2026080030';
