@@ -1,29 +1,25 @@
 'use client';
 
 // 카드사 이벤트(2만원당 N원 할인 등) 분할결제 계산기. 로그인/식당 데이터와 무관한 독립 유틸.
-// 세 모드:
-//   1) 메뉴별로 나누기 — 누가 뭘 시켰는지 입력하면, 총 할인액을 원가 비율대로 안분
-//   2) 각자 결제 — 사람마다 자기 카드로 따로 결제한 금액을 입력하면, 그 사람 결제액
-//      기준으로 개별 할인 적용 (2만원당 7천원 이벤트는 "카드 1건당" 조건이라 사람마다
-//      따로 계산해야 정확함 — 합쳐서 나누는 것과 다름)
-//   3) 그냥 N빵 — 총액을 인원수로 균등 분배
+// 두 모드:
+//   1) 메뉴별로 나누기 — 누가 뭘 시켰는지 입력해서 각자 원가를 구하고, 정산방식에 따라
+//      ① 한 카드로 전체 결제: 총액 기준 할인을 원가 비율대로 안분
+//      ② 각자 카드로 결제: 2만원당 7천원은 "카드 1건당" 조건이라, 각자 원가 기준으로
+//         개별 할인 적용 (합쳐서 비율로 나누는 것과 결과가 다름 — 카드를 나눠 긁을수록
+//         할인 횟수가 줄 수 있음)
+//   2) 그냥 N빵 — 총액을 인원수로 균등 분배
 
 import { useMemo, useState } from 'react';
 
-type Mode = 'even' | 'itemized' | 'paid';
+type Mode = 'even' | 'itemized';
 type DiscountMode = 'repeat' | 'once';
+type SettleMode = 'pooled' | 'perPerson';
 
 interface Item {
   id: string;
   name: string;
   price: string; // input 그대로 들고있다가 계산 시 parse
   people: Set<string>;
-}
-
-interface PaidEntry {
-  id: string;
-  name: string;
-  amount: string;
 }
 
 function formatWon(n: number): string {
@@ -54,13 +50,8 @@ export default function SplitBillPage() {
   const [items, setItems] = useState<Item[]>([
     { id: newId(), name: '', price: '', people: new Set() },
   ]);
-
-  // 각자 결제 모드 — 사람별로 자기 카드로 낸 금액을 따로 입력
-  const [paidEntries, setPaidEntries] = useState<PaidEntry[]>([
-    { id: newId(), name: 'A', amount: '' },
-    { id: newId(), name: 'B', amount: '' },
-    { id: newId(), name: 'C', amount: '' },
-  ]);
+  // 정산방식: 한 카드로 전체 결제(풀 할인 비율 분배) vs 각자 카드로 결제(개별 할인)
+  const [settleMode, setSettleMode] = useState<SettleMode>('perPerson');
 
   function calcDiscount(subtotal: number): number {
     const u = Number(unit) || 0;
@@ -118,7 +109,6 @@ export default function SplitBillPage() {
 
   const itemized = useMemo(() => {
     const subtotal = items.reduce((sum, it) => sum + (Number(it.price) || 0), 0);
-    const discount = calcDiscount(subtotal);
 
     const rawByPerson = new Map<string, number>();
     for (const p of people) rawByPerson.set(p, 0);
@@ -133,40 +123,40 @@ export default function SplitBillPage() {
 
     const unassigned = subtotal - Array.from(rawByPerson.values()).reduce((a, b) => a + b, 0);
 
-    const rows = people.map((p) => {
-      const raw = rawByPerson.get(p) ?? 0;
-      const ratio = subtotal > 0 ? raw / subtotal : 0;
-      const personDiscount = discount * ratio;
-      return { person: p, raw, ratio, discount: personDiscount, final: raw - personDiscount };
-    });
+    let rows: { person: string; raw: number; discount: number; final: number }[];
+    let discount: number;
+
+    if (settleMode === 'perPerson') {
+      // 각자 카드로 결제 — 사람마다 자기 원가 기준으로 독립적으로 할인 체크.
+      rows = people.map((p) => {
+        const raw = rawByPerson.get(p) ?? 0;
+        const personDiscount = calcDiscount(raw);
+        return { person: p, raw, discount: personDiscount, final: raw - personDiscount };
+      });
+      discount = rows.reduce((sum, r) => sum + r.discount, 0);
+    } else {
+      // 한 카드로 전체 결제 — 총액 기준 할인 한 번 계산해서 원가 비율대로 안분.
+      discount = calcDiscount(subtotal);
+      rows = people.map((p) => {
+        const raw = rawByPerson.get(p) ?? 0;
+        const ratio = subtotal > 0 ? raw / subtotal : 0;
+        const personDiscount = discount * ratio;
+        return { person: p, raw, discount: personDiscount, final: raw - personDiscount };
+      });
+    }
 
     return { subtotal, discount, rows, unassigned };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, people, unit, discountPerUnit, discountMode, overrideDiscount, manualDiscount]);
-
-  // ---------- 각자 결제 모드 계산 ----------
-  function addPaidEntry() {
-    setPaidEntries([...paidEntries, { id: newId(), name: '', amount: '' }]);
-  }
-  function removePaidEntry(id: string) {
-    setPaidEntries(paidEntries.filter((e) => e.id !== id));
-  }
-  function updatePaidEntry(id: string, patch: Partial<Pick<PaidEntry, 'name' | 'amount'>>) {
-    setPaidEntries(paidEntries.map((e) => (e.id === id ? { ...e, ...patch } : e)));
-  }
-
-  const paidResults = useMemo(() => {
-    const rows = paidEntries.map((e) => {
-      const amount = Number(e.amount) || 0;
-      const discount = calcDiscount(amount);
-      return { id: e.id, name: e.name, amount, discount, net: Math.max(0, amount - discount) };
-    });
-    const totalAmount = rows.reduce((sum, r) => sum + r.amount, 0);
-    const totalDiscount = rows.reduce((sum, r) => sum + r.discount, 0);
-    const totalNet = rows.reduce((sum, r) => sum + r.net, 0);
-    return { rows, totalAmount, totalDiscount, totalNet };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [paidEntries, unit, discountPerUnit, discountMode, overrideDiscount, manualDiscount]);
+  }, [
+    items,
+    people,
+    unit,
+    discountPerUnit,
+    discountMode,
+    overrideDiscount,
+    manualDiscount,
+    settleMode,
+  ]);
 
   return (
     <main className="mx-auto w-full max-w-2xl px-6 py-8">
@@ -252,15 +242,6 @@ export default function SplitBillPage() {
         </button>
         <button
           type="button"
-          onClick={() => setMode('paid')}
-          className={`flex-1 rounded-md py-2 font-medium transition ${
-            mode === 'paid' ? 'bg-fg text-bg' : 'text-fg-muted hover:bg-fg/5'
-          }`}
-        >
-          각자 결제
-        </button>
-        <button
-          type="button"
           onClick={() => setMode('even')}
           className={`flex-1 rounded-md py-2 font-medium transition ${
             mode === 'even' ? 'bg-fg text-bg' : 'text-fg-muted hover:bg-fg/5'
@@ -305,75 +286,39 @@ export default function SplitBillPage() {
             </div>
           </div>
         </section>
-      ) : mode === 'paid' ? (
-        <section className="space-y-4">
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <h2 className="mb-2 text-sm font-medium text-fg">누가 얼마 결제했는지</h2>
-            <p className="mb-3 text-[11px] text-fg-muted">
-              사람마다 자기 카드로 따로 결제한 금액을 넣어주세요. 2만원 이상이면 그 사람 결제건에
-              개별로 할인이 적용돼요.
-            </p>
-            <ul className="space-y-2">
-              {paidEntries.map((e) => (
-                <li key={e.id} className="flex gap-2">
-                  <input
-                    type="text"
-                    value={e.name}
-                    onChange={(ev) => updatePaidEntry(e.id, { name: ev.target.value })}
-                    placeholder="이름"
-                    className="w-24 rounded-md border border-border bg-bg px-2.5 py-1.5 text-xs outline-none focus:border-fg"
-                  />
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={e.amount}
-                    onChange={(ev) => updatePaidEntry(e.id, { amount: ev.target.value })}
-                    placeholder="결제금액"
-                    className="flex-1 rounded-md border border-border bg-bg px-2.5 py-1.5 text-right text-xs outline-none focus:border-fg"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => removePaidEntry(e.id)}
-                    aria-label="삭제"
-                    className="shrink-0 rounded-md px-2 text-fg-muted hover:bg-fg/5 hover:text-rose-600"
-                  >
-                    ✕
-                  </button>
-                </li>
-              ))}
-            </ul>
-            <button
-              type="button"
-              onClick={addPaidEntry}
-              className="mt-2 w-full rounded-md border border-dashed border-border py-1.5 text-xs text-fg-muted hover:border-fg/40 hover:text-fg"
-            >
-              + 결제 추가
-            </button>
-          </div>
-
-          <div className="rounded-lg border border-border bg-surface p-4">
-            <div className="space-y-1.5">
-              {paidResults.rows.map((r) => (
-                <div key={r.id} className="flex items-center justify-between text-sm">
-                  <span className="text-fg">{r.name || '(이름없음)'}</span>
-                  <span className="text-right">
-                    <span className="font-semibold text-fg">{formatWon(r.net)}</span>
-                    <span className="ml-1.5 text-[11px] text-fg-muted">
-                      (결제 {formatWon(r.amount)} - 할인 {formatWon(r.discount)})
-                    </span>
-                  </span>
-                </div>
-              ))}
-            </div>
-            <div className="mt-3 border-t border-border pt-3">
-              <Row label="총 결제액" value={formatWon(paidResults.totalAmount)} />
-              <Row label="총 할인액" value={`- ${formatWon(paidResults.totalDiscount)}`} muted />
-              <Row label="총 실부담액" value={formatWon(paidResults.totalNet)} strong />
-            </div>
-          </div>
-        </section>
       ) : (
         <section className="space-y-4">
+          {/* 정산방식 */}
+          <div className="rounded-lg border border-border bg-surface p-4">
+            <h2 className="mb-2 text-sm font-medium text-fg">정산 방식</h2>
+            <div className="flex flex-col gap-2 text-xs text-fg-muted">
+              <label className="flex items-start gap-1.5">
+                <input
+                  type="radio"
+                  className="mt-0.5"
+                  checked={settleMode === 'perPerson'}
+                  onChange={() => setSettleMode('perPerson')}
+                />
+                <span>
+                  <span className="font-medium text-fg">각자 카드로 결제</span> — 사람마다 자기
+                  원가 기준으로 개별 할인 (카드를 나눠 긁으면 할인 횟수가 줄 수 있어요)
+                </span>
+              </label>
+              <label className="flex items-start gap-1.5">
+                <input
+                  type="radio"
+                  className="mt-0.5"
+                  checked={settleMode === 'pooled'}
+                  onChange={() => setSettleMode('pooled')}
+                />
+                <span>
+                  <span className="font-medium text-fg">한 카드로 전체 결제</span> — 총액 기준
+                  할인을 원가 비율대로 나눠 가짐
+                </span>
+              </label>
+            </div>
+          </div>
+
           {/* 참여자 */}
           <div className="rounded-lg border border-border bg-surface p-4">
             <h2 className="mb-2 text-sm font-medium text-fg">참여자</h2>

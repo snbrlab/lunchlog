@@ -357,7 +357,7 @@ function DetailPanel({
               href={`/map?focus=${merchant.matched.id}`}
               className="inline-block rounded-md bg-fg px-3 py-2 text-xs font-semibold text-bg hover:opacity-90"
             >
-              📝 리뷰 쓰러 가기 →
+              📝 커밋 보러 가기 →
             </Link>
             {merchant.matched.is_closed && (
               <span className="text-xs text-fg-muted">(폐업 표시됨)</span>
