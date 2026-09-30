@@ -42,9 +42,12 @@ export default function SplitBillPage() {
   const [overrideDiscount, setOverrideDiscount] = useState(false);
   const [manualDiscount, setManualDiscount] = useState('');
 
-  // N빵 모드
+  // N빵 모드 — 인원수(최종 나눠내는 기준)와 결제카드 수(할인 발생 단위)를 분리.
+  // 예: 4명인데 카드는 3개만 써서 나눠 결제했으면, 할인은 카드 3개 기준으로 계산되고
+  // 최종 금액은 4명이 나눠냄.
   const [evenTotal, setEvenTotal] = useState('');
   const [evenPeople, setEvenPeople] = useState('3');
+  const [evenCards, setEvenCards] = useState('3');
 
   // 메뉴별 모드
   const [people, setPeople] = useState<string[]>(['나', '동료1', '동료2']);
@@ -65,7 +68,11 @@ export default function SplitBillPage() {
   // ---------- N빵 모드 계산 ----------
   const evenTotalNum = Number(evenTotal) || 0;
   const evenPeopleNum = Math.max(1, Number(evenPeople) || 1);
-  const evenDiscount = calcDiscount(evenTotalNum);
+  const evenCardsNum = Math.max(1, Number(evenCards) || 1);
+  // 카드 수만큼 총액을 균등 분할했다고 가정하고, 카드마다 할인을 독립적으로 체크 후 합산.
+  const evenPerCard = evenTotalNum / evenCardsNum;
+  const evenDiscountPerCard = calcDiscount(evenPerCard);
+  const evenDiscount = evenDiscountPerCard * evenCardsNum;
   const evenFinal = Math.max(0, evenTotalNum - evenDiscount);
   const evenPerPerson = evenFinal / evenPeopleNum;
 
@@ -282,19 +289,41 @@ export default function SplitBillPage() {
               placeholder="예: 60000"
               className="mb-3 w-full rounded-md border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-fg"
             />
-            <label className="mb-1 block text-xs text-fg-muted">인원수</label>
-            <input
-              type="text"
-              inputMode="numeric"
-              value={evenPeople}
-              onChange={(e) => setEvenPeople(e.target.value)}
-              className="w-24 rounded-md border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-fg"
-            />
+            <div className="flex gap-3">
+              <div className="flex-1">
+                <label className="mb-1 block text-xs text-fg-muted">인원수 (나눠낼 사람)</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={evenPeople}
+                  onChange={(e) => setEvenPeople(e.target.value)}
+                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-fg"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="mb-1 block text-xs text-fg-muted">결제 카드 수</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={evenCards}
+                  onChange={(e) => setEvenCards(e.target.value)}
+                  className="w-full rounded-md border border-border bg-bg px-3 py-2 text-sm outline-none focus:border-fg"
+                />
+              </div>
+            </div>
+            <p className="mt-1.5 text-[10px] text-fg-muted">
+              인원수랑 카드 수가 달라도 돼요 — 예: 4명인데 카드는 3개만 나눠 긁었으면 할인은
+              카드 3개 기준으로, 최종 금액은 4명이 나눠내요.
+            </p>
           </div>
 
           <div className="rounded-lg border border-border bg-surface p-4 text-sm">
             <Row label="원가" value={formatWon(evenTotalNum)} />
-            <Row label="할인액" value={`- ${formatWon(evenDiscount)}`} muted />
+            <Row
+              label={`할인액 (카드 ${evenCardsNum}개 × ${formatWon(evenDiscountPerCard)})`}
+              value={`- ${formatWon(evenDiscount)}`}
+              muted
+            />
             <Row label="할인후 총액" value={formatWon(evenFinal)} />
             <div className="mt-3 border-t border-border pt-3">
               <Row
@@ -361,7 +390,11 @@ export default function SplitBillPage() {
 
           {/* 메뉴 항목 */}
           <div className="rounded-lg border border-border bg-surface p-4">
-            <h2 className="mb-2 text-sm font-medium text-fg">메뉴</h2>
+            <h2 className="mb-1 text-sm font-medium text-fg">메뉴</h2>
+            <p className="mb-2 text-[10px] text-fg-muted">
+              한 메뉴를 여럿이 나눠 먹었으면 &quot;먹은 사람&quot;에 여러 명 체크. 각자 같은 메뉴를
+              따로 시켰으면 메뉴를 사람 수만큼 각각 추가해주세요 (1인분씩, 먹은 사람 1명씩).
+            </p>
             <ul className="space-y-2">
               {items.map((it) => (
                 <li key={it.id} className="rounded-md border border-border p-2.5">
