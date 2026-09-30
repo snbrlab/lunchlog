@@ -150,7 +150,7 @@ async function fetchDistrictMerchants(district) {
 async function loadExistingRestaurants() {
   const { data, error } = await supabase
     .from('restaurants')
-    .select('id, name, latitude, longitude')
+    .select('id, name, latitude, longitude, kakao_place_url')
     .eq('is_closed', false);
   if (error) throw error;
   return data;
@@ -247,6 +247,9 @@ async function main() {
             geocode_status: 'ok',
             matched_restaurant_id: exact.id,
             match_confidence: 'auto',
+            // 런치로그에 이미 있는 식당이면 그 식당이 등록될 때 사람이 검증해둔
+            // kakao_place_url(있다면)을 그대로 물려받음 — 리뷰/사진 있는 진짜 장소 페이지.
+            kakao_place_url: exact.kakao_place_url ?? null,
           };
         }
         totalGeocodeFailed += 1;
@@ -262,6 +265,7 @@ async function main() {
           geocode_status: 'failed',
           matched_restaurant_id: null,
           match_confidence: 'none',
+          kakao_place_url: null,
         };
       }
       const lat = Number(m.doc.y);
@@ -269,6 +273,12 @@ async function main() {
       const match = findMatch(m.name, lat, lng, restaurants);
       if (match.match_confidence === 'auto') totalAuto += 1;
       if (match.match_confidence === 'suggested') totalSuggested += 1;
+      // 매칭된 기존 식당의 검증된 place_url 우선, 없으면 이번에 키워드검색으로 찾은
+      // place_url(주소검색 fallback 결과엔 없음), 그것도 없으면 null.
+      const matchedRestaurant = match.matched_restaurant_id
+        ? restaurants.find((r) => r.id === match.matched_restaurant_id)
+        : null;
+      const kakaoPlaceUrl = matchedRestaurant?.kakao_place_url ?? m.doc.place_url ?? null;
       return {
         event_id: EVENT_ID,
         district: district.code,
@@ -279,6 +289,7 @@ async function main() {
         latitude: lat,
         longitude: lng,
         geocode_status: 'ok',
+        kakao_place_url: kakaoPlaceUrl,
         ...match,
       };
     });

@@ -17,6 +17,7 @@ export interface CardEventMerchantRow {
   latitude: number | null;
   longitude: number | null;
   matched_restaurant_id: string | null;
+  kakao_place_url: string | null;
   matched: { id: string; name: string; is_closed: boolean } | null;
 }
 
@@ -42,7 +43,7 @@ export default async function CardEventPage() {
     supabase
       .from('card_event_merchants')
       .select(
-        'id, district, district_label, name, category, address, latitude, longitude, matched_restaurant_id, ' +
+        'id, district, district_label, name, category, address, latitude, longitude, matched_restaurant_id, kakao_place_url, ' +
           'matched:restaurants!card_event_merchants_matched_restaurant_id_fkey ( id, name, is_closed )',
       )
       .eq('event_id', CARD_EVENT_ID)

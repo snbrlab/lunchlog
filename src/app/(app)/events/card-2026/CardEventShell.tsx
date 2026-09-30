@@ -322,15 +322,21 @@ function DetailPanel({
           <p className="text-xs text-fg-muted">
             {merchant.category} · {merchant.address}
           </p>
-          {merchant.latitude != null && merchant.longitude != null && (
+          {(merchant.kakao_place_url ||
+            (merchant.latitude != null && merchant.longitude != null)) && (
             <a
-              href={`https://map.kakao.com/link/map/${encodeURIComponent(merchant.name)},${merchant.latitude},${merchant.longitude}`}
+              href={
+                merchant.kakao_place_url ??
+                `https://map.kakao.com/link/map/${encodeURIComponent(merchant.name)},${merchant.latitude},${merchant.longitude}`
+              }
               target="_blank"
               rel="noopener noreferrer"
               className="mt-1 inline-flex items-center gap-1 text-[11px] text-fg-muted underline-offset-2 hover:text-fg hover:underline"
             >
               <span aria-hidden>🗺️</span>
-              카카오맵에서 보기 ↗
+              {merchant.kakao_place_url
+                ? '카카오맵에서 보기 (리뷰/메뉴 포함) ↗'
+                : '카카오맵 위치 보기 ↗'}
             </a>
           )}
         </div>
