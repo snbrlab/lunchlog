@@ -8,16 +8,20 @@ import type { KakaoPlaceItem } from '@/types/kakao-maps';
 interface Props {
   origin: { lat: number; lng: number };
   onSelect: (item: KakaoPlaceItem) => void;
+  // 카드사 이벤트 → 등록 흐름처럼 이름을 미리 알고 들어올 때 자동으로 한 번 검색해줌.
+  initialQuery?: string;
 }
 
 // 카카오 키워드 검색. origin 기준 1km 이내 우선.
 // 키워드 검색에 안 잡히는 식당은 카카오맵 url 직접 붙여넣기 fallback (D45).
-export function KakaoPlacesSearch({ origin, onSelect }: Props) {
-  const [query, setQuery] = useState('');
+export function KakaoPlacesSearch({ origin, onSelect, initialQuery }: Props) {
+  const [query, setQuery] = useState(initialQuery ?? '');
   const [results, setResults] = useState<KakaoPlaceItem[]>([]);
   const [status, setStatus] = useState<'idle' | 'searching' | 'ok' | 'empty' | 'error'>('idle');
   const [, startTransition] = useTransition();
   const ready = useRef(false);
+  const [sdkReady, setSdkReady] = useState(false);
+  const autoSearched = useRef(false);
 
   // URL 자동 파싱 state — 카카오맵 url 만 넣으면 HTML 파싱으로 자동 채움
   const [autoUrl, setAutoUrl] = useState('');
@@ -37,14 +41,23 @@ export function KakaoPlacesSearch({ origin, onSelect }: Props) {
     loadKakaoMaps()
       .then(() => {
         ready.current = true;
+        setSdkReady(true);
       })
       .catch(() => {
         setStatus('error');
       });
   }, []);
 
-  function runSearch() {
-    const q = query.trim();
+  // initialQuery 가 있으면 SDK 준비되는 대로 딱 한 번 자동 검색.
+  useEffect(() => {
+    if (!sdkReady || autoSearched.current || !initialQuery?.trim()) return;
+    autoSearched.current = true;
+    runSearch(initialQuery);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sdkReady]);
+
+  function runSearch(queryOverride?: string) {
+    const q = (queryOverride ?? query).trim();
     if (!q) return;
     if (!ready.current || !window.kakao?.maps?.services?.Places) {
       setStatus('error');
@@ -154,7 +167,7 @@ export function KakaoPlacesSearch({ origin, onSelect }: Props) {
         />
         <button
           type="button"
-          onClick={runSearch}
+          onClick={() => runSearch()}
           className="rounded-md bg-fg px-3 py-2 text-xs font-semibold text-bg hover:opacity-90"
         >
           검색

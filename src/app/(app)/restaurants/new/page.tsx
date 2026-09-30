@@ -3,7 +3,14 @@ import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getCachedCuisineItems } from '@/lib/cache/cuisine-items';
 import NewRestaurantForm from './NewRestaurantForm';
 
-export default async function NewRestaurantPage() {
+export default async function NewRestaurantPage({
+  searchParams,
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
+  const sp = await searchParams;
+  const initialQuery = typeof sp.q === 'string' ? sp.q : undefined;
+
   const supabase = await createSupabaseServerClient();
   const {
     data: { user },
@@ -34,7 +41,7 @@ export default async function NewRestaurantPage() {
   return (
     <main className="mx-auto w-full max-w-2xl flex-1 px-6 py-8">
       <h1 className="mb-6 text-xl font-semibold tracking-tight text-fg">+ 새 맛집 등록</h1>
-      <NewRestaurantForm origin={origin} cuisineItems={cuisineItems} />
+      <NewRestaurantForm origin={origin} cuisineItems={cuisineItems} initialQuery={initialQuery} />
     </main>
   );
 }

@@ -14,9 +14,11 @@ import type { KakaoPlaceItem } from '@/types/kakao-maps';
 interface Props {
   origin: { lat: number; lng: number };
   cuisineItems: CuisineItem[];
+  // ?q= 로 들어오면 (카드사 이벤트 지도 등) 카카오 검색을 이 이름으로 자동 실행
+  initialQuery?: string;
 }
 
-export default function NewRestaurantForm({ origin, cuisineItems }: Props) {
+export default function NewRestaurantForm({ origin, cuisineItems, initialQuery }: Props) {
   const cuisineGroups = groupCuisineItems(cuisineItems);
   const router = useRouter();
   const { mode } = useMealMode();
@@ -141,7 +143,7 @@ export default function NewRestaurantForm({ origin, cuisineItems }: Props) {
       {/* 카카오 검색 */}
       <section>
         <h2 className="mb-2 text-sm font-medium text-fg">1. 카카오에서 식당 찾기</h2>
-        <KakaoPlacesSearch origin={origin} onSelect={onPlaceSelect} />
+        <KakaoPlacesSearch origin={origin} onSelect={onPlaceSelect} initialQuery={initialQuery} />
         {latitude != null && longitude != null && (
           <p className="mt-2 rounded-md border border-border bg-surface px-3 py-2 text-xs text-fg-muted">
             ✓ 선택됨: <span className="font-medium text-fg">{name}</span>
