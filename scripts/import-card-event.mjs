@@ -121,13 +121,26 @@ async function kakaoAddressSearch(query) {
 // 포함된 것만 채택 — 아니면 다음 단계(이름만 검색, 그다음 주소검색)로 넘어감.
 const inGu = (d, gu) => (d.address_name ?? '').includes(gu) || (d.road_address_name ?? '').includes(gu);
 
+// 구 하나가 꽤 넓어서(강서구 = 마곡동 + 발산동 + 화곡동 ...), "에이스" "토끼정" "순대국맛집"
+// 처럼 흔한 이름은 구 검증을 통과해도 같은 구의 엉뚱한 동네(다른 도로)에 찍힐 수 있었음.
+// 그래서 원본 주소의 도로명까지 뽑아서 후보와 일치하는지 한 번 더 검증.
+function roadNameOf(s) {
+  const m = (s ?? '').match(/[가-힣]+\d*(?:로|길)/);
+  return m ? m[0] : null;
+}
+function sameRoad(d, merchantRoad) {
+  if (!merchantRoad) return true; // 주소에서 도로명을 못 뽑으면 검증 skip (괜히 다 걸러지는 것 방지)
+  return roadNameOf(d.road_address_name) === merchantRoad || roadNameOf(d.address_name) === merchantRoad;
+}
+
 async function geocodeMerchant(name, gu, address) {
+  const merchantRoad = roadNameOf(address);
   const primary = await kakaoKeywordSearch(`${name} ${gu}`);
-  const primaryHit = primary.find((d) => inGu(d, gu));
+  const primaryHit = primary.find((d) => inGu(d, gu) && sameRoad(d, merchantRoad));
   if (primaryHit) return primaryHit;
 
   const fallback = await kakaoKeywordSearch(name);
-  const hit = fallback.find((d) => inGu(d, gu));
+  const hit = fallback.find((d) => inGu(d, gu) && sameRoad(d, merchantRoad));
   if (hit) return hit;
 
   return await kakaoAddressSearch(address);
