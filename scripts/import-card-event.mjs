@@ -114,14 +114,20 @@ async function kakaoAddressSearch(query) {
 // 결과가 없으면 이름만으로 검색한 뒤 주소에 구 이름이 포함된 첫 결과를 채택한다.
 // 그래도 못 찾으면(카카오맵에 장소로 등록 안 된 작은 가게) 원본 주소 문자열로 주소검색 fallback —
 // 지저분한 주소(층/호, 괄호 동이름 섞인 것)도 꽤 잘 파싱됨 (실측 확인).
+//
+// 중요: "${name} ${gu}" 로 검색해도 카카오가 구 이름을 무시하고 전혀 다른 구의
+// 비슷한 이름(또는 이름 일부만 겹치는) 매장을 1등으로 주는 경우가 있음
+// (예: "길목분식 강서구" → 영등포구 "길목"). 그래서 primary 결과도 주소에 구 이름이
+// 포함된 것만 채택 — 아니면 다음 단계(이름만 검색, 그다음 주소검색)로 넘어감.
+const inGu = (d, gu) => (d.address_name ?? '').includes(gu) || (d.road_address_name ?? '').includes(gu);
+
 async function geocodeMerchant(name, gu, address) {
   const primary = await kakaoKeywordSearch(`${name} ${gu}`);
-  if (primary.length > 0) return primary[0];
+  const primaryHit = primary.find((d) => inGu(d, gu));
+  if (primaryHit) return primaryHit;
 
   const fallback = await kakaoKeywordSearch(name);
-  const hit = fallback.find(
-    (d) => (d.address_name ?? '').includes(gu) || (d.road_address_name ?? '').includes(gu),
-  );
+  const hit = fallback.find((d) => inGu(d, gu));
   if (hit) return hit;
 
   return await kakaoAddressSearch(address);
