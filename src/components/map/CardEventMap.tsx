@@ -27,6 +27,9 @@ export function CardEventMap({ markers, selectedId, onSelect, onDeselect }: Prop
   const containerRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<KakaoMapInst | null>(null);
   const pinRefs = useRef<Map<string, KakaoCustomOverlay>>(new Map());
+  // 마커 "목록 자체"가 바뀔 때만(구 전환) bounds 를 다시 맞춤 — selectedId 만 바뀌는
+  // 클릭/선택 시에는 확대/축소 상태를 건드리지 않음 (전에는 클릭할 때마다 줌이 도로 빠졌음).
+  const lastBoundsKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -101,7 +104,7 @@ export function CardEventMap({ markers, selectedId, onSelect, onDeselect }: Prop
         `box-shadow:0 2px 6px rgba(0,0,0,0.25)${isSelected ? `,0 0 0 4px ${color}44` : ''};` +
         'display:flex;align-items:center;justify-content:center;' +
         `font-size:${isSelected ? 14 : 11}px;line-height:1;`;
-      dot.textContent = m.matched ? '🍚' : '🆕';
+      dot.textContent = m.matched ? '✅' : '🤍';
       el.appendChild(dot);
 
       el.addEventListener('click', (e) => {
@@ -123,7 +126,14 @@ export function CardEventMap({ markers, selectedId, onSelect, onDeselect }: Prop
       bounds.extend(pos);
     }
 
-    if (!bounds.isEmpty()) map.setBounds(bounds);
+    const boundsKey = markers
+      .map((m) => m.id)
+      .sort()
+      .join(',');
+    if (!bounds.isEmpty() && lastBoundsKeyRef.current !== boundsKey) {
+      map.setBounds(bounds);
+      lastBoundsKeyRef.current = boundsKey;
+    }
 
     const pins = pinRefs.current;
     return () => {

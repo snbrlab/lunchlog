@@ -42,7 +42,6 @@ const FOOD_CATEGORIES = new Set([
   '기타음료식품',
 ]);
 
-const NEAR_RADIUS_M = 50;
 const SUGGEST_RADIUS_M = 80;
 const CONCURRENCY = 8;
 
@@ -145,6 +144,17 @@ async function loadExistingRestaurants() {
 
 function findMatch(merchantName, lat, lng, restaurants) {
   const norm = normalizeName(merchantName);
+
+  // 1) 이름이 정확히 같은 식당이 있으면 거리 상관없이 같은 곳으로 본다.
+  //    (카카오 키워드검색 지오코딩이 부정확해서, "가장 가까운 식당"이 실제로는
+  //    이름이 다른 엉뚱한 곳이고, 진짜 같은 이름 식당은 좀 더 멀리 잡히는 경우가 흔함 —
+  //    거리로 먼저 좁히면 이런 진짜 매칭을 놓치게 돼서 이름 일치를 최우선으로 검사.)
+  const exact = restaurants.find((r) => normalizeName(r.name) === norm);
+  if (exact) {
+    return { matched_restaurant_id: exact.id, match_confidence: 'auto' };
+  }
+
+  // 2) 이름이 정확히 같은 게 없으면, 가까운 거리 + 부분 일치로 후보만 제안.
   let best = null;
   let bestMeters = Infinity;
   for (const r of restaurants) {
@@ -154,18 +164,21 @@ function findMatch(merchantName, lat, lng, restaurants) {
       best = r;
     }
   }
-  if (!best) return { matched_restaurant_id: null, match_confidence: 'none' };
-
-  if (bestMeters <= NEAR_RADIUS_M && normalizeName(best.name) === norm) {
-    return { matched_restaurant_id: best.id, match_confidence: 'auto' };
-  }
   if (
+    best &&
     bestMeters <= SUGGEST_RADIUS_M &&
     (normalizeName(best.name).includes(norm) || norm.includes(normalizeName(best.name)))
   ) {
     return { matched_restaurant_id: best.id, match_confidence: 'suggested' };
   }
   return { matched_restaurant_id: null, match_confidence: 'none' };
+}
+
+// 지오코딩이 실패해 거리 비교를 못 하는 경우의 구제책 — 이름이 정확히 같은 식당이
+// 런치로그에 이미 있으면 그 식당 좌표를 그대로 빌려써서 매칭 + 좌표 둘 다 해결.
+function findExactNameMatch(name, restaurants) {
+  const norm = normalizeName(name);
+  return restaurants.find((r) => normalizeName(r.name) === norm) ?? null;
 }
 
 async function main() {
@@ -183,6 +196,15 @@ async function main() {
     const merchants = await fetchDistrictMerchants(district);
     console.log(`  외식업 ${merchants.length}개 → 지오코딩 시작 (동시 ${CONCURRENCY})`);
 
+    // 재실행 안전장치: admin 이 이미 검수(reviewed=true) 한 항목은 건드리지 않음.
+    const { data: reviewedRows } = await supabase
+      .from('card_event_merchants')
+      .select('name, address')
+      .eq('event_id', EVENT_ID)
+      .eq('district', district.code)
+      .eq('reviewed', true);
+    const reviewedKeys = new Set((reviewedRows ?? []).map((r) => `${r.name}|${r.address}`));
+
     const geocoded = await runPool(
       merchants,
       async (m) => {
@@ -194,6 +216,25 @@ async function main() {
 
     const rows = geocoded.map((m) => {
       if (!m.doc) {
+        // 카카오 검색은 실패했어도, 같은 이름의 식당이 런치로그에 이미 있으면
+        // 그 식당 좌표를 빌려서 매칭 + 좌표를 한 번에 해결.
+        const exact = findExactNameMatch(m.name, restaurants);
+        if (exact) {
+          totalAuto += 1;
+          return {
+            event_id: EVENT_ID,
+            district: district.code,
+            district_label: district.label,
+            name: m.name,
+            category: m.category,
+            address: m.address,
+            latitude: exact.latitude,
+            longitude: exact.longitude,
+            geocode_status: 'ok',
+            matched_restaurant_id: exact.id,
+            match_confidence: 'auto',
+          };
+        }
         totalGeocodeFailed += 1;
         return {
           event_id: EVENT_ID,
@@ -228,17 +269,25 @@ async function main() {
       };
     });
 
-    // reviewed/excluded 는 admin 이 이미 검수한 값일 수 있으니 upsert 대상에서 제외.
-    const { error } = await supabase
-      .from('card_event_merchants')
-      .upsert(rows, { onConflict: 'event_id,district,name,address' });
-    if (error) {
-      console.error(`  ✗ upsert 실패: ${error.message}`);
-      continue;
+    // admin 이 이미 검수(reviewed=true) 한 항목은 재실행 때 덮어쓰지 않고 건너뜀.
+    const toUpsert = rows.filter((r) => !reviewedKeys.has(`${r.name}|${r.address}`));
+    const skipped = rows.length - toUpsert.length;
+
+    if (toUpsert.length > 0) {
+      const { error } = await supabase
+        .from('card_event_merchants')
+        .upsert(toUpsert, { onConflict: 'event_id,district,name,address' });
+      if (error) {
+        console.error(`  ✗ upsert 실패: ${error.message}`);
+        continue;
+      }
     }
-    totalUpserted += rows.length;
-    const failed = rows.filter((r) => r.geocode_status === 'failed').length;
-    console.log(`  ✓ ${rows.length}개 저장 (지오코딩 실패 ${failed}개)`);
+    totalUpserted += toUpsert.length;
+    const failed = toUpsert.filter((r) => r.geocode_status === 'failed').length;
+    console.log(
+      `  ✓ ${toUpsert.length}개 저장 (지오코딩 실패 ${failed}개)` +
+        (skipped > 0 ? ` · 검수완료라 건너뜀 ${skipped}개` : ''),
+    );
   }
 
   console.log('\n=== 완료 ===');

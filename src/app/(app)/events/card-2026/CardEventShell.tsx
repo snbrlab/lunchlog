@@ -1,15 +1,39 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState, useTransition } from 'react';
 import { CardEventMap } from '@/components/map/CardEventMap';
 import { CARD_EVENT_DISTRICTS } from '@/lib/card-event/districts';
-import type { CardEventMerchantRow } from './page';
+import { deleteCardEventUsage, logCardEventUsage } from '@/lib/card-event/usage-actions';
+import type { CardEventMerchantRow, CardEventUsageRow } from './page';
 
-export function CardEventShell({ merchants }: { merchants: CardEventMerchantRow[] }) {
+const MONTHLY_LIMIT = 3;
+
+export function CardEventShell({
+  merchants,
+  monthlyUsage,
+}: {
+  merchants: CardEventMerchantRow[];
+  monthlyUsage: CardEventUsageRow[];
+}) {
+  const router = useRouter();
   const [district, setDistrict] = useState(CARD_EVENT_DISTRICTS[0]!.code);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [usageOpen, setUsageOpen] = useState(false);
+  const [, startTransition] = useTransition();
+
+  function refreshAfter(action: () => Promise<{ ok: boolean; message?: string }>) {
+    startTransition(async () => {
+      const r = await action();
+      if (!r.ok) {
+        alert(r.message);
+        return;
+      }
+      router.refresh();
+    });
+  }
 
   const countByDistrict = useMemo(() => {
     const m = new Map<string, number>();
@@ -43,6 +67,12 @@ export function CardEventShell({ merchants }: { merchants: CardEventMerchantRow[
 
   const matchedCount = inDistrict.filter((m) => m.matched_restaurant_id).length;
 
+  const usageByMerchantId = useMemo(() => {
+    const m = new Map<string, CardEventUsageRow>();
+    for (const u of monthlyUsage) m.set(u.merchant_id, u);
+    return m;
+  }, [monthlyUsage]);
+
   function onSelectDistrict(code: string) {
     setDistrict(code);
     setSelectedId(null);
@@ -52,9 +82,60 @@ export function CardEventShell({ merchants }: { merchants: CardEventMerchantRow[
   return (
     <div className="flex h-[calc(100dvh-5rem)] flex-col overflow-hidden">
       <div className="shrink-0 border-b border-border bg-surface px-4 py-3">
-        <h1 className="mb-2 text-base font-semibold tracking-tight text-fg">
-          🎟️ 서울시 로컬브랜드 가맹점
-        </h1>
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h1 className="text-base font-semibold tracking-tight text-fg">
+            🎟️ 서울시 로컬브랜드 가맹점
+          </h1>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setUsageOpen((v) => !v)}
+              className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition ${
+                monthlyUsage.length >= MONTHLY_LIMIT
+                  ? 'bg-amber-100 text-amber-800 hover:bg-amber-200'
+                  : 'bg-emerald-100 text-emerald-800 hover:bg-emerald-200'
+              }`}
+            >
+              이번 달 {monthlyUsage.length}/{MONTHLY_LIMIT}회
+            </button>
+            {usageOpen && (
+              <div className="absolute right-0 top-full z-40 mt-1 w-64 rounded-lg border border-border bg-surface p-2 text-xs shadow-lg">
+                {monthlyUsage.length === 0 ? (
+                  <p className="px-2 py-3 text-center text-fg-muted">
+                    이번 달 사용 기록이 없어요
+                  </p>
+                ) : (
+                  <ul className="space-y-1">
+                    {monthlyUsage.map((u) => (
+                      <li
+                        key={u.id}
+                        className="flex items-center justify-between gap-2 rounded px-2 py-1.5 hover:bg-fg/5"
+                      >
+                        <span className="min-w-0 truncate">
+                          <span className="font-medium text-fg">{u.merchant?.name ?? '?'}</span>
+                          <span className="ml-1.5 text-fg-muted">{u.used_at}</span>
+                          {u.amount != null && (
+                            <span className="ml-1.5 text-fg-muted">
+                              · {u.amount.toLocaleString()}원
+                            </span>
+                          )}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => refreshAfter(() => deleteCardEventUsage(u.id))}
+                          aria-label="기록 삭제"
+                          className="shrink-0 text-fg-muted hover:text-rose-600"
+                        >
+                          ✕
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {CARD_EVENT_DISTRICTS.map((d) => (
             <button
@@ -98,7 +179,7 @@ export function CardEventShell({ merchants }: { merchants: CardEventMerchantRow[
                   }`}
                 >
                   <span className="mr-1.5" aria-hidden>
-                    {m.matched_restaurant_id ? '🍚' : '🆕'}
+                    {m.matched_restaurant_id ? '✅' : '🤍'}
                   </span>
                   <span className="font-medium text-fg">{m.name}</span>
                   {m.latitude == null && (
@@ -140,7 +221,16 @@ export function CardEventShell({ merchants }: { merchants: CardEventMerchantRow[
             />
           </div>
 
-          <DetailPanel merchant={selected} onClose={() => setSelectedId(null)} />
+          <DetailPanel
+            merchant={selected}
+            usage={selected ? (usageByMerchantId.get(selected.id) ?? null) : null}
+            monthlyCount={monthlyUsage.length}
+            onClose={() => setSelectedId(null)}
+            onLogUsage={(merchantId, usedAt, amount) =>
+              refreshAfter(() => logCardEventUsage(merchantId, usedAt, amount))
+            }
+            onDeleteUsage={(usageId) => refreshAfter(() => deleteCardEventUsage(usageId))}
+          />
         </div>
       </div>
     </div>
@@ -149,17 +239,40 @@ export function CardEventShell({ merchants }: { merchants: CardEventMerchantRow[
 
 function DetailPanel({
   merchant,
+  usage,
+  monthlyCount,
   onClose,
+  onLogUsage,
+  onDeleteUsage,
 }: {
   merchant: CardEventMerchantRow | null;
+  usage: CardEventUsageRow | null;
+  monthlyCount: number;
   onClose: () => void;
+  onLogUsage: (merchantId: string, usedAt: string, amount: number | null) => void;
+  onDeleteUsage: (usageId: string) => void;
 }) {
+  const [logging, setLogging] = useState(false);
+  const [usedAt, setUsedAt] = useState(() => new Date().toISOString().slice(0, 10));
+  const [amountInput, setAmountInput] = useState('');
+
   if (!merchant) {
     return (
       <div className="shrink-0 border-t border-border bg-surface px-4 py-6 text-center text-xs text-fg-muted">
         지도 핀이나 왼쪽 목록에서 가맹점을 골라보세요
       </div>
     );
+  }
+
+  function submitUsage() {
+    const amount = amountInput.trim() ? Number(amountInput) : null;
+    if (amount != null && !Number.isFinite(amount)) {
+      alert('금액을 숫자로 입력해주세요');
+      return;
+    }
+    onLogUsage(merchant!.id, usedAt, amount);
+    setLogging(false);
+    setAmountInput('');
   }
 
   return (
@@ -181,29 +294,82 @@ function DetailPanel({
         </button>
       </div>
 
-      <div className="mt-3">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {merchant.matched ? (
           <>
-            <p className="mb-2 text-xs text-emerald-700">
-              ✅ 런치로그에 이미 있어요{merchant.matched.is_closed ? ' (폐업 표시됨)' : ''}
-            </p>
             <Link
               href={`/map?focus=${merchant.matched.id}`}
               className="inline-block rounded-md bg-fg px-3 py-2 text-xs font-semibold text-bg hover:opacity-90"
             >
               📝 리뷰 쓰러 가기 →
             </Link>
+            {merchant.matched.is_closed && (
+              <span className="text-xs text-fg-muted">(폐업 표시됨)</span>
+            )}
           </>
         ) : (
-          <>
-            <p className="mb-2 text-xs text-fg-muted">아직 런치로그에 없어요</p>
-            <Link
-              href={`/restaurants/new?q=${encodeURIComponent(merchant.name)}`}
-              className="inline-block rounded-md bg-fg px-3 py-2 text-xs font-semibold text-bg hover:opacity-90"
+          <Link
+            href={`/restaurants/new?q=${encodeURIComponent(merchant.name)}`}
+            className="inline-block rounded-md bg-fg px-3 py-2 text-xs font-semibold text-bg hover:opacity-90"
+          >
+            + 식당으로 등록하기 →
+          </Link>
+        )}
+      </div>
+
+      <div className="mt-3 border-t border-border pt-3">
+        {usage ? (
+          <div className="flex items-center gap-2 text-xs">
+            <span className="text-emerald-700">
+              ✅ {usage.used_at}에 여기서 썼어요{usage.amount != null ? ` · ${usage.amount.toLocaleString()}원` : ''}
+            </span>
+            <button
+              type="button"
+              onClick={() => onDeleteUsage(usage.id)}
+              className="text-fg-muted underline decoration-dotted hover:text-rose-600"
             >
-              + 식당으로 등록하기 →
-            </Link>
-          </>
+              기록 삭제
+            </button>
+          </div>
+        ) : logging ? (
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <input
+              type="date"
+              value={usedAt}
+              onChange={(e) => setUsedAt(e.target.value)}
+              className="rounded-md border border-border bg-bg px-2 py-1.5 outline-none focus:border-fg"
+            />
+            <input
+              type="text"
+              inputMode="numeric"
+              value={amountInput}
+              onChange={(e) => setAmountInput(e.target.value)}
+              placeholder="금액(선택)"
+              className="w-24 rounded-md border border-border bg-bg px-2 py-1.5 outline-none focus:border-fg"
+            />
+            <button
+              type="button"
+              onClick={submitUsage}
+              className="rounded-md bg-fg px-2.5 py-1.5 font-semibold text-bg hover:opacity-90"
+            >
+              기록
+            </button>
+            <button
+              type="button"
+              onClick={() => setLogging(false)}
+              className="text-fg-muted hover:text-fg"
+            >
+              취소
+            </button>
+          </div>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setLogging(true)}
+            className="rounded-md border border-border px-2.5 py-1.5 text-xs text-fg-muted transition hover:border-fg/40 hover:text-fg"
+          >
+            ✅ 여기서 썼어요 {monthlyCount >= MONTHLY_LIMIT ? '(이번 달 한도 넘음)' : ''}
+          </button>
         )}
       </div>
     </div>

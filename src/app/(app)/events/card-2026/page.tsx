@@ -20,6 +20,14 @@ export interface CardEventMerchantRow {
   matched: { id: string; name: string; is_closed: boolean } | null;
 }
 
+export interface CardEventUsageRow {
+  id: string;
+  merchant_id: string;
+  used_at: string;
+  amount: number | null;
+  merchant: { name: string } | null;
+}
+
 export default async function CardEventPage() {
   const supabase = await createSupabaseServerClient();
   const {
@@ -27,15 +35,31 @@ export default async function CardEventPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect('/login');
 
-  const { data } = await supabase
-    .from('card_event_merchants')
-    .select(
-      'id, district, district_label, name, category, address, latitude, longitude, matched_restaurant_id, ' +
-        'matched:restaurants!card_event_merchants_matched_restaurant_id_fkey ( id, name, is_closed )',
-    )
-    .eq('event_id', CARD_EVENT_ID)
-    .eq('excluded', false)
-    .order('name');
+  const now = new Date();
+  const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-  return <CardEventShell merchants={(data ?? []) as unknown as CardEventMerchantRow[]} />;
+  const [{ data }, { data: usage }] = await Promise.all([
+    supabase
+      .from('card_event_merchants')
+      .select(
+        'id, district, district_label, name, category, address, latitude, longitude, matched_restaurant_id, ' +
+          'matched:restaurants!card_event_merchants_matched_restaurant_id_fkey ( id, name, is_closed )',
+      )
+      .eq('event_id', CARD_EVENT_ID)
+      .eq('excluded', false)
+      .order('name'),
+    supabase
+      .from('card_event_usage')
+      .select('id, merchant_id, used_at, amount, merchant:card_event_merchants ( name )')
+      .eq('user_id', user.id)
+      .gte('used_at', monthStart)
+      .order('used_at', { ascending: false }),
+  ]);
+
+  return (
+    <CardEventShell
+      merchants={(data ?? []) as unknown as CardEventMerchantRow[]}
+      monthlyUsage={(usage ?? []) as unknown as CardEventUsageRow[]}
+    />
+  );
 }

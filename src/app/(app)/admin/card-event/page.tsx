@@ -56,6 +56,8 @@ export default async function AdminCardEventPage() {
         'matched:restaurants!card_event_merchants_matched_restaurant_id_fkey ( id, name )',
     )
     .or('match_confidence.in.(auto,suggested),geocode_status.eq.failed')
+    .eq('reviewed', false)
+    .eq('excluded', false)
     .order('district_label', { ascending: true })
     .order('match_confidence', { ascending: true })
     .limit(1000);
