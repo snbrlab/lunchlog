@@ -142,12 +142,21 @@ export function CardEventShell({
             <span className="font-medium text-fg">7,000원 청구할인</span> (월 3회, 계정당) ·
             26.9.1~12.20 (예산 소진 시 조기종료) ·{' '}
             <a
+              href="https://web.paybooc.co.kr/web/evnt/evnt-dts?pybcUnifEvntNo=2026080030"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-dotted hover:text-fg"
+            >
+              이벤트 상세 보기 ↗
+            </a>{' '}
+            ·{' '}
+            <a
               href="https://cdn.paybooc.co.kr/static/html/benefit/event/popup/2026080030_pop.html"
               target="_blank"
               rel="noopener noreferrer"
               className="underline decoration-dotted hover:text-fg"
             >
-              가맹점 원문 보기 ↗
+              가맹점 목록 원문 ↗
             </a>
           </p>
           <p className="mt-1">
