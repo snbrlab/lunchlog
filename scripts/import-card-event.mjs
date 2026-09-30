@@ -100,9 +100,21 @@ async function kakaoKeywordSearch(query) {
   return json.documents ?? [];
 }
 
+async function kakaoAddressSearch(query) {
+  const res = await fetch(
+    `https://dapi.kakao.com/v2/local/search/address.json?${new URLSearchParams({ query })}`,
+    { headers: { Authorization: `KakaoAK ${kakaoRestKey}` } },
+  );
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.documents?.[0] ?? null;
+}
+
 // 이름만으로 검색하면 전국 동명 매장이 잡힐 수 있어 구 이름을 붙여 우선 검색하고,
 // 결과가 없으면 이름만으로 검색한 뒤 주소에 구 이름이 포함된 첫 결과를 채택한다.
-async function geocodeMerchant(name, gu) {
+// 그래도 못 찾으면(카카오맵에 장소로 등록 안 된 작은 가게) 원본 주소 문자열로 주소검색 fallback —
+// 지저분한 주소(층/호, 괄호 동이름 섞인 것)도 꽤 잘 파싱됨 (실측 확인).
+async function geocodeMerchant(name, gu, address) {
   const primary = await kakaoKeywordSearch(`${name} ${gu}`);
   if (primary.length > 0) return primary[0];
 
@@ -110,7 +122,9 @@ async function geocodeMerchant(name, gu) {
   const hit = fallback.find(
     (d) => (d.address_name ?? '').includes(gu) || (d.road_address_name ?? '').includes(gu),
   );
-  return hit ?? null;
+  if (hit) return hit;
+
+  return await kakaoAddressSearch(address);
 }
 
 async function fetchDistrictMerchants(district) {
@@ -208,7 +222,7 @@ async function main() {
     const geocoded = await runPool(
       merchants,
       async (m) => {
-        const doc = await geocodeMerchant(m.name, district.gu);
+        const doc = await geocodeMerchant(m.name, district.gu, m.address);
         return { ...m, doc };
       },
       CONCURRENCY,
