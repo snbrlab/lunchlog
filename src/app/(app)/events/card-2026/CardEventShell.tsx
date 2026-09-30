@@ -136,21 +136,28 @@ export function CardEventShell({
             )}
           </div>
         </div>
-        <p className="mb-2 text-[11px] leading-relaxed text-fg-muted">
-          💳 BC카드 페이북 · 로컬브랜드 가맹점 2만원 이상 결제 시 7,000원 즉시할인 (월 3회,
-          계정당) ·{' '}
-          <a
-            href="https://cdn.paybooc.co.kr/static/html/benefit/event/popup/2026080030_pop.html"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="underline decoration-dotted hover:text-fg"
-          >
-            가맹점 원문 보기 ↗
-          </a>
-          <br />
-          ⚠️ 페이북 앱에서 이 이벤트 &quot;혜택받기&quot;를 먼저 눌러야 할인이 적용돼요. 이벤트
-          기간은 원문 링크에서 확인해주세요.
-        </p>
+        <div className="mb-2 rounded-md border border-border bg-bg px-3 py-2 text-[11px] leading-relaxed text-fg-muted">
+          <p>
+            💳 BC카드 페이북 · 로컬브랜드 상권 가맹점 2만원 이상 결제 시{' '}
+            <span className="font-medium text-fg">7,000원 청구할인</span> (월 3회, 계정당) ·
+            26.9.1~12.20 (예산 소진 시 조기종료) ·{' '}
+            <a
+              href="https://cdn.paybooc.co.kr/static/html/benefit/event/popup/2026080030_pop.html"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline decoration-dotted hover:text-fg"
+            >
+              가맹점 원문 보기 ↗
+            </a>
+          </p>
+          <p className="mt-1">
+            ⚠️ 결제 전에 <span className="font-medium text-fg">페이북 앱 → 마이태그</span>에서
+            해당 지역 &quot;로컬브랜드 상권(OO길)&quot;을 먼저 태그(신청)해야 적용돼요.{' '}
+            <span className="font-medium text-fg">지역마다 태그가 따로</span>라 다른 구로 가면
+            거기 것도 새로 태그해야 해요. 태그해둔 BC 개인 신용·체크카드로 결제하면 자동
+            청구할인!
+          </p>
+        </div>
         <div className="flex gap-1.5 overflow-x-auto pb-1">
           {CARD_EVENT_DISTRICTS.map((d) => (
             <button
