@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import ReportsAdminTable from './ReportsAdminTable';
 
 export interface AdminReportRow {
@@ -35,21 +36,23 @@ export default async function AdminReportsPage() {
     .maybeSingle();
   if (me?.role !== 'admin') redirect('/map');
 
-  // service-role 로 author email + 댓글까지 fetch
+  // service-role 로 author email + 댓글까지 fetch. 1000건 PostgREST 캡 대응은 fetchAllRows.
   const sa = getSupabaseAdminClient();
-  const { data } = await sa
-    .from('reports')
-    .select(
-      'id, category, message, status, admin_note, created_at, resolved_at, ' +
-        'author:users!reports_author_id_fkey ( id, name, email ), ' +
-        'comments:report_comments ( ' +
-        '  id, author_id, body, created_at, ' +
-        '  author:users!report_comments_author_id_fkey ( id, name, role ) ' +
-        ')',
-    )
-    .order('created_at', { ascending: false });
+  const rows = await fetchAllRows<AdminReportRow>((from, to) =>
+    sa
+      .from('reports')
+      .select(
+        'id, category, message, status, admin_note, created_at, resolved_at, ' +
+          'author:users!reports_author_id_fkey ( id, name, email ), ' +
+          'comments:report_comments ( ' +
+          '  id, author_id, body, created_at, ' +
+          '  author:users!report_comments_author_id_fkey ( id, name, role ) ' +
+          ')',
+      )
+      .order('created_at', { ascending: false })
+      .range(from, to) as unknown as PromiseLike<{ data: AdminReportRow[] | null }>,
+  );
 
-  const rows = (data ?? []) as unknown as AdminReportRow[];
   for (const r of rows) {
     r.comments.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
   }

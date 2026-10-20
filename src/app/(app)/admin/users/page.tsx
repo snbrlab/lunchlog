@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation';
 import { createSupabaseServerClient } from '@/lib/supabase/server';
 import { getSupabaseAdminClient } from '@/lib/supabase/admin';
+import { fetchAllRows } from '@/lib/supabase/paginate';
 import UsersTable from './UsersTable';
 
 interface Row {
@@ -26,25 +27,25 @@ export default async function AdminUsersPage() {
     .maybeSingle();
   if (me?.role !== 'admin') redirect('/map');
 
-  // service-role 로 email 까지 fetch (column GRANT 우회)
+  // service-role 로 email 까지 fetch (column GRANT 우회). 1000건 PostgREST 캡 대응은 fetchAllRows.
   const sa = getSupabaseAdminClient();
-  const { data } = await sa
-    .from('users')
-    .select(
-      'id, email, name, role, department, building:office_buildings!users_building_id_fkey ( name )',
-    )
-    .order('created_at', { ascending: false });
+  const rows = await fetchAllRows<Row>((from, to) =>
+    sa
+      .from('users')
+      .select(
+        'id, email, name, role, department, building:office_buildings!users_building_id_fkey ( name )',
+      )
+      .order('created_at', { ascending: false })
+      .range(from, to) as unknown as PromiseLike<{ data: Row[] | null }>,
+  );
 
   return (
     <main className="mx-auto w-full max-w-4xl px-6 py-8">
       <h1 className="mb-2 text-xl font-semibold tracking-tight text-fg">사용자 관리</h1>
       <p className="mb-6 text-xs text-fg-muted">
-        admin 권한 부여/회수. 본인 admin 권한 회수는 다른 admin 만 가능.
+        admin 권한 부여/회수. 본인 admin 권한 회수는 다른 admin 만 가능. 총 {rows.length}명
       </p>
-      <UsersTable
-        rows={((data ?? []) as unknown) as Row[]}
-        currentUserId={user?.id ?? ''}
-      />
+      <UsersTable rows={rows} currentUserId={user?.id ?? ''} />
     </main>
   );
 }
