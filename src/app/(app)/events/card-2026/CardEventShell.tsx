@@ -18,7 +18,9 @@ export function CardEventShell({
   monthlyUsage: CardEventUsageRow[];
 }) {
   const router = useRouter();
-  const [district, setDistrict] = useState(CARD_EVENT_DISTRICTS[0]!.code);
+  const [district, setDistrict] = useState(
+    CARD_EVENT_DISTRICTS.find((d) => !d.ended)?.code ?? CARD_EVENT_DISTRICTS[0]!.code,
+  );
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [usageOpen, setUsageOpen] = useState(false);
@@ -66,6 +68,7 @@ export function CardEventShell({
   );
 
   const matchedCount = inDistrict.filter((m) => m.matched_restaurant_id).length;
+  const currentDistrict = CARD_EVENT_DISTRICTS.find((d) => d.code === district);
 
   const usageByMerchantId = useMemo(() => {
     const m = new Map<string, CardEventUsageRow>();
@@ -189,9 +192,20 @@ export function CardEventShell({
             >
               {d.label}
               <span className="ml-1 opacity-70">({countByDistrict.get(d.code) ?? 0})</span>
+              {d.ended && (
+                <span className="ml-1 rounded bg-rose-100 px-1 text-[9px] font-semibold text-rose-700">
+                  종료
+                </span>
+              )}
             </button>
           ))}
         </div>
+        {currentDistrict?.ended && (
+          <p className="mt-2 rounded-md border border-rose-200 bg-rose-50 px-3 py-2 text-[11px] text-rose-700">
+            ⚠️ {currentDistrict.label} 마이태그는 예산 소진으로 조기종료됐어요. 더는 청구할인이
+            적용되지 않아요 — 가맹점 목록/리뷰 열람용으로만 참고하세요.
+          </p>
+        )}
       </div>
 
       <div className="relative flex flex-1 overflow-hidden">

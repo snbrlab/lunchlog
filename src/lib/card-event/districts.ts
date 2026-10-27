@@ -4,15 +4,18 @@
 export interface CardEventDistrict {
   code: string;
   label: string;
+  // 예산 소진 등으로 마이태그 자체가 조기종료된 구. 지도/가맹점 목록은 그대로 두되
+  // (리뷰 열람·식당 연결은 계속 유용) 할인 적용은 끝났다는 걸 탭/배너로 알림.
+  ended?: boolean;
 }
 
 export const CARD_EVENT_DISTRICTS: CardEventDistrict[] = [
-  { code: 'gangseo', label: '강서구' },
+  { code: 'gangseo', label: '강서구', ended: true }, // 26.10.27 마이태그 예산소진 조기종료
   { code: 'gangbuk', label: '강북구' },
   { code: 'jungnang', label: '중랑구' },
   { code: 'jung', label: '중구' },
   { code: 'seongbuk', label: '성북구' },
-  { code: 'seocho', label: '서초구' },
+  { code: 'seocho', label: '서초구', ended: true }, // 26.10.27 마이태그 예산소진 조기종료
   { code: 'dongjak', label: '동작구' },
   { code: 'dongdaemun', label: '동대문구' },
   { code: 'gwangjin', label: '광진구' },
